@@ -1,0 +1,31 @@
+# This workflow runs all nafarr test cases
+
+name: Nafarr Tests
+
+on:
+  push:
+    branches:
+      - 'main'
+  pull_request:
+    branches:
+      - 'main'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Compile
+        run: |
+          sbt compile
+
+      - name: Install verilator
+        run: |
+          sudo apt install -y verilator
+
+      - name: Run tests
+        run: |
+          sbt test

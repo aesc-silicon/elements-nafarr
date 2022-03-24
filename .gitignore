@@ -1,0 +1,15 @@
+verbose.log
+project/*
+target/*
+simWorkspace/
+tmp/
+*.bin*
+*log
+*jou
+*pb
+*wdb
+.vscode
+.metals
+.bsp/
+*.v
+*.vhd

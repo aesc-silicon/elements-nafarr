@@ -39,7 +39,7 @@ object ixc013_b16m {
     val DOUT = out Bool()
     val PAD = inout(Analog(Bool()))
 
-    addRTLPath("hardware/scala/nafarr/blackboxes/ihp/sg13s/IO.v")
+    addRTLPath(System.getenv("NAFARR_BASE")+"/hardware/scala/nafarr/blackboxes/ihp/sg13s/IO.v")
 
     when(OEN){
       PAD := DIN
@@ -77,7 +77,7 @@ object ixc013_b16mpup {
     val DOUT = out Bool()
     val PAD = inout(Analog(Bool()))
 
-    addRTLPath("hardware/scala/nafarr/blackboxes/ihp/sg13s/IO.v")
+    addRTLPath(System.getenv("NAFARR_BASE")+"/hardware/scala/nafarr/blackboxes/ihp/sg13s/IO.v")
 
     when(OEN){
       PAD := DIN
@@ -120,7 +120,7 @@ object ixc013_i16x {
     val PAD = in Bool()
     val DOUT = out Bool()
 
-    addRTLPath("hardware/scala/nafarr/blackboxes/ihp/sg13s/IO.v")
+    addRTLPath(System.getenv("NAFARR_BASE")+"/hardware/scala/nafarr/blackboxes/ihp/sg13s/IO.v")
 
     DOUT := PAD
 
@@ -138,7 +138,7 @@ object INVJIX12 {
     val A = in Bool()
     val Q = out Bool()
 
-    addRTLPath("hardware/scala/nafarr/blackboxes/ihp/sg13s/IO.v")
+    addRTLPath(System.getenv("NAFARR_BASE")+"/hardware/scala/nafarr/blackboxes/ihp/sg13s/IO.v")
 
     Q := !A
 

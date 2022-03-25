@@ -206,7 +206,7 @@ object IOBUF {
     val O = out Bool()
     val IO = inout(Analog(Bool()))
 
-    addRTLPath("hardware/scala/nafarr/blackboxes/xilinx/a7/IO.v")
+    addRTLPath(System.getenv("NAFARR_BASE")+"/hardware/scala/nafarr/blackboxes/xilinx/a7/IO.v")
 
     addGeneric("DRIVE", DRIVE)
     addGeneric("IBUF_LOW_PWR", IBUF_LOW_PWR)
@@ -248,7 +248,7 @@ object IBUF {
     val I = in Bool()
     val O = out Bool()
 
-    addRTLPath("hardware/scala/nafarr/blackboxes/xilinx/a7/IO.v")
+    addRTLPath(System.getenv("NAFARR_BASE")+"/hardware/scala/nafarr/blackboxes/xilinx/a7/IO.v")
 
     addGeneric("IBUF_LOW_PWR", IBUF_LOW_PWR)
     addGeneric("IOSTANDARD", IOSTANDARD)
@@ -274,7 +274,7 @@ object OBUF {
     val I = in Bool()
     val O = out Bool()
 
-    addRTLPath("hardware/scala/nafarr/blackboxes/xilinx/a7/IO.v")
+    addRTLPath(System.getenv("NAFARR_BASE")+"/hardware/scala/nafarr/blackboxes/xilinx/a7/IO.v")
 
     addGeneric("DRIVE", DRIVE)
     addGeneric("IOSTANDARD", IOSTANDARD)
@@ -308,7 +308,7 @@ object OBUFT {
     val I, T = in Bool()
     val O = out Bool()
 
-    addRTLPath("hardware/scala/nafarr/blackboxes/xilinx/a7/IO.v")
+    addRTLPath(System.getenv("NAFARR_BASE")+"/hardware/scala/nafarr/blackboxes/xilinx/a7/IO.v")
 
     addGeneric("DRIVE", DRIVE)
     addGeneric("IOSTANDARD", IOSTANDARD)
@@ -332,7 +332,7 @@ object PULLUP {
     // Fake direction for SpinalHDL. Pin O is output!
     val O = in Bool()
 
-    addRTLPath("hardware/scala/nafarr/blackboxes/xilinx/a7/IO.v")
+    addRTLPath(System.getenv("NAFARR_BASE")+"/hardware/scala/nafarr/blackboxes/xilinx/a7/IO.v")
   }
 }
 
@@ -343,7 +343,7 @@ object PULLDOWN {
     // Fake direction for SpinalHDL. Pin O is output!
     val O = out Bool()
 
-    addRTLPath("hardware/scala/nafarr/blackboxes/xilinx/a7/IO.v")
+    addRTLPath(System.getenv("NAFARR_BASE")+"/hardware/scala/nafarr/blackboxes/xilinx/a7/IO.v")
   }
 }
 
@@ -364,7 +364,7 @@ object IBUFDS {
     val IB = in Bool()
     val O = out Bool()
 
-    addRTLPath("hardware/scala/nafarr/blackboxes/xilinx/a7/IO.v")
+    addRTLPath(System.getenv("NAFARR_BASE")+"/hardware/scala/nafarr/blackboxes/xilinx/a7/IO.v")
 
     addGeneric("DIFF_TERM", DIFF_TERM)
     addGeneric("DQS_BIAS", DQS_BIAS)
@@ -412,7 +412,7 @@ object PLL {
     mapCurrentClockDomain(CLKIN1)
     val multipliedFrequency = designClockDomain.frequency.getValue * CLKFBOUT_MULT
 
-    addRTLPath("hardware/scala/nafarr/blackboxes/xilinx/a7/IO.v")
+    addRTLPath(System.getenv("NAFARR_BASE")+"/hardware/scala/nafarr/blackboxes/xilinx/a7/IO.v")
 
     addGeneric("CLKIN1_PERIOD", (1000000000 / designClockDomain.frequency.getValue.toInt))
     addGeneric("DIVCLK_DIVIDE", DIVCLK_DIVIDE)

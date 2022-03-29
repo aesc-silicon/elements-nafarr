@@ -1,4 +1,4 @@
-package nafarr.peripherals.system.mtimer
+package nafarr.system.mtimer
 
 import org.scalatest.funsuite.AnyFunSuite
 

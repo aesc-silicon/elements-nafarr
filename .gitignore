@@ -11,5 +11,5 @@ tmp/
 .vscode
 .metals
 .bsp/
-*.v
-*.vhd
+/*.v
+/*.vhd

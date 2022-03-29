@@ -1,4 +1,4 @@
-package nafarr.peripherals.system.reset
+package nafarr.system.clock
 
 import spinal.core._
 import spinal.lib._
@@ -8,56 +8,53 @@ import spinal.lib.bus.avalon._
 import spinal.lib.bus.wishbone._
 
 
-case class ResetParameter(name: String, delay: Int)
+case class ClockParameter(
+  name: String,
+  frequency: HertzNumber,
+  reset: String = "",
+  resetConfig: ClockDomainConfig =
+    ClockDomainConfig(resetKind = spinal.core.SYNC, resetActiveLevel = LOW),
+  synchronousWith: String = ""
+)
 
-object ResetController {
+object ClockController {
   class Core[T <: spinal.core.Data with IMasterSlave](
-    p: ResetControllerCtrl.Parameter,
+    p: ClockControllerCtrl.Parameter,
     busType: HardType[T],
     factory: T => BusSlaveFactory
   ) extends Component {
     val io = new Bundle {
       val bus = slave(busType())
-      val config = out(ResetControllerCtrl.Config(p))
+      val config = out(ClockControllerCtrl.Config(p))
     }
     val busCtrl = factory(io.bus)
-    val trigger = Reg(io.config.trigger) init(0)
-    val acknowledge = False
-    when (acknowledge) {
-      trigger := 0
-    }
 
     busCtrl.driveAndRead(io.config.enable, 0x0) init(U((0 until p.domains.length) -> true))
-    busCtrl.readAndWrite(trigger, 0x4)
-    busCtrl.onWrite(0x8)(acknowledge := True)
-
-    io.config.trigger := trigger
-    io.config.acknowledge := acknowledge
   }
 }
 
-case class Apb3ResetController(
-  parameter: ResetControllerCtrl.Parameter,
+case class Apb3ClockController(
+  parameter: ClockControllerCtrl.Parameter,
   busConfig: Apb3Config = Apb3Config(12, 32)
-) extends ResetController.Core[Apb3] (
+) extends ClockController.Core[Apb3] (
   parameter,
   Apb3(busConfig),
   Apb3SlaveFactory(_)
 ) { val dummy = 0 }
 
-case class WishboneResetController(
-  parameter: ResetControllerCtrl.Parameter,
+case class WishboneClockController(
+  parameter: ClockControllerCtrl.Parameter,
   busConfig: WishboneConfig = WishboneConfig(12, 32)
-) extends ResetController.Core[Wishbone] (
+) extends ClockController.Core[Wishbone] (
   parameter,
   Wishbone(busConfig),
   WishboneSlaveFactory(_)
 ) { val dummy = 0 }
 
-case class AvalonMMResetController(
-  parameter: ResetControllerCtrl.Parameter,
+case class AvalonMMClockController(
+  parameter: ClockControllerCtrl.Parameter,
   busConfig: AvalonMMConfig = AvalonMMConfig.fixed(12, 32, 1)
-) extends ResetController.Core[AvalonMM] (
+) extends ClockController.Core[AvalonMM] (
   parameter,
   AvalonMM(busConfig),
   AvalonMMSlaveFactory(_)

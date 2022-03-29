@@ -1,4 +1,4 @@
-package nafarr.peripherals.system.mtimer
+package nafarr.system.mtimer
 
 import spinal.core._
 import spinal.lib._

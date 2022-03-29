@@ -1,4 +1,4 @@
-package nafarr.peripherals.system.plic
+package nafarr.system.plic
 
 import spinal.core._
 import spinal.lib._

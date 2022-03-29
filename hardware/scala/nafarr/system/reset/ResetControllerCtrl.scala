@@ -1,4 +1,4 @@
-package nafarr.peripherals.system.reset
+package nafarr.system.reset
 
 import spinal.core._
 import spinal.lib._

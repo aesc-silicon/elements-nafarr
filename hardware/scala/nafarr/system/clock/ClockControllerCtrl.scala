@@ -1,4 +1,4 @@
-package nafarr.peripherals.system.clock
+package nafarr.system.clock
 
 import spinal.core._
 import spinal.lib._
@@ -6,7 +6,7 @@ import spinal.lib.bus.misc.BusSlaveFactory
 import scala.collection.mutable.Map
 
 import nafarr.blackboxes.xilinx.a7.PLL
-import nafarr.peripherals.system.reset.ResetControllerCtrl.ResetControllerCtrl
+import nafarr.system.reset.ResetControllerCtrl.ResetControllerCtrl
 
 
 object ClockControllerCtrl {

@@ -27,7 +27,7 @@ object HammingCode1611 {
       parity(0) ^ parity(1) ^ parity(2) ^ parity(3)
   }
 
-  case class Encode() extends Component {
+  case class Encoder() extends Component {
     val io = new Bundle {
       val dataword = in Bits(8 bits)
       val codeword = out Bits(13 bits)
@@ -40,7 +40,7 @@ object HammingCode1611 {
                    parity(2) ## io.dataword(0) ## parity(1 downto 0) ## extendedParity
   }
 
-  case class Decode() extends Component {
+  case class Decoder() extends Component {
     val io = new Bundle {
       val dataword = out Bits(8 bits)
       val codeword = in Bits(13 bits)

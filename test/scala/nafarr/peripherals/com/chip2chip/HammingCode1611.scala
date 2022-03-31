@@ -34,7 +34,7 @@ class HammingCode1611Test extends AnyFunSuite {
     println(s"Codeword: ${dr(7)}${dr(6)}${dr(5)}${dr(4)}${pr(4)}${dr(3)}${dr(2)}${dr(1)}${pr(3)}${dr(0)}${pr(2)}${pr(1)}${pr(0)}")
   }
 
-  def encodeTestCase(dut: HammingCode1611.Encode, dataword: String, parity: String) {
+  def encodeTestCase(dut: HammingCode1611.Encoder, dataword: String, parity: String) {
     require(dataword.length == 8, "Dataword must be 8 characters long!")
     require(parity.length == 5, "Parity bits must be 5 characters long!")
 
@@ -49,7 +49,7 @@ class HammingCode1611Test extends AnyFunSuite {
 
   test("encode") {
     val compiled = SimConfig.withWave.compile {
-      HammingCode1611.Encode()
+      HammingCode1611.Encoder()
     }
     /* High/Low input */
     compiled.doSim("00000000") { dut => encodeTestCase(dut, "00000000", "00000") }
@@ -62,7 +62,7 @@ class HammingCode1611Test extends AnyFunSuite {
     compiled.doSim("10100100") { dut => encodeTestCase(dut, "10100100", "00001") }
   }
 
-  def decodeTestCase(dut: HammingCode1611.Decode, dataword: String, errorword: String,
+  def decodeTestCase(dut: HammingCode1611.Decoder, dataword: String, errorword: String,
                      parity: String, multiBitError: Boolean = false) {
     require(dataword.length == 8, "Dataword must be 8 characters long!")
     require(errorword.length == 8, "Dataword must be 8 characters long!")
@@ -87,7 +87,7 @@ class HammingCode1611Test extends AnyFunSuite {
 
   test("decode") {
     val compiled = SimConfig.withWave.compile {
-      val dut = HammingCode1611.Decode()
+      val dut = HammingCode1611.Decoder()
       dut.extendedParityError.simPublic()
       dut.parityError.simPublic()
       dut.bitPosition.simPublic()

@@ -2,7 +2,7 @@ package nafarr.peripherals.com.i2c
 
 object I2cCtrl {
   case class PermissionParameter(
-    busCanWriteClockDividerConfig: Boolean
+      busCanWriteClockDividerConfig: Boolean
   ) {
     require(busCanWriteClockDividerConfig)
   }
@@ -12,8 +12,8 @@ object I2cCtrl {
   }
 
   case class MemoryMappedParameter(
-    cmdFifoDepth: Int,
-    rspFifoDepth: Int
+      cmdFifoDepth: Int,
+      rspFifoDepth: Int
   ) {
     require(cmdFifoDepth > 0 && cmdFifoDepth < 256)
     require(rspFifoDepth > 0 && rspFifoDepth < 256)
@@ -25,10 +25,10 @@ object I2cCtrl {
   }
 
   case class Parameter(
-    permission: PermissionParameter,
-    memory: MemoryMappedParameter,
-    timerWidth: Int = 16,
-    interrupts: Int = 0
+      permission: PermissionParameter,
+      memory: MemoryMappedParameter,
+      timerWidth: Int = 16,
+      interrupts: Int = 0
   ) {
     require(timerWidth > 1)
     require(interrupts >= 0)

@@ -7,9 +7,9 @@ import spinal.lib.bus.amba3.apb._
 import spinal.lib.bus.misc.BusSlaveFactory
 
 case class MultimediaConfig(
-  rgbConfig: RgbConfig,
-  hTimings: TimingsConfig,
-  vTimings: TimingsConfig
+    rgbConfig: RgbConfig,
+    hTimings: TimingsConfig,
+    vTimings: TimingsConfig
 ) {
   def getPixelXWidth() = hTimings.width
   def getPixelYWidth() = vTimings.width

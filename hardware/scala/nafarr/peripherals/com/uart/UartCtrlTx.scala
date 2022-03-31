@@ -27,7 +27,7 @@ object UartCtrlTx {
       val clockDivider = new Area {
         val counter = Counter(p.samplesPerBit)
         val tick = counter.willOverflow
-        when (io.samplingTick) {
+        when(io.samplingTick) {
           counter.increment()
         }
       }
@@ -51,8 +51,8 @@ object UartCtrlTx {
 
         io.write.ready := False
         switch(state) {
-          is(State.IDLE){
-            when(io.write.valid && clockDivider.tick && io.cts){
+          is(State.IDLE) {
+            when(io.write.valid && clockDivider.tick && io.cts) {
               state := State.START
             }
           }
@@ -101,7 +101,7 @@ object UartCtrlTx {
     } otherwise {
       txEnable := False
     }
-    io.txd := RegNext(txCtrl.stateMachine.txd) init(True)
+    io.txd := RegNext(txCtrl.stateMachine.txd).init(True)
   }
 
 }

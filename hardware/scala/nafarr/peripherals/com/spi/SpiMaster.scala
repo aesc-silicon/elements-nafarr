@@ -40,9 +40,9 @@ object SpiMaster {
   }
 
   class Core[T <: spinal.core.Data with IMasterSlave](
-    p: SpiCtrl.Parameter,
-    busType: HardType[T],
-    factory: T => BusSlaveFactory
+      p: SpiCtrl.Parameter,
+      busType: HardType[T],
+      factory: T => BusSlaveFactory
   ) extends Component {
     val io = new Bundle {
       val bus = slave(busType())
@@ -54,7 +54,7 @@ object SpiMaster {
     spiMasterCtrl.io.spi <> io.spi
     io.interrupt := spiMasterCtrl.io.interrupt
 
-    val busFactory =  factory(io.bus)
+    val busFactory = factory(io.bus)
     SpiMasterCtrl.Mapper(busFactory, spiMasterCtrl.io, p)
     SpiMasterCtrl.StreamMapper(busFactory, spiMasterCtrl.io, p)
 
@@ -80,28 +80,28 @@ object SpiMaster {
 }
 
 case class Apb3SpiMaster(
-  parameter: SpiCtrl.Parameter,
-  busConfig: Apb3Config = Apb3Config(12, 32)
-) extends SpiMaster.Core[Apb3] (
-  parameter,
-  Apb3(busConfig),
-  Apb3SlaveFactory(_)
-) { val dummy = 0 }
+    parameter: SpiCtrl.Parameter,
+    busConfig: Apb3Config = Apb3Config(12, 32)
+) extends SpiMaster.Core[Apb3](
+      parameter,
+      Apb3(busConfig),
+      Apb3SlaveFactory(_)
+    ) { val dummy = 0 }
 
 case class WishboneSpiMaster(
-  parameter: SpiCtrl.Parameter,
-  busConfig: WishboneConfig = WishboneConfig(12, 32)
-) extends SpiMaster.Core[Wishbone] (
-  parameter,
-  Wishbone(busConfig),
-  WishboneSlaveFactory(_)
-) { val dummy = 0 }
+    parameter: SpiCtrl.Parameter,
+    busConfig: WishboneConfig = WishboneConfig(12, 32)
+) extends SpiMaster.Core[Wishbone](
+      parameter,
+      Wishbone(busConfig),
+      WishboneSlaveFactory(_)
+    ) { val dummy = 0 }
 
 case class AvalonMMSpiMaster(
-  parameter: SpiCtrl.Parameter,
-  busConfig: AvalonMMConfig = AvalonMMConfig.fixed(12, 32, 1)
-) extends SpiMaster.Core[AvalonMM] (
-  parameter,
-  AvalonMM(busConfig),
-  AvalonMMSlaveFactory(_)
-) { val dummy = 0 }
+    parameter: SpiCtrl.Parameter,
+    busConfig: AvalonMMConfig = AvalonMMConfig.fixed(12, 32, 1)
+) extends SpiMaster.Core[AvalonMM](
+      parameter,
+      AvalonMM(busConfig),
+      AvalonMMSlaveFactory(_)
+    ) { val dummy = 0 }

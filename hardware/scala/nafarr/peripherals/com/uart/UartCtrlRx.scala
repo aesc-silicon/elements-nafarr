@@ -23,15 +23,15 @@ object UartCtrlRx {
     // Implement the rxd sampling with a majority vote over samplingSize bits
     // Provide a new sampler.value each time sampler.tick is high
     val sampler = new Area {
-      val synchroniser = BufferCC(io.rxd, init=False)
+      val synchroniser = BufferCC(io.rxd, init = False)
       val samples = History(
         that = synchroniser,
         length = p.samplingSize,
         when = io.samplingTick,
         init = True
       )
-      val value = RegNext(MajorityVote(samples)) init(True)
-      val tick = RegNext(io.samplingTick) init(False)
+      val value = RegNext(MajorityVote(samples)).init(True)
+      val tick = RegNext(io.samplingTick).init(False)
     }
 
     // Provide a bitTimer.tick each rxSamplePerBit
@@ -40,9 +40,9 @@ object UartCtrlRx {
       val counter = Reg(UInt(log2Up(p.samplesPerBit) bit))
       def reset() = counter := p.preSamplingSize + (p.samplingSize - 1) / 2 - 1
       val tick = False
-      when (sampler.tick) {
+      when(sampler.tick) {
         counter := counter - 1
-        when (counter === 0) {
+        when(counter === 0) {
           tick := True
           if (!isPow2(p.samplesPerBit))
             counter := p.samplesPerBit - 1
@@ -63,41 +63,41 @@ object UartCtrlRx {
 
     val stateMachine = new Area {
 
-      val state   = RegInit(State.IDLE)
-      val parity  = Reg(Bool)
+      val state = RegInit(State.IDLE)
+      val parity = Reg(Bool)
       val shifter = Reg(io.read.payload)
-      val validReg = RegNext(False) init(False)
+      val validReg = RegNext(False).init(False)
       io.read.valid := validReg
 
-      //Parity calculation
-      when (bitTimer.tick) {
+      // Parity calculation
+      when(bitTimer.tick) {
         parity := parity ^ sampler.value
       }
 
-      switch (state) {
-        is (State.IDLE) {
-          when (sampler.tick && !sampler.value) {
+      switch(state) {
+        is(State.IDLE) {
+          when(sampler.tick && !sampler.value) {
             state := State.START
             bitTimer.reset()
           }
         }
-        is (State.START) {
-          when (bitTimer.tick) {
+        is(State.START) {
+          when(bitTimer.tick) {
             state := State.DATA
             bitCounter.reset()
             parity := io.config.parity === Uart.ParityType.ODD
             shifter := 0
-            when (sampler.value === True) {
+            when(sampler.value === True) {
               state := State.IDLE
             }
           }
         }
-        is (State.DATA) {
-          when (bitTimer.tick) {
+        is(State.DATA) {
+          when(bitTimer.tick) {
             shifter(bitCounter.value) := sampler.value
-            when (bitCounter.value === io.config.dataLength) {
+            when(bitCounter.value === io.config.dataLength) {
               bitCounter.reset()
-              when (io.config.parity === Uart.ParityType.NONE) {
+              when(io.config.parity === Uart.ParityType.NONE) {
                 state := State.STOP
                 validReg := True
               } otherwise {
@@ -106,10 +106,10 @@ object UartCtrlRx {
             }
           }
         }
-        is (State.PARITY) {
-          when (bitTimer.tick) {
+        is(State.PARITY) {
+          when(bitTimer.tick) {
             bitCounter.reset()
-            when (parity === sampler.value) {
+            when(parity === sampler.value) {
               state := State.STOP
               validReg := True
             } otherwise {
@@ -117,10 +117,10 @@ object UartCtrlRx {
             }
           }
         }
-        is (State.STOP) {
-          when (bitTimer.tick) {
+        is(State.STOP) {
+          when(bitTimer.tick) {
             val stopBits = Uart.StopType.toBitCount(io.config.stop)
-            when (!sampler.value) {
+            when(!sampler.value) {
               state := State.IDLE
             } elsewhen (bitCounter.value === stopBits) {
               state := State.IDLE

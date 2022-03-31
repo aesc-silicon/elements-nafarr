@@ -4,12 +4,11 @@ import spinal.core._
 import spinal.lib._
 import spinal.lib.bus.misc.BusSlaveFactory
 
-
 object SevenSegmentCtrl {
   def apply(p: Parameter = Parameter.default) = SevenSegmentCtrl(p)
 
   case class Parameter(
-    count: Int
+      count: Int
   )
   object Parameter {
     def default = Parameter(8)
@@ -27,12 +26,12 @@ object SevenSegmentCtrl {
     val io = Io(p)
 
     val area50Hz = new SlowArea(500 Hz) {
-      val select = Reg(Bits(p.count bits)) init(B(p.count bits, 0 -> False, default -> True))
-      val muxer = Reg(UInt(log2Up(p.count) bits)) init(0)
+      val select = Reg(Bits(p.count bits)).init(B(p.count bits, 0 -> False, default -> True))
+      val muxer = Reg(UInt(log2Up(p.count) bits)).init(0)
 
       select := select.rotateLeft(1)
       muxer := muxer + 1
-      when (muxer === p.count) {
+      when(muxer === p.count) {
         muxer := 0
       }
     }
@@ -56,15 +55,15 @@ object SevenSegmentCtrl {
   }
 
   case class Mapper(
-    busCtrl: BusSlaveFactory,
-    ctrl: Io,
-    p: Parameter
+      busCtrl: BusSlaveFactory,
+      ctrl: Io,
+      p: Parameter
   ) extends Area {
-      val cfg = Reg(ctrl.config)
-      cfg.output init(0)
+    val cfg = Reg(ctrl.config)
+    cfg.output.init(0)
 
-      busCtrl.readAndWrite(cfg.output, 0x10)
+    busCtrl.readAndWrite(cfg.output, 0x10)
 
-      ctrl.config <> cfg
+    ctrl.config <> cfg
   }
 }

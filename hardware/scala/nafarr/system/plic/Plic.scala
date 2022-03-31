@@ -10,12 +10,11 @@ import spinal.lib.misc.plic._
 
 import scala.collection.mutable.ArrayBuffer
 
-
 object Plic {
   class Core[T <: spinal.core.Data with IMasterSlave](
-    p: PlicCtrl.Parameter,
-    busType: HardType[T],
-    factory: T => BusSlaveFactory
+      p: PlicCtrl.Parameter,
+      busType: HardType[T],
+      factory: T => BusSlaveFactory
   ) extends Component {
     val io = new Bundle {
       val bus = slave(busType())
@@ -40,7 +39,7 @@ object Plic {
       )
     )
     targets.foreach(_.threshold := 0)
-/*
+    /*
     TODO: Check if 'PlicMapping.light' is equal to following configuration
     val plicMapping = PlicMapping(
         gatewayPriorityOffset = 0x0000,
@@ -58,7 +57,7 @@ object Plic {
         targetThresholdReadGen = true,
         targetEnableReadGen = true
     )
-*/
+     */
     val mapping = PlicMapper(factory(io.bus), PlicMapping.light)(
       gateways = gateways,
       targets = targets
@@ -69,28 +68,28 @@ object Plic {
 }
 
 case class Apb3Plic(
-  parameter: PlicCtrl.Parameter,
-  busConfig: Apb3Config = Apb3Config(16, 32)
-) extends Plic.Core[Apb3] (
-  parameter,
-  Apb3(busConfig),
-  Apb3SlaveFactory(_)
-) { val dummy = 0 }
+    parameter: PlicCtrl.Parameter,
+    busConfig: Apb3Config = Apb3Config(16, 32)
+) extends Plic.Core[Apb3](
+      parameter,
+      Apb3(busConfig),
+      Apb3SlaveFactory(_)
+    ) { val dummy = 0 }
 
 case class WishbonePlic(
-  parameter: PlicCtrl.Parameter,
-  busConfig: WishboneConfig = WishboneConfig(16, 32)
-) extends Plic.Core[Wishbone] (
-  parameter,
-  Wishbone(busConfig),
-  WishboneSlaveFactory(_)
-) { val dummy = 0 }
+    parameter: PlicCtrl.Parameter,
+    busConfig: WishboneConfig = WishboneConfig(16, 32)
+) extends Plic.Core[Wishbone](
+      parameter,
+      Wishbone(busConfig),
+      WishboneSlaveFactory(_)
+    ) { val dummy = 0 }
 
 case class AvalonMMPlic(
-  parameter: PlicCtrl.Parameter,
-  busConfig: AvalonMMConfig = AvalonMMConfig.fixed(16, 32, 1)
-) extends Plic.Core[AvalonMM] (
-  parameter,
-  AvalonMM(busConfig),
-  AvalonMMSlaveFactory(_)
-) { val dummy = 0 }
+    parameter: PlicCtrl.Parameter,
+    busConfig: AvalonMMConfig = AvalonMMConfig.fixed(16, 32, 1)
+) extends Plic.Core[AvalonMM](
+      parameter,
+      AvalonMM(busConfig),
+      AvalonMMSlaveFactory(_)
+    ) { val dummy = 0 }

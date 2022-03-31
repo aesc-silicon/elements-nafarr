@@ -4,7 +4,6 @@ import spinal.core._
 import spinal.lib._
 import spinal.lib.bus.amba4.axi._
 
-
 object SpiXipMasterCtrl {
   def apply(p: SpiCtrl.Parameter, dataBusConfig: Axi4Config) = SpiMasterCtrl(p, dataBusConfig)
 
@@ -30,9 +29,9 @@ object SpiXipMasterCtrl {
 
     val rspHandler = new Area {
       val data = Reg(Bits(32 bits))
-      val counter = Reg(UInt(2 bits)) init(0)
+      val counter = Reg(UInt(2 bits)).init(0)
 
-      when (io.rsp.valid) {
+      when(io.rsp.valid) {
         data(8 * counter, 8 bits) := io.rsp.payload.asBits
         counter := counter + 1
       }
@@ -66,7 +65,7 @@ object SpiXipMasterCtrl {
           cmdStream.payload.mode := SpiMaster.CmdMode.SS
           cmdStream.payload.args.assignFromBits(enableSpi.asBits.resized)
 
-          when (cmdStream.ready) {
+          when(cmdStream.ready) {
             state := State.COMMAND
           } otherwise {
             state := State.ENABLESPI
@@ -82,7 +81,7 @@ object SpiXipMasterCtrl {
           cmdStream.payload.args.assignFromBits(readCommand.asBits)
 
           counter := 2
-          when (cmdStream.ready) {
+          when(cmdStream.ready) {
             state := State.ADDRESS
           } otherwise {
             state := State.COMMAND
@@ -97,8 +96,8 @@ object SpiXipMasterCtrl {
           cmdStream.payload.mode := SpiMaster.CmdMode.DATA
           cmdStream.payload.args.assignFromBits(addressCommand.asBits)
 
-          when (cmdStream.ready) {
-            when (counter === 0) {
+          when(cmdStream.ready) {
+            when(counter === 0) {
               counter := 3
               state := State.DATA
             } otherwise {
@@ -118,8 +117,8 @@ object SpiXipMasterCtrl {
           cmdStream.payload.mode := SpiMaster.CmdMode.DATA
           cmdStream.payload.args.assignFromBits(dataCommand.asBits)
 
-          when (cmdStream.ready) {
-            when (counter === 0) {
+          when(cmdStream.ready) {
+            when(counter === 0) {
               counter := 3
               state := State.DISABLESPI
             } otherwise {
@@ -139,7 +138,7 @@ object SpiXipMasterCtrl {
           cmdStream.payload.mode := SpiMaster.CmdMode.SS
           cmdStream.payload.args.assignFromBits(enableSpi.asBits.resized)
 
-          when (cmdStream.ready) {
+          when(cmdStream.ready) {
             state := State.RESPONSE
           } otherwise {
             state := State.DISABLESPI

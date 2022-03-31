@@ -10,10 +10,10 @@ import spinal.lib.bus.wishbone._
 
 object SpiXipMaster {
   class Core[T <: spinal.core.Data with IMasterSlave](
-    p: SpiCtrl.Parameter,
-    dataBusConfig: Axi4Config,
-    busType: HardType[T],
-    factory: T => BusSlaveFactory
+      p: SpiCtrl.Parameter,
+      dataBusConfig: Axi4Config,
+      busType: HardType[T],
+      factory: T => BusSlaveFactory
   ) extends Component {
     val io = new Bundle {
       val bus = slave(busType())
@@ -31,18 +31,18 @@ object SpiXipMaster {
     spiXipMasterCtrl.io.rsp << spiMasterCtrl.io.rsp
     spiXipMasterCtrl.io.bus << io.dataBus
 
-    val busFactory =  factory(io.bus)
+    val busFactory = factory(io.bus)
     SpiMasterCtrl.Mapper(busFactory, spiMasterCtrl.io, p)
   }
 }
 
 case class Axi4SharedSpiXipMaster(
-  parameter: SpiCtrl.Parameter,
-  dataBusConfig: Axi4Config = Axi4Config(20, 32, 4),
-  busConfig: Apb3Config = Apb3Config(12, 32)
-) extends SpiXipMaster.Core[Apb3] (
-  parameter,
-  dataBusConfig,
-  Apb3(busConfig),
-  Apb3SlaveFactory(_)
-) { val dummy = 0 }
+    parameter: SpiCtrl.Parameter,
+    dataBusConfig: Axi4Config = Axi4Config(20, 32, 4),
+    busConfig: Apb3Config = Apb3Config(12, 32)
+) extends SpiXipMaster.Core[Apb3](
+      parameter,
+      dataBusConfig,
+      Apb3(busConfig),
+      Apb3SlaveFactory(_)
+    ) { val dummy = 0 }

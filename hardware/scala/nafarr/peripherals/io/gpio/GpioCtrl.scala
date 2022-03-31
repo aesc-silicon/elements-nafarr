@@ -6,24 +6,23 @@ import spinal.lib.bus.misc.BusSlaveFactory
 import spinal.lib.misc.InterruptCtrl
 import spinal.lib.io.{TriStateArray, TriState}
 
-
 object GpioCtrl {
   def apply(p: Parameter = Parameter.default) = GpioCtrl(p)
 
   /** Parameters for GPIO controller.
-   *
-   *  @param width bit width of the controller and therefore the number of GPIOs.
-   *  @param readBufferDepth register depth for reading values. Disabled when 0. Defaults to 0.
-   *  @param output list of pin numbers which can drive an output signal. Defaults to null.
-   *  @param input list of pin numbers which can read ana input signal. Defaults to null
-   *  @param interrupt list of pin numbers which are interrupt capable. Defaults to null.
-   */
+    *
+    *  @param width bit width of the controller and therefore the number of GPIOs.
+    *  @param readBufferDepth register depth for reading values. Disabled when 0. Defaults to 0.
+    *  @param output list of pin numbers which can drive an output signal. Defaults to null.
+    *  @param input list of pin numbers which can read ana input signal. Defaults to null
+    *  @param interrupt list of pin numbers which are interrupt capable. Defaults to null.
+    */
   case class Parameter(
-    width: Int,
-    readBufferDepth: Int = 0,
-    var output: Seq[Int] = null,
-    var input: Seq[Int] = null,
-    var interrupt: Seq[Int] = null
+      width: Int,
+      readBufferDepth: Int = 0,
+      var output: Seq[Int] = null,
+      var input: Seq[Int] = null,
+      var interrupt: Seq[Int] = null
   ) {
     require(width < 33, "Only up to 32 GPIOs are allowed.")
     if (output == null)
@@ -81,7 +80,7 @@ object GpioCtrl {
     io.irqFall.valid := (~synchronized & last)
 
     io.interrupt := (io.irqHigh.pending | io.irqLow.pending |
-                    io.irqRise.pending | io.irqFall.pending).orR
+      io.irqRise.pending | io.irqFall.pending).orR
   }
 
   /** Register mapping
@@ -108,22 +107,22 @@ object GpioCtrl {
     * 0x002C|RW: Input falling edge interrupt mask.
     */
   case class Mapper(
-    busCtrl: BusSlaveFactory,
-    ctrl: Io,
-    p: Parameter
+      busCtrl: BusSlaveFactory,
+      ctrl: Io,
+      p: Parameter
   ) extends Area {
 
     for (i <- 0 until p.width) {
       if (p.input.contains(i))
         busCtrl.read(ctrl.value(i), 0x00, i)
       if (p.output.contains(i)) {
-        busCtrl.driveAndRead(ctrl.config.write(i), 0x04, i) init(False)
+        busCtrl.driveAndRead(ctrl.config.write(i), 0x04, i).init(False)
       } else {
         busCtrl.read(False, 0x04, i)
         ctrl.config.write(i) := False
       }
       if (p.output.contains(i) && p.input.contains(i)) {
-        busCtrl.driveAndRead(ctrl.config.direction(i), 0x08, i) init(False)
+        busCtrl.driveAndRead(ctrl.config.direction(i), 0x08, i).init(False)
       } else {
         val direction = RegInit(Bool(p.output.contains(i)))
         direction.allowUnsetRegToAvoidLatch

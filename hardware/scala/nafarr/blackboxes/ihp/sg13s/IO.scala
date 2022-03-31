@@ -29,19 +29,18 @@ object IhpCmosIo {
   }
 }
 
-
 object ixc013_b16m {
   def apply() = ixc013_b16m()
   def apply(pin: TriState[Bool]) = ixc013_b16m().withTriState(pin)
 
   case class ixc013_b16m() extends BlackBox {
-    val DIN, OEN = in Bool()
-    val DOUT = out Bool()
+    val DIN, OEN = in(Bool())
+    val DOUT = out(Bool())
     val PAD = inout(Analog(Bool()))
 
-    addRTLPath(System.getenv("NAFARR_BASE")+"/hardware/scala/nafarr/blackboxes/ihp/sg13s/IO.v")
+    addRTLPath(System.getenv("NAFARR_BASE") + "/hardware/scala/nafarr/blackboxes/ihp/sg13s/IO.v")
 
-    when(OEN){
+    when(OEN) {
       PAD := DIN
     }
     DOUT := PAD
@@ -73,13 +72,13 @@ object ixc013_b16mpup {
   def apply(pin: TriState[Bool]) = ixc013_b16mpup().withTriState(pin)
 
   case class ixc013_b16mpup() extends BlackBox {
-    val DIN, OEN = in Bool()
-    val DOUT = out Bool()
+    val DIN, OEN = in(Bool())
+    val DOUT = out(Bool())
     val PAD = inout(Analog(Bool()))
 
-    addRTLPath(System.getenv("NAFARR_BASE")+"/hardware/scala/nafarr/blackboxes/ihp/sg13s/IO.v")
+    addRTLPath(System.getenv("NAFARR_BASE") + "/hardware/scala/nafarr/blackboxes/ihp/sg13s/IO.v")
 
-    when(OEN){
+    when(OEN) {
       PAD := DIN
     }
     DOUT := PAD
@@ -117,10 +116,10 @@ object ixc013_i16x {
   def apply(pin: Bool) = ixc013_i16x().withBool(pin)
 
   case class ixc013_i16x() extends BlackBox {
-    val PAD = in Bool()
-    val DOUT = out Bool()
+    val PAD = in(Bool())
+    val DOUT = out(Bool())
 
-    addRTLPath(System.getenv("NAFARR_BASE")+"/hardware/scala/nafarr/blackboxes/ihp/sg13s/IO.v")
+    addRTLPath(System.getenv("NAFARR_BASE") + "/hardware/scala/nafarr/blackboxes/ihp/sg13s/IO.v")
 
     DOUT := PAD
 
@@ -135,10 +134,10 @@ object INVJIX12 {
   def apply(normal: Bool, inverted: Bool) = INVJIX12().connect(normal, inverted)
 
   case class INVJIX12() extends BlackBox {
-    val A = in Bool()
-    val Q = out Bool()
+    val A = in(Bool())
+    val Q = out(Bool())
 
-    addRTLPath(System.getenv("NAFARR_BASE")+"/hardware/scala/nafarr/blackboxes/ihp/sg13s/IO.v")
+    addRTLPath(System.getenv("NAFARR_BASE") + "/hardware/scala/nafarr/blackboxes/ihp/sg13s/IO.v")
 
     Q := !A
 

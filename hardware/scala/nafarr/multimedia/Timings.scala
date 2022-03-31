@@ -3,13 +3,13 @@ package nafarr.multimedia
 import spinal.core._
 
 case class TimingsConfig(
-  frontPorch: Int,
-  syncPulse: Int,
-  backPorch: Int,
-  visibleArea: Int,
-  width: Int,
-  polarity: Boolean,
-  syncOffset: Int = 0
+    frontPorch: Int,
+    syncPulse: Int,
+    backPorch: Int,
+    visibleArea: Int,
+    width: Int,
+    polarity: Boolean,
+    syncOffset: Int = 0
 ) {
   def syncStart(): Int = frontPorch - 1 - syncOffset
   def syncEnd(): Int = syncStart() + syncPulse

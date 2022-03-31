@@ -4,7 +4,6 @@ import spinal.core._
 import spinal.lib._
 import spinal.lib.bus.misc.BusSlaveFactory
 
-
 object UniqueIDCtrl {
   def apply(p: Parameter = Parameter.default) = UniqueIDCtrl(p)
 
@@ -23,12 +22,12 @@ object UniqueIDCtrl {
   }
 
   case class Mapper(
-    busCtrl: BusSlaveFactory,
-    ctrl: Io,
-    p: Parameter
+      busCtrl: BusSlaveFactory,
+      ctrl: Io,
+      p: Parameter
   ) extends Area {
 
-    val id = Reg(UInt(32 bits)) init(U"hCAFEBABE")
+    val id = Reg(UInt(32 bits)).init(U"hCAFEBABE")
 
     busCtrl.read(id, 0x0)
   }

@@ -5,7 +5,6 @@ import spinal.lib._
 import spinal.lib.bus.misc.BusSlaveFactory
 import spinal.lib.misc.InterruptCtrl
 
-
 object SpiMasterCtrl {
   def apply(p: SpiCtrl.Parameter = SpiCtrl.Parameter.default) = SpiMasterCtrl(p)
 
@@ -48,7 +47,7 @@ object SpiMasterCtrl {
       val clockDividerHit = counter === io.config.clockDivider
 
       counter := counter + 1
-      when(reset){
+      when(reset) {
         counter := 0
       }
     }
@@ -92,55 +91,60 @@ object SpiMasterCtrl {
       }
     }
 
-    //CMD responses
-    io.rsp.valid   := RegNext(io.cmd.fire && io.cmd.isData &&
-                                io.cmd.argsData.read) init(False)
+    // CMD responses
+    io.rsp.valid := RegNext(
+      io.cmd.fire && io.cmd.isData &&
+        io.cmd.argsData.read
+    ).init(False)
     io.rsp.payload := fsm.buffer
 
-    //Idle states
+    // Idle states
     when(!io.cmd.valid || io.cmd.ready) {
       fsm.counter := 0
       timer.reset := True
     }
 
     io.spi.ss := fsm.ss ^ io.config.ss.activeHigh
-    io.spi.sclk := RegNext(((io.cmd.valid && io.cmd.isData) &&
-                             (fsm.counter.lsb ^ io.modeConfig.cpha)) ^
-                             io.modeConfig.cpol)
-    io.spi.mosi := RegNext(io.cmd.argsData.data(
-                             p.dataWidth - 1 - (fsm.counter >> 1)))
+    io.spi.sclk := RegNext(
+      ((io.cmd.valid && io.cmd.isData) &&
+        (fsm.counter.lsb ^ io.modeConfig.cpha)) ^
+        io.modeConfig.cpol
+    )
+    io.spi.mosi := RegNext(io.cmd.argsData.data(p.dataWidth - 1 - (fsm.counter >> 1)))
     io.interrupt := io.pendingInterrupts.orR
   }
 
   case class Mapper(
-    busCtrl: BusSlaveFactory,
-    ctrl: Io,
-    p: SpiCtrl.Parameter
+      busCtrl: BusSlaveFactory,
+      ctrl: Io,
+      p: SpiCtrl.Parameter
   ) extends Area {
 
     val config = new Area {
       val cfg = Reg(ctrl.config)
-      cfg.ss.activeHigh init(0)
+      cfg.ss.activeHigh.init(0)
       if (p.init.frequency.toLong > 1) {
-        val clock = U(ClockDomain.current.frequency.getValue.toLong / p.init.frequency.toLong / 2,
-                      p.timerWidth bits)
-        cfg.clockDivider init(clock)
-        cfg.ss.setup init(clock)
-        cfg.ss.hold init(clock)
-        cfg.ss.disable init(clock)
+        val clock = U(
+          ClockDomain.current.frequency.getValue.toLong / p.init.frequency.toLong / 2,
+          p.timerWidth bits
+        )
+        cfg.clockDivider.init(clock)
+        cfg.ss.setup.init(clock)
+        cfg.ss.hold.init(clock)
+        cfg.ss.disable.init(clock)
       } else {
-        cfg.ss.setup init(0)
-        cfg.ss.hold init(0)
-        cfg.ss.disable init(0)
+        cfg.ss.setup.init(0)
+        cfg.ss.hold.init(0)
+        cfg.ss.disable.init(0)
       }
 
       val modeCfg = Reg(ctrl.modeConfig)
       if (p.init != null) {
-        modeCfg.cpol init(p.init.cpol)
-        modeCfg.cpha init(p.init.cpha)
+        modeCfg.cpol.init(p.init.cpol)
+        modeCfg.cpha.init(p.init.cpha)
       } else {
-        modeCfg.cpol init(False)
-        modeCfg.cpha init(False)
+        modeCfg.cpol.init(False)
+        modeCfg.cpha.init(False)
       }
 
       if (p.permission.busCanWriteModeConfig)
@@ -149,7 +153,7 @@ object SpiMasterCtrl {
         modeCfg.allowUnsetRegToAvoidLatch
       busCtrl.readAndWrite(cfg.ss.activeHigh, address = 0x08, bitOffset = 4)
       if (p.permission.busCanWriteClockDividerConfig) {
-        busCtrl.writeMultiWord(cfg.clockDivider, address = 0x0C)
+        busCtrl.writeMultiWord(cfg.clockDivider, address = 0x0c)
         busCtrl.readAndWrite(cfg.ss.setup, address = 0x10)
         busCtrl.readAndWrite(cfg.ss.hold, address = 0x14)
         busCtrl.readAndWrite(cfg.ss.disable, address = 0x18)
@@ -165,9 +169,9 @@ object SpiMasterCtrl {
   }
 
   case class StreamMapper(
-    busCtrl: BusSlaveFactory,
-    ctrl: Io,
-    p: SpiCtrl.Parameter
+      busCtrl: BusSlaveFactory,
+      ctrl: Io,
+      p: SpiCtrl.Parameter
   ) extends Area {
 
     val cmdLogic = new Area {
@@ -180,11 +184,11 @@ object SpiMasterCtrl {
       busCtrl.nonStopWrite(ssCmd.index, bitOffset = 0)
       busCtrl.nonStopWrite(ssCmd.enable, bitOffset = 24)
       busCtrl.nonStopWrite(streamUnbuffered.mode, bitOffset = 28)
-      switch(streamUnbuffered.mode){
-        is(SpiMaster.CmdMode.DATA){
+      switch(streamUnbuffered.mode) {
+        is(SpiMaster.CmdMode.DATA) {
           streamUnbuffered.args.assignFromBits(dataCmd.asBits)
         }
-        is(SpiMaster.CmdMode.SS){
+        is(SpiMaster.CmdMode.SS) {
           streamUnbuffered.args.assignFromBits(ssCmd.asBits.resized)
         }
       }
@@ -209,7 +213,7 @@ object SpiMasterCtrl {
 
     val interruptCtrl = new Area {
       val irqCtrl = new InterruptCtrl(2)
-      irqCtrl.driveFrom(busCtrl, 0x1C)
+      irqCtrl.driveFrom(busCtrl, 0x1c)
       irqCtrl.io.inputs(0) := !cmdLogic.stream.valid
       irqCtrl.io.inputs(1) := rspLogic.stream.valid
       ctrl.pendingInterrupts := irqCtrl.io.pendings

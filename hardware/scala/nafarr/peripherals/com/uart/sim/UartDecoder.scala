@@ -5,8 +5,8 @@ import spinal.core.{Bool, assert}
 import spinal.sim._
 
 object UartDecoder {
-  def apply(uartPin: Bool, baudPeriod: Long, compare: BigInt) = fork{
-    sleep(1 * 1000) //Wait boot signals propagation
+  def apply(uartPin: Bool, baudPeriod: Long, compare: BigInt) = fork {
+    sleep(1 * 1000) // Wait boot signals propagation
     waitUntil(uartPin.toBoolean == true)
 
     waitUntil(uartPin.toBoolean == false)
@@ -16,8 +16,8 @@ object UartDecoder {
     sleep(baudPeriod * 1000)
 
     var buffer = 0
-    (0 to 7).foreach{ bitId =>
-      if(uartPin.toBoolean)
+    (0 to 7).foreach { bitId =>
+      if (uartPin.toBoolean)
         buffer |= 1 << bitId
       sleep(baudPeriod * 1000)
     }

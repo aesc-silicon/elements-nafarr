@@ -8,7 +8,6 @@ import scala.collection.mutable.Map
 import nafarr.blackboxes.xilinx.a7.PLL
 import nafarr.system.reset.ResetControllerCtrl.ResetControllerCtrl
 
-
 object ClockControllerCtrl {
   def apply(parameter: Parameter, resetCtrl: ResetControllerCtrl) =
     ClockControllerCtrl(parameter, resetCtrl)
@@ -23,7 +22,7 @@ object ClockControllerCtrl {
   }
 
   case class Io(parameter: Parameter) extends Bundle {
-    val clocks = in UInt(parameter.domains.length bits)
+    val clocks = in UInt (parameter.domains.length bits)
   }
 
   case class Config(parameter: Parameter) extends Bundle {
@@ -31,11 +30,11 @@ object ClockControllerCtrl {
   }
 
   case class ClockControllerCtrl(
-    parameter: Parameter,
-    resetCtrl: ResetControllerCtrl
+      parameter: Parameter,
+      resetCtrl: ResetControllerCtrl
   ) extends Component {
     val io = new Bundle {
-      val clocks = out UInt(parameter.domains.length bits)
+      val clocks = out UInt (parameter.domains.length bits)
       val buildConnection = Io(parameter)
       val config = in(Config(parameter))
     }
@@ -47,7 +46,7 @@ object ClockControllerCtrl {
       clockDict += domain.name -> {
         val cd = ClockDomain(
           clock = io.buildConnection.clocks(index),
-          reset =  if (!domain.reset.isEmpty) resetCtrl.getResetByName(domain.reset) else null,
+          reset = if (!domain.reset.isEmpty) resetCtrl.getResetByName(domain.reset) else null,
           frequency = FixedFrequency(domain.frequency),
           config = domain.resetConfig
         )
@@ -59,12 +58,11 @@ object ClockControllerCtrl {
     }
     def getClockDomainByName(name: String): ClockDomain = clockDict.get(name).get
 
-
     def buildXilinxPll(
-      clock: Bool,
-      clockFrequency: HertzNumber,
-      clocks: List[String],
-      multiply: Int
+        clock: Bool,
+        clockFrequency: HertzNumber,
+        clocks: List[String],
+        multiply: Int
     ) {
       val clockCtrlClockDomain = ClockDomain(
         clock = clock,
@@ -75,7 +73,7 @@ object ClockControllerCtrl {
       )
 
       val clockCtrl = new ClockingArea(clockCtrlClockDomain) {
-        val pll = PLL.PLLE2_BASE(CLKFBOUT_MULT=multiply).connect()
+        val pll = PLL.PLLE2_BASE(CLKFBOUT_MULT = multiply).connect()
       }
 
       def addClock(index: Int, frequency: HertzNumber) = index match {
@@ -104,7 +102,7 @@ object ClockControllerCtrl {
 
     def buildDummy(clock: Bool) {
       for (((domain), index) <- parameter.domains.zipWithIndex) {
-       io.buildConnection.clocks(index) := clock
+        io.buildConnection.clocks(index) := clock
       }
     }
   }

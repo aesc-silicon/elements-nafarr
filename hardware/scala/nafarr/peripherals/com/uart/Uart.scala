@@ -34,13 +34,13 @@ object Uart {
 
   object StopType extends SpinalEnum(binarySequential) {
     val ONE, TWO = newElement()
-    def toBitCount(that: C) : UInt = (that === ONE) ? U"0" | U"1"
+    def toBitCount(that: C): UInt = (that === ONE) ? U"0" | U"1"
   }
 
   class Core[T <: spinal.core.Data with IMasterSlave](
-    p: UartCtrl.Parameter,
-    busType: HardType[T],
-    factory: T => BusSlaveFactory
+      p: UartCtrl.Parameter,
+      busType: HardType[T],
+      factory: T => BusSlaveFactory
   ) extends Component {
     val io = new Bundle {
       val bus = slave(busType())
@@ -80,28 +80,28 @@ object Uart {
 }
 
 case class Apb3Uart(
-  parameter: UartCtrl.Parameter,
-  busConfig: Apb3Config = Apb3Config(12, 32)
-) extends Uart.Core[Apb3] (
-  parameter,
-  Apb3(busConfig),
-  Apb3SlaveFactory(_)
-) { val dummy = 0 }
+    parameter: UartCtrl.Parameter,
+    busConfig: Apb3Config = Apb3Config(12, 32)
+) extends Uart.Core[Apb3](
+      parameter,
+      Apb3(busConfig),
+      Apb3SlaveFactory(_)
+    ) { val dummy = 0 }
 
 case class WishboneUart(
-  parameter: UartCtrl.Parameter,
-  busConfig: WishboneConfig = WishboneConfig(12, 32)
-) extends Uart.Core[Wishbone] (
-  parameter,
-  Wishbone(busConfig),
-  WishboneSlaveFactory(_)
-) { val dummy = 0 }
+    parameter: UartCtrl.Parameter,
+    busConfig: WishboneConfig = WishboneConfig(12, 32)
+) extends Uart.Core[Wishbone](
+      parameter,
+      Wishbone(busConfig),
+      WishboneSlaveFactory(_)
+    ) { val dummy = 0 }
 
 case class AvalonMMUart(
-  parameter: UartCtrl.Parameter,
-  busConfig: AvalonMMConfig = AvalonMMConfig.fixed(12, 32, 1)
-) extends Uart.Core[AvalonMM] (
-  parameter,
-  AvalonMM(busConfig),
-  AvalonMMSlaveFactory(_)
-) { val dummy = 0 }
+    parameter: UartCtrl.Parameter,
+    busConfig: AvalonMMConfig = AvalonMMConfig.fixed(12, 32, 1)
+) extends Uart.Core[AvalonMM](
+      parameter,
+      AvalonMM(busConfig),
+      AvalonMMSlaveFactory(_)
+    ) { val dummy = 0 }

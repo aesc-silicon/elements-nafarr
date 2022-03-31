@@ -5,7 +5,6 @@ import spinal.lib._
 import spinal.lib.bus.misc.BusSlaveFactory
 import scala.collection.mutable.Map
 
-
 object ResetControllerCtrl {
   def apply(parameter: Parameter) = {
     val resetCtrl = ResetControllerCtrl(parameter)
@@ -19,8 +18,8 @@ object ResetControllerCtrl {
   }
 
   case class Io(parameter: Parameter) extends Bundle {
-    val resets = in UInt(parameter.domains.length bits)
-    val trigger = out UInt(parameter.domains.length bits)
+    val resets = in UInt (parameter.domains.length bits)
+    val trigger = out UInt (parameter.domains.length bits)
   }
 
   case class Config(parameter: Parameter) extends Bundle {
@@ -31,14 +30,14 @@ object ResetControllerCtrl {
 
   case class ResetControllerCtrl(parameter: Parameter) extends Component {
     val io = new Bundle {
-      val resets = out UInt(parameter.domains.length bits)
-      val trigger = in UInt(parameter.domains.length bits)
+      val resets = out UInt (parameter.domains.length bits)
+      val trigger = in UInt (parameter.domains.length bits)
       val buildConnection = Io(parameter)
       val config = in(Config(parameter))
     }
     io.resets := io.buildConnection.resets
     val ctrlTrigger = U(0, parameter.domains.length bits)
-    when (io.config.acknowledge) {
+    when(io.config.acknowledge) {
       ctrlTrigger := io.config.trigger
     }
     io.buildConnection.trigger := io.config.enable & (io.trigger | ctrlTrigger)
@@ -65,12 +64,12 @@ object ResetControllerCtrl {
       val resetCtrl = new ClockingArea(resetCtrlClockDomain) {
         for (((domain), index) <- parameter.domains.zipWithIndex) {
           val resetUnbuffered = True
-          val counter = Reg(UInt(log2Up(domain.delay) bits)) init(0)
-          when (counter =/= U(domain.delay - 1)) {
+          val counter = Reg(UInt(log2Up(domain.delay) bits)).init(0)
+          when(counter =/= U(domain.delay - 1)) {
             counter := counter + 1
             resetUnbuffered := False
           }
-          when (counter === U(domain.delay - 1) && BufferCC(io.buildConnection.trigger(index))) {
+          when(counter === U(domain.delay - 1) && BufferCC(io.buildConnection.trigger(index))) {
             counter := 0
           }
           io.buildConnection.resets(index) := RegNext(resetUnbuffered)
@@ -80,7 +79,7 @@ object ResetControllerCtrl {
 
     def buildDummy(reset: Bool) {
       for (((domain), index) <- parameter.domains.zipWithIndex) {
-       io.buildConnection.resets(index) := reset
+        io.buildConnection.resets(index) := reset
       }
     }
   }

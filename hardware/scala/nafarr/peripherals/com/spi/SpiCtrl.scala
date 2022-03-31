@@ -2,12 +2,11 @@ package nafarr.peripherals.com.spi
 
 import spinal.core._
 
-
 object SpiCtrl {
   case class InitParameter(
-    cpol: Boolean = false,
-    cpha: Boolean = false,
-    frequency: HertzNumber = 1 Hz
+      cpol: Boolean = false,
+      cpha: Boolean = false,
+      frequency: HertzNumber = 1 Hz
   )
   object InitParameter {
     def default = InitParameter(false, false, 100 kHz)
@@ -15,8 +14,8 @@ object SpiCtrl {
   }
 
   case class PermissionParameter(
-    busCanWriteModeConfig: Boolean,
-    busCanWriteClockDividerConfig: Boolean
+      busCanWriteModeConfig: Boolean,
+      busCanWriteClockDividerConfig: Boolean
   ) {
     require(busCanWriteModeConfig)
     require(busCanWriteClockDividerConfig)
@@ -27,8 +26,8 @@ object SpiCtrl {
   }
 
   case class MemoryMappedParameter(
-    cmdFifoDepth: Int,
-    rspFifoDepth: Int
+      cmdFifoDepth: Int,
+      rspFifoDepth: Int
   ) {
     require(cmdFifoDepth > 0 && cmdFifoDepth < 256)
     require(rspFifoDepth > 0 && rspFifoDepth < 256)
@@ -40,12 +39,12 @@ object SpiCtrl {
   }
 
   case class Parameter(
-    permission: PermissionParameter,
-    memory: MemoryMappedParameter,
-    init: InitParameter = null,
-    ssWidth: Int = 1,
-    timerWidth: Int = 16,
-    dataWidth: Int = 8
+      permission: PermissionParameter,
+      memory: MemoryMappedParameter,
+      init: InitParameter = null,
+      ssWidth: Int = 1,
+      timerWidth: Int = 16,
+      dataWidth: Int = 8
   ) {
     require(ssWidth > 0)
     require(timerWidth > 1)

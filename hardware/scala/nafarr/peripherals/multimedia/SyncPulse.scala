@@ -5,11 +5,10 @@ import spinal.lib._
 
 import nafarr.multimedia.TimingsConfig
 
-
 object SyncPulse {
 
   case class Engine(timings: TimingsConfig, enable: Bool) extends Area {
-    val counter = Reg(UInt(timings.width bit)) init(0)
+    val counter = Reg(UInt(timings.width bit)).init(0)
 
     val syncStart = counter === U(timings.syncStart(), timings.width bits)
     val syncEnd = counter === U(timings.syncEnd(), timings.width bits)
@@ -17,15 +16,15 @@ object SyncPulse {
     val dataEnd = counter === U(timings.dataEnd(), timings.width bits)
     val polarity = Bool(timings.polarity)
 
-    when (enable) {
+    when(enable) {
       counter := counter + 1
-      when (dataEnd) {
+      when(dataEnd) {
         counter := 0
       }
     }
 
-    val syncInt = RegInit(False) setWhen(syncStart) clearWhen(syncEnd)
+    val syncInt = RegInit(False) setWhen (syncStart) clearWhen (syncEnd)
     val sync = syncInt ^ !polarity
-    val dataEn = RegInit(False) setWhen(dataStart) clearWhen(dataEnd)
+    val dataEn = RegInit(False) setWhen (dataStart) clearWhen (dataEnd)
   }
 }

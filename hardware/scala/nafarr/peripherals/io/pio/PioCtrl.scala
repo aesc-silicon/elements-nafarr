@@ -7,17 +7,16 @@ import spinal.lib.bus.misc.BusSlaveFactory
 import spinal.lib.misc.InterruptCtrl
 import spinal.lib.io.{TriStateArray, TriState}
 
-
 object PioCtrl {
   def apply(parameter: Parameter = Parameter(1)) = PioCtrl(parameter)
 
   case class Parameter(
-    width: Int,
-    dataWidth: Int = 24,
-    clockDividerWidth: Int = 20,
-    commandFifoDepth: Int = 32,
-    readFifoDepth: Int = 8,
-    readBufferDepth: Int = 0
+      width: Int,
+      dataWidth: Int = 24,
+      clockDividerWidth: Int = 20,
+      commandFifoDepth: Int = 32,
+      readFifoDepth: Int = 8,
+      readBufferDepth: Int = 0
   ) {
     require(width < 8, "Only up to 8 pins are supported")
     val readWidth = 1
@@ -65,7 +64,7 @@ object PioCtrl {
     }
 
     val clockDivider = new Area {
-      val counter = Reg(UInt(parameter.clockDividerWidth bits)) init(0)
+      val counter = Reg(UInt(parameter.clockDividerWidth bits)).init(0)
       val tick = counter === 0
       def reset() = counter := io.config.clockDivider
 
@@ -75,11 +74,10 @@ object PioCtrl {
       }
     }
 
-
     val fsm = new StateMachine {
-      val counter = Reg(UInt(parameter.dataWidth bits)) init(0)
-      val write = Reg(Bits(parameter.width bits)) init(0)
-      val direction = Reg(Bits(parameter.width bits)) init(0)
+      val counter = Reg(UInt(parameter.dataWidth bits)).init(0)
+      val write = Reg(Bits(parameter.width bits)).init(0)
+      val direction = Reg(Bits(parameter.width bits)).init(0)
       io.commands.ready := False
       io.read.valid := False
       val pinNumber = io.commands.payload.pin.resize(log2Up(parameter.width))
@@ -89,8 +87,8 @@ object PioCtrl {
 
       val stateIdle: State = new State with EntryPoint {
         whenIsActive {
-          when (io.commands.valid) {
-            switch (io.commands.payload.command) {
+          when(io.commands.valid) {
+            switch(io.commands.payload.command) {
               is(CommandType.HIGH) {
                 goto(stateHigh)
               }
@@ -135,10 +133,10 @@ object PioCtrl {
           counter := 0
         }
         whenIsActive {
-          when (clockDivider.tick) {
+          when(clockDivider.tick) {
             counter := counter + 1
           }
-          when (counter.asBits === io.commands.payload.data) {
+          when(counter.asBits === io.commands.payload.data) {
             goto(stateIdle)
           }
         }
@@ -149,7 +147,7 @@ object PioCtrl {
         whenIsActive {
           direction(pinNumber) := False
           counter := counter + 1
-          when (counter.asBits === B(io.config.readDelay, parameter.dataWidth bits)) {
+          when(counter.asBits === B(io.config.readDelay, parameter.dataWidth bits)) {
             io.read.valid := True
             goto(stateIdle)
           }
@@ -163,16 +161,18 @@ object PioCtrl {
   }
 
   case class Mapper(
-    busCtrl: BusSlaveFactory,
-    ctrl: Io,
-    parameter: Parameter
+      busCtrl: BusSlaveFactory,
+      ctrl: Io,
+      parameter: Parameter
   ) extends Area {
 
     val tx = new Area {
-      val streamUnbuffered = busCtrl.createAndDriveFlow(
-        CommandContainer(parameter),
-        address = 0x00
-      ).toStream
+      val streamUnbuffered = busCtrl
+        .createAndDriveFlow(
+          CommandContainer(parameter),
+          address = 0x00
+        )
+        .toStream
       val (stream, fifoOccupancy) =
         streamUnbuffered.queueWithOccupancy(parameter.commandFifoDepth)
       busCtrl.read(
@@ -196,7 +196,9 @@ object PioCtrl {
       busCtrl.read(fifoOccupancy, address = 0x04, bitOffset = 24)
     }
 
-    busCtrl.driveAndRead(ctrl.config.clockDivider, 0x08) init(U(100, parameter.clockDividerWidth bits))
-    busCtrl.driveAndRead(ctrl.config.readDelay, 0x0C) init(U(5, 8 bits))
+    busCtrl
+      .driveAndRead(ctrl.config.clockDivider, 0x08)
+      .init(U(100, parameter.clockDividerWidth bits))
+    busCtrl.driveAndRead(ctrl.config.readDelay, 0x0c).init(U(5, 8 bits))
   }
 }

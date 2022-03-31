@@ -4,14 +4,13 @@ import spinal.core._
 import spinal.lib._
 import spinal.lib.bus.misc.BusSlaveFactory
 
-
 object FrequencyCounterCtrl {
   def apply(p: Parameter = Parameter.default) = FrequencyCounterCtrl(p)
 
   case class Parameter(
-    divider: Int = 4,
-    sampleWidth: Int = 8,
-    measureWidth: Int = 32
+      divider: Int = 4,
+      sampleWidth: Int = 8,
+      measureWidth: Int = 32
   ) {
     require(divider > 0, "Divider must be greater than 0.")
     require(measureWidth >= sampleWidth * divider)
@@ -50,7 +49,7 @@ object FrequencyCounterCtrl {
 
       val sampleClock = new SlowArea(p.divider) {
         val valueNext = UInt(p.sampleWidth bit)
-        val value = RegNext(valueNext) init(0)
+        val value = RegNext(valueNext).init(0)
         // Ignore LSB to keep start up for two cycles.
         val start = value(p.sampleWidth - 1 downto 1) === 0
 
@@ -61,18 +60,18 @@ object FrequencyCounterCtrl {
 
     val measurement = new ClockEnableArea(measurementEnable) {
       val valueNext = UInt(p.measureWidth bit)
-      val value = RegNext(valueNext) init(0)
-      val count = Reg(UInt(p.measureWidth bit)) init(0)
+      val value = RegNext(valueNext).init(0)
+      val count = Reg(UInt(p.measureWidth bit)).init(0)
       val start = BufferCC(inputClockDivider.sampleClock.start, False)
-      val firstBit = Reg(Bool) init(True)
+      val firstBit = Reg(Bool).init(True)
 
       valueNext := value + 1
-      when (start && firstBit) {
+      when(start && firstBit) {
         valueNext := 0
         count := value
         firstBit := False
       }
-      when (!start && !firstBit) {
+      when(!start && !firstBit) {
         firstBit := True
       }
       io.count := count
@@ -81,13 +80,13 @@ object FrequencyCounterCtrl {
   }
 
   case class Mapper(
-    busCtrl: BusSlaveFactory,
-    ctrl: Io,
-    p: Parameter
+      busCtrl: BusSlaveFactory,
+      ctrl: Io,
+      p: Parameter
   ) extends Area {
 
     val cfg = Reg(ctrl.config)
-    cfg.enable init(True)
+    cfg.enable.init(True)
     val divider = RegInit(U(p.divider * scala.math.pow(2, p.sampleWidth).toInt))
     divider.allowUnsetRegToAvoidLatch
 

@@ -31,7 +31,7 @@ object SlowFramebufferCtrl {
     val framebuffer = Mem(Rgb(c.rgbConfig), content)
 
     address := io.stream.pixel.x.resize(13) +
-                 ((c.hTimings.visibleArea / scale) * io.stream.pixel.y).resize(13)
+      ((c.hTimings.visibleArea / scale) * io.stream.pixel.y).resize(13)
     io.stream.data.payload := framebuffer.readSync(address(0, 13 bits), io.stream.enable)
     io.stream.data.valid := RegNext(io.stream.enable)
 
@@ -39,9 +39,9 @@ object SlowFramebufferCtrl {
   }
 
   case class Mapper(
-    busCtrl: BusSlaveFactory,
-    ctrl: Io,
-    c: MultimediaConfig
+      busCtrl: BusSlaveFactory,
+      ctrl: Io,
+      c: MultimediaConfig
   ) extends Area {
 
     busCtrl.drive(ctrl.address, 0x0)

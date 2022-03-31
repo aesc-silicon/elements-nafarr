@@ -5,7 +5,6 @@ import spinal.core.sim._
 import spinal.lib.io.TriState
 import spinal.lib.History
 
-
 abstract class XilinxIo(pin: String) extends Bundle {
 
   var pinName = pin
@@ -197,23 +196,23 @@ object IOBUF {
   def apply(in: Bool, out: Bool, en: Bool) = IOBUF().withBools(in, out, en)
 
   case class IOBUF(
-    DRIVE: Int = 12,
-    IBUF_LOW_PWR: String = "TRUE",
-    IOSTANDARD: String = "DEFAULT",
-    SLEW: String = "SLOW"
+      DRIVE: Int = 12,
+      IBUF_LOW_PWR: String = "TRUE",
+      IOSTANDARD: String = "DEFAULT",
+      SLEW: String = "SLOW"
   ) extends BlackBox {
-    val I, T = in Bool()
-    val O = out Bool()
+    val I, T = in(Bool())
+    val O = out(Bool())
     val IO = inout(Analog(Bool()))
 
-    addRTLPath(System.getenv("NAFARR_BASE")+"/hardware/scala/nafarr/blackboxes/xilinx/a7/IO.v")
+    addRTLPath(System.getenv("NAFARR_BASE") + "/hardware/scala/nafarr/blackboxes/xilinx/a7/IO.v")
 
     addGeneric("DRIVE", DRIVE)
     addGeneric("IBUF_LOW_PWR", IBUF_LOW_PWR)
     addGeneric("IOSTANDARD", IOSTANDARD)
     addGeneric("SLEW", SLEW)
 
-    when(T){
+    when(T) {
       IO := I
     }
     O := IO
@@ -239,16 +238,16 @@ object IBUF {
   def apply(pin: Bool) = IBUF().withBool(pin)
 
   case class IBUF(
-    CAPACITANCE: String = "DONT_CARE",
-    IBUF_DELAY_VALUE: Int = 0,
-    IBUF_LOW_PWR: String = "TRUE",
-    IFD_DELAY_VALUE: String = "AUTO",
-    IOSTANDARD: String = "DEFAULT"
+      CAPACITANCE: String = "DONT_CARE",
+      IBUF_DELAY_VALUE: Int = 0,
+      IBUF_LOW_PWR: String = "TRUE",
+      IFD_DELAY_VALUE: String = "AUTO",
+      IOSTANDARD: String = "DEFAULT"
   ) extends BlackBox {
-    val I = in Bool()
-    val O = out Bool()
+    val I = in(Bool())
+    val O = out(Bool())
 
-    addRTLPath(System.getenv("NAFARR_BASE")+"/hardware/scala/nafarr/blackboxes/xilinx/a7/IO.v")
+    addRTLPath(System.getenv("NAFARR_BASE") + "/hardware/scala/nafarr/blackboxes/xilinx/a7/IO.v")
 
     addGeneric("IBUF_LOW_PWR", IBUF_LOW_PWR)
     addGeneric("IOSTANDARD", IOSTANDARD)
@@ -267,14 +266,14 @@ object OBUF {
   def apply(pin: Bool) = OBUF().withBool(pin)
 
   case class OBUF(
-    CAPACITANCE: String = "DONT_CARE",
-    DRIVE: Int = 12,
-    IOSTANDARD: String = "DEFAULT"
+      CAPACITANCE: String = "DONT_CARE",
+      DRIVE: Int = 12,
+      IOSTANDARD: String = "DEFAULT"
   ) extends BlackBox {
-    val I = in Bool()
-    val O = out Bool()
+    val I = in(Bool())
+    val O = out(Bool())
 
-    addRTLPath(System.getenv("NAFARR_BASE")+"/hardware/scala/nafarr/blackboxes/xilinx/a7/IO.v")
+    addRTLPath(System.getenv("NAFARR_BASE") + "/hardware/scala/nafarr/blackboxes/xilinx/a7/IO.v")
 
     addGeneric("DRIVE", DRIVE)
     addGeneric("IOSTANDARD", IOSTANDARD)
@@ -301,19 +300,19 @@ object OBUFT {
   def apply(write: Bool, writeEnable: Bool) = OBUFT().withBools(write, writeEnable)
 
   case class OBUFT(
-    CAPACITANCE: String = "DONT_CARE",
-    DRIVE: Int = 12,
-    IOSTANDARD: String = "DEFAULT"
+      CAPACITANCE: String = "DONT_CARE",
+      DRIVE: Int = 12,
+      IOSTANDARD: String = "DEFAULT"
   ) extends BlackBox {
-    val I, T = in Bool()
-    val O = out Bool()
+    val I, T = in(Bool())
+    val O = out(Bool())
 
-    addRTLPath(System.getenv("NAFARR_BASE")+"/hardware/scala/nafarr/blackboxes/xilinx/a7/IO.v")
+    addRTLPath(System.getenv("NAFARR_BASE") + "/hardware/scala/nafarr/blackboxes/xilinx/a7/IO.v")
 
     addGeneric("DRIVE", DRIVE)
     addGeneric("IOSTANDARD", IOSTANDARD)
 
-    when(T){
+    when(T) {
       O := I
     }
 
@@ -330,9 +329,9 @@ object PULLUP {
 
   case class PULLUP() extends BlackBox {
     // Fake direction for SpinalHDL. Pin O is output!
-    val O = in Bool()
+    val O = in(Bool())
 
-    addRTLPath(System.getenv("NAFARR_BASE")+"/hardware/scala/nafarr/blackboxes/xilinx/a7/IO.v")
+    addRTLPath(System.getenv("NAFARR_BASE") + "/hardware/scala/nafarr/blackboxes/xilinx/a7/IO.v")
   }
 }
 
@@ -341,9 +340,9 @@ object PULLDOWN {
 
   case class PULLDOWN() extends BlackBox {
     // Fake direction for SpinalHDL. Pin O is output!
-    val O = out Bool()
+    val O = out(Bool())
 
-    addRTLPath(System.getenv("NAFARR_BASE")+"/hardware/scala/nafarr/blackboxes/xilinx/a7/IO.v")
+    addRTLPath(System.getenv("NAFARR_BASE") + "/hardware/scala/nafarr/blackboxes/xilinx/a7/IO.v")
   }
 }
 
@@ -352,19 +351,19 @@ object IBUFDS {
   def apply(pin: Bool) = IBUFDS().withBool(pin)
 
   case class IBUFDS(
-    CAPACITANCE: String = "DONT_CARE",
-    DIFF_TERM: String = "FALSE",
-    DQS_BIAS: String = "FALSE",
-    IBUF_DELAY_VALUE: Int = 0,
-    IBUF_LOW_PWR: String = "TRUE",
-    IFD_DELAY_VALUE: String = "AUTO",
-    IOSTANDARD: String = "DEFAULT"
+      CAPACITANCE: String = "DONT_CARE",
+      DIFF_TERM: String = "FALSE",
+      DQS_BIAS: String = "FALSE",
+      IBUF_DELAY_VALUE: Int = 0,
+      IBUF_LOW_PWR: String = "TRUE",
+      IFD_DELAY_VALUE: String = "AUTO",
+      IOSTANDARD: String = "DEFAULT"
   ) extends BlackBox {
-    val I = in Bool()
-    val IB = in Bool()
-    val O = out Bool()
+    val I = in(Bool())
+    val IB = in(Bool())
+    val O = out(Bool())
 
-    addRTLPath(System.getenv("NAFARR_BASE")+"/hardware/scala/nafarr/blackboxes/xilinx/a7/IO.v")
+    addRTLPath(System.getenv("NAFARR_BASE") + "/hardware/scala/nafarr/blackboxes/xilinx/a7/IO.v")
 
     addGeneric("DIFF_TERM", DIFF_TERM)
     addGeneric("DQS_BIAS", DQS_BIAS)
@@ -382,9 +381,9 @@ object IBUFDS {
 
 object PLL {
   case class PLLE2_BASE(
-    DIVCLK_DIVIDE: Int = 1,
-    CLKFBOUT_MULT: Int = 5,
-    CLKFBOUT_PHASE: Double = 0.0
+      DIVCLK_DIVIDE: Int = 1,
+      CLKFBOUT_MULT: Int = 5,
+      CLKFBOUT_PHASE: Double = 0.0
   ) extends BlackBox {
     require(DIVCLK_DIVIDE >= 0, "DIVCLK_DIVIDE must be at least 0.")
     require(DIVCLK_DIVIDE <= 57, "DIVCLK_DIVIDE must be at most 56.")
@@ -393,26 +392,26 @@ object PLL {
     require(CLKFBOUT_PHASE >= 0.0, "CLKFBOUT_PHASE must be at least 0.0 degree.")
     require(CLKFBOUT_PHASE <= 360.0, "CLKFBOUT_PHASE must be at most 360.0 degree.")
 
-    val CLKIN1 = in Bool()
-    val RST = in Bool()
-    val PWRDWN = in Bool()
+    val CLKIN1 = in(Bool())
+    val RST = in(Bool())
+    val PWRDWN = in(Bool())
 
-    val CLKOUT0 = out Bool()
-    val CLKOUT1 = out Bool()
-    val CLKOUT2 = out Bool()
-    val CLKOUT3 = out Bool()
-    val CLKOUT4 = out Bool()
-    val CLKOUT5 = out Bool()
-    val LOCKED = out Bool()
+    val CLKOUT0 = out(Bool())
+    val CLKOUT1 = out(Bool())
+    val CLKOUT2 = out(Bool())
+    val CLKOUT3 = out(Bool())
+    val CLKOUT4 = out(Bool())
+    val CLKOUT5 = out(Bool())
+    val LOCKED = out(Bool())
 
-    val CLKFBOUT = out Bool()
-    val CLKFBIN = in Bool()
+    val CLKFBOUT = out(Bool())
+    val CLKFBIN = in(Bool())
 
     val designClockDomain = ClockDomain.current
     mapCurrentClockDomain(CLKIN1)
     val multipliedFrequency = designClockDomain.frequency.getValue * CLKFBOUT_MULT
 
-    addRTLPath(System.getenv("NAFARR_BASE")+"/hardware/scala/nafarr/blackboxes/xilinx/a7/IO.v")
+    addRTLPath(System.getenv("NAFARR_BASE") + "/hardware/scala/nafarr/blackboxes/xilinx/a7/IO.v")
 
     addGeneric("CLKIN1_PERIOD", (1000000000 / designClockDomain.frequency.getValue.toInt))
     addGeneric("DIVCLK_DIVIDE", DIVCLK_DIVIDE)
@@ -424,9 +423,9 @@ object PLL {
         RST := this.designClockDomain.reset
       } else {
         val reset = False
-        val resetCounter = Reg(UInt(4 bits)) init (0)
+        val resetCounter = Reg(UInt(4 bits)).init(0)
         when(resetCounter =/= U(resetCounter.range -> true)) {
-          resetCounter :=  resetCounter + 1
+          resetCounter := resetCounter + 1
           reset := True
         }
         RST := reset
@@ -450,11 +449,11 @@ object PLL {
      *                       CLKOUTn (MHz)
      */
     def addClock(
-      clock: Bool,
-      number: Int,
-      divide: Int,
-      phase: Double = 0.0,
-      dutyCycle: Double = 0.5
+        clock: Bool,
+        number: Int,
+        divide: Int,
+        phase: Double = 0.0,
+        dutyCycle: Double = 0.5
     ) = {
       require(number >= 0, "PLL clock output must be at least 0.")
       require(number <= 5, "PLL clock output must be at most 5.")

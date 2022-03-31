@@ -5,7 +5,6 @@ import spinal.lib._
 import spinal.lib.bus.misc.BusSlaveFactory
 import spinal.lib.misc.InterruptCtrl
 
-
 object I2cControllerCtrl {
   def apply(p: I2cCtrl.Parameter = I2cCtrl.Parameter.default) = I2cControllerCtrl(p)
 
@@ -15,7 +14,6 @@ object I2cControllerCtrl {
   object Samples extends SpinalEnum {
     val FIRST, SECOND, THIRD, FOURTH = newElement()
   }
-
 
   case class Config(p: I2cCtrl.Parameter) extends Bundle {
     val config = Bits(31 bits)
@@ -38,25 +36,25 @@ object I2cControllerCtrl {
     val ctrl = new ClockEnableArea(ctrlEnable) {
 
       val clockDivider = new Area {
-        val counter = Reg(UInt(p.timerWidth bits)) init(2)
+        val counter = Reg(UInt(p.timerWidth bits)).init(2)
         val tick = counter === 0
 
         counter := counter - 1
-        when(tick){
+        when(tick) {
           counter := io.config.clockDivider
         }
       }
 
       val tickCounter = new Area {
-        val value = Reg(UInt(2 bits)) init(0)
+        val value = Reg(UInt(2 bits)).init(0)
         def reset() = value := 0
-        when (clockDivider.tick) {
+        when(clockDivider.tick) {
           value := value + 1
         }
       }
 
       val dataCounter = new Area {
-        val value = Reg(UInt(3 bits)) init(7)
+        val value = Reg(UInt(3 bits)).init(7)
         def reset() = value := 7
         def next() = value := value - 1
         def isLast() = value === 7
@@ -68,7 +66,7 @@ object I2cControllerCtrl {
           when(cmd.start) {
             state := State.START
           } otherwise {
-            when (cmd.read) {
+            when(cmd.read) {
               state := State.RECVDATA
             } otherwise {
               state := State.SENDDATA
@@ -83,13 +81,13 @@ object I2cControllerCtrl {
           }
         }
         val samples = RegInit(Samples.FIRST)
-        val sclWrite = Reg(Bool) init(False)
-        val sdaWrite = Reg(Bool) init(False)
+        val sclWrite = Reg(Bool).init(False)
+        val sdaWrite = Reg(Bool).init(False)
 
-        val ack = Reg(Bool) init(False)
-        val hasStop = Reg(Bool) init(False)
+        val ack = Reg(Bool).init(False)
+        val hasStop = Reg(Bool).init(False)
 
-        val rspValid = RegNext(False) init(False)
+        val rspValid = RegNext(False).init(False)
         val error = Reg(Bool)
         val data = Reg(Bits(8 bits))
 
@@ -103,33 +101,33 @@ object I2cControllerCtrl {
             }
           }
           is(State.START) {
-            when (clockDivider.tick) {
-              when (tickCounter.value === 1) {
+            when(clockDivider.tick) {
+              when(tickCounter.value === 1) {
                 sclWrite := False
               }
-              when (tickCounter.value === 2) {
+              when(tickCounter.value === 2) {
                 sdaWrite := True
               }
-              when (tickCounter.value === 3) {
+              when(tickCounter.value === 3) {
                 sclWrite := True
                 state := State.SENDDATA
               }
             }
           }
           is(State.RECVDATA) {
-            when (clockDivider.tick) {
-              when (tickCounter.value === 0) {
+            when(clockDivider.tick) {
+              when(tickCounter.value === 0) {
                 sdaWrite := False
                 hasStop := io.cmd.payload.stop
               }
-              when (tickCounter.value === 1) {
+              when(tickCounter.value === 1) {
                 sclWrite := False
               }
-              when (tickCounter.value === 2) {
+              when(tickCounter.value === 2) {
                 data(dataCounter.value) := io.i2c.sda.read
                 dataCounter.next()
               }
-              when (tickCounter.value === 3) {
+              when(tickCounter.value === 3) {
                 sclWrite := True
                 when(dataCounter.isLast()) {
                   state := State.RECVACK
@@ -140,18 +138,18 @@ object I2cControllerCtrl {
             }
           }
           is(State.RECVACK) {
-            when (clockDivider.tick) {
-              when (tickCounter.value === 0) {
+            when(clockDivider.tick) {
+              when(tickCounter.value === 0) {
                 /* Do not ack when FIFO is full */
                 sdaWrite := io.cmd.payload.ack & io.rsp.ready
               }
-              when (tickCounter.value === 1) {
+              when(tickCounter.value === 1) {
                 io.cmd.ready := True
                 sclWrite := False
               }
-              when (tickCounter.value === 3) {
+              when(tickCounter.value === 3) {
                 sclWrite := True
-                when (hasStop) {
+                when(hasStop) {
                   state := State.STOP
                 } otherwise {
                   skipIdle(io.cmd.valid, io.cmd.payload)
@@ -160,16 +158,16 @@ object I2cControllerCtrl {
             }
           }
           is(State.SENDDATA) {
-            when (clockDivider.tick) {
-              when (tickCounter.value === 0) {
+            when(clockDivider.tick) {
+              when(tickCounter.value === 0) {
                 hasStop := io.cmd.payload.stop
                 sdaWrite := !io.cmd.payload.data(dataCounter.value)
               }
-              when (tickCounter.value === 1) {
+              when(tickCounter.value === 1) {
                 sclWrite := False
                 dataCounter.next()
               }
-              when (tickCounter.value === 3) {
+              when(tickCounter.value === 3) {
                 sclWrite := True
                 when(dataCounter.isLast()) {
                   state := State.SENDACK
@@ -179,21 +177,21 @@ object I2cControllerCtrl {
             }
           }
           is(State.SENDACK) {
-            when (clockDivider.tick) {
-              when (tickCounter.value === 0) {
+            when(clockDivider.tick) {
+              when(tickCounter.value === 0) {
                 sdaWrite := False
               }
-              when (tickCounter.value === 1) {
+              when(tickCounter.value === 1) {
                 sclWrite := False
               }
-              when (tickCounter.value === 2) {
+              when(tickCounter.value === 2) {
                 error := io.i2c.sda.read
                 data := 0
                 rspValid := True
               }
-              when (tickCounter.value === 3) {
+              when(tickCounter.value === 3) {
                 sclWrite := True
-                when (hasStop) {
+                when(hasStop) {
                   state := State.STOP
                 } otherwise {
                   skipIdle(io.cmd.valid, io.cmd.payload)
@@ -202,17 +200,17 @@ object I2cControllerCtrl {
             }
           }
           is(State.STOP) {
-            when (clockDivider.tick) {
-              when (tickCounter.value === 0) {
+            when(clockDivider.tick) {
+              when(tickCounter.value === 0) {
                 sdaWrite := True
               }
-              when (tickCounter.value === 1) {
+              when(tickCounter.value === 1) {
                 sclWrite := False
               }
-              when (tickCounter.value === 2) {
+              when(tickCounter.value === 2) {
                 sdaWrite := False
               }
-              when (tickCounter.value === 3) {
+              when(tickCounter.value === 3) {
                 skipIdle(io.cmd.valid, io.cmd.payload)
               }
             }
@@ -237,9 +235,9 @@ object I2cControllerCtrl {
   }
 
   case class Mapper(
-    busCtrl: BusSlaveFactory,
-    ctrl: Io,
-    p: I2cCtrl.Parameter
+      busCtrl: BusSlaveFactory,
+      ctrl: Io,
+      p: I2cCtrl.Parameter
   ) extends Area {
 
     val config = new Area {
@@ -248,7 +246,7 @@ object I2cControllerCtrl {
       busCtrl.drive(cfg.config, address = 0x08)
 
       if (p.permission.busCanWriteClockDividerConfig)
-        busCtrl.writeMultiWord(cfg.clockDivider, address = 0x0C)
+        busCtrl.writeMultiWord(cfg.clockDivider, address = 0x0c)
       else
         cfg.allowUnsetRegToAvoidLatch
 
@@ -264,7 +262,7 @@ object I2cControllerCtrl {
       busCtrl.nonStopWrite(streamUnbuffered.read, bitOffset = 10)
       busCtrl.nonStopWrite(streamUnbuffered.ack, bitOffset = 11)
 
-      //busCtrl.createAndDriveFlow(I2cController.Cmd(p), address = 0x00).toStream
+      // busCtrl.createAndDriveFlow(I2cController.Cmd(p), address = 0x00).toStream
       val (stream, fifoAvailability) = streamUnbuffered.queueWithAvailability(p.memory.cmdFifoDepth)
       ctrl.cmd << stream
       busCtrl.read(fifoAvailability, address = 0x04, 16)

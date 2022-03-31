@@ -23,28 +23,28 @@ object HammingCode1611 {
   }
 
   def calculateExtendedParity(dw: Bits, parity: Bits): Bool = {
-    return dw(0) ^ dw(1) ^ dw(2) ^ dw(3) ^ dw(4) ^dw(5) ^ dw(6) ^ dw(7) ^
+    return dw(0) ^ dw(1) ^ dw(2) ^ dw(3) ^ dw(4) ^ dw(5) ^ dw(6) ^ dw(7) ^
       parity(0) ^ parity(1) ^ parity(2) ^ parity(3)
   }
 
   case class Encoder() extends Component {
     val io = new Bundle {
-      val dataword = in Bits(8 bits)
-      val codeword = out Bits(13 bits)
+      val dataword = in Bits (8 bits)
+      val codeword = out Bits (13 bits)
     }
 
     val parity = calculateParity(io.dataword)
     val extendedParity = calculateExtendedParity(io.dataword, parity)
 
     io.codeword := io.dataword(7 downto 4) ## parity(3) ## io.dataword(3 downto 1) ##
-                   parity(2) ## io.dataword(0) ## parity(1 downto 0) ## extendedParity
+      parity(2) ## io.dataword(0) ## parity(1 downto 0) ## extendedParity
   }
 
   case class Decoder() extends Component {
     val io = new Bundle {
-      val dataword = out Bits(8 bits)
-      val codeword = in Bits(13 bits)
-      val multiBitError = out Bool()
+      val dataword = out Bits (8 bits)
+      val codeword = in Bits (13 bits)
+      val multiBitError = out(Bool())
     }
     var dataword = io.codeword(12 downto 9) ## io.codeword(7 downto 5) ## io.codeword(3)
     val codewordParity = io.codeword(8) ## io.codeword(4) ## io.codeword(2 downto 1)
@@ -67,13 +67,13 @@ object HammingCode1611 {
       return d(dWidth downto position + 1) ## !d(position) ## d(position - 1 downto 0)
     }
 
-    when (!extendedParityError && parityError) {
+    when(!extendedParityError && parityError) {
       io.multiBitError := True
     } otherwise {
       io.multiBitError := False
     }
 
-    when (extendedParityError) {
+    when(extendedParityError) {
       switch(bitPosition) {
         /* Wrong parity bits. Dataword is correct */
         is(B"0000") { io.dataword := dataword }

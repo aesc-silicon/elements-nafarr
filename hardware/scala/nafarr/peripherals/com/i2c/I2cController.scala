@@ -22,9 +22,9 @@ object I2cController {
   }
 
   class Core[T <: spinal.core.Data with IMasterSlave](
-    p: I2cCtrl.Parameter,
-    busType: HardType[T],
-    factory: T => BusSlaveFactory
+      p: I2cCtrl.Parameter,
+      busType: HardType[T],
+      factory: T => BusSlaveFactory
   ) extends Component {
     val io = new Bundle {
       val bus = slave(busType())
@@ -63,28 +63,28 @@ object I2cController {
 }
 
 case class Apb3I2cController(
-  parameter: I2cCtrl.Parameter,
-  busConfig: Apb3Config = Apb3Config(12, 32)
-) extends I2cController.Core[Apb3] (
-  parameter,
-  Apb3(busConfig),
-  Apb3SlaveFactory(_)
-) { val dummy = 0 }
+    parameter: I2cCtrl.Parameter,
+    busConfig: Apb3Config = Apb3Config(12, 32)
+) extends I2cController.Core[Apb3](
+      parameter,
+      Apb3(busConfig),
+      Apb3SlaveFactory(_)
+    ) { val dummy = 0 }
 
 case class WishboneI2cController(
-  parameter: I2cCtrl.Parameter,
-  busConfig: WishboneConfig = WishboneConfig(12, 32)
-) extends I2cController.Core[Wishbone] (
-  parameter,
-  Wishbone(busConfig),
-  WishboneSlaveFactory(_)
-) { val dummy = 0 }
+    parameter: I2cCtrl.Parameter,
+    busConfig: WishboneConfig = WishboneConfig(12, 32)
+) extends I2cController.Core[Wishbone](
+      parameter,
+      Wishbone(busConfig),
+      WishboneSlaveFactory(_)
+    ) { val dummy = 0 }
 
 case class AvalonMMI2cController(
-  parameter: I2cCtrl.Parameter,
-  busConfig: AvalonMMConfig = AvalonMMConfig.fixed(12, 32, 1)
-) extends I2cController.Core[AvalonMM] (
-  parameter,
-  AvalonMM(busConfig),
-  AvalonMMSlaveFactory(_)
-) { val dummy = 0 }
+    parameter: I2cCtrl.Parameter,
+    busConfig: AvalonMMConfig = AvalonMMConfig.fixed(12, 32, 1)
+) extends I2cController.Core[AvalonMM](
+      parameter,
+      AvalonMM(busConfig),
+      AvalonMMSlaveFactory(_)
+    ) { val dummy = 0 }

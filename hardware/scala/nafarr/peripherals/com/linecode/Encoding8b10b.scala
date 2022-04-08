@@ -17,10 +17,11 @@ object Encoding8b10b {
    */
   case class Encoder() extends Component {
     val io = new Bundle {
-      val data = in Bits (8 bits)
-      val kWord = in Bool ()
-      val encoded = out Bits (10 bits)
-      val kError = out Bool ()
+      val data = in(Bits(8 bits))
+      val kWord = in(Bool())
+      val stall = in(Bool())
+      val encoded = out(Bits(10 bits))
+      val kError = out(Bool())
     }
 
     val A = io.data(0)
@@ -70,27 +71,29 @@ object Encoding8b10b {
 
       val disparity6 = disparity ^ disparityClassification.dos6
 
-      compLs4 := (disparityClassification.pdAnd1s4 & !disparity6) |
-        (disparityClassification.ndAnd1s4 & disparity6)
+      when(!io.stall) {
+        compLs4 := (disparityClassification.pdAnd1s4 & !disparity6) |
+          (disparityClassification.ndAnd1s4 & disparity6)
 
-      compLs6 := (disparityClassification.pdAnd1s6 & !disparity) |
-        (disparityClassification.ndAnd1s6 & disparity)
+        compLs6 := (disparityClassification.pdAnd1s6 & !disparity) |
+          (disparityClassification.ndAnd1s6 & disparity)
+      }
     }
 
     val encoding5b6b = new Area {
 
-      val stageA = RegNext(A).init(False)
-      val stageB0 = RegNext(B & !lFunction.l40).init(False)
-      val stageB1 = RegNext(lFunction.l04).init(False)
-      val stageC0 = RegNext(lFunction.l04 | C).init(False)
-      val stageC1 = RegNext(E & D & !C & !B & !A).init(False)
-      val stageD = RegNext(D & !(A & B & C)).init(False)
-      val stageE0 = RegNext(E | lFunction.l13).init(False)
-      val stageE1 = RegNext(!(E & D & !C & !B & !A)).init(False)
-      val stageI0 = RegNext((lFunction.l22 & !E) | (E & lFunction.l40)).init(False)
-      val stageI1 = RegNext(E & !D & !C & !(A & B)).init(False)
-      val stageI2 = RegNext(io.kWord & E & D & C & !B & !A).init(False)
-      val stageI3 = RegNext(E & !D & C & !B & !A).init(False)
+      val stageA = RegNextWhen(A, !io.stall).init(False)
+      val stageB0 = RegNextWhen(B & !lFunction.l40, !io.stall).init(False)
+      val stageB1 = RegNextWhen(lFunction.l04, !io.stall).init(False)
+      val stageC0 = RegNextWhen(lFunction.l04 | C, !io.stall).init(False)
+      val stageC1 = RegNextWhen(E & D & !C & !B & !A, !io.stall).init(False)
+      val stageD = RegNextWhen(D & !(A & B & C), !io.stall).init(False)
+      val stageE0 = RegNextWhen(E | lFunction.l13, !io.stall).init(False)
+      val stageE1 = RegNextWhen(!(E & D & !C & !B & !A), !io.stall).init(False)
+      val stageI0 = RegNextWhen((lFunction.l22 & !E) | (E & lFunction.l40), !io.stall).init(False)
+      val stageI1 = RegNextWhen(E & !D & !C & !(A & B), !io.stall).init(False)
+      val stageI2 = RegNextWhen(io.kWord & E & D & C & !B & !A, !io.stall).init(False)
+      val stageI3 = RegNextWhen(E & !D & C & !B & !A, !io.stall).init(False)
 
       val a = stageA
       val b = stageB0 | stageB1
@@ -103,16 +106,18 @@ object Encoding8b10b {
     val encoding3b4b = new Area {
       val alt7 = Reg(Bool()).init(False)
 
-      when(disparity) {
-        alt7 := F & G & H & (io.kWord | (!E & D & lFunction.l31))
-      } otherwise {
-        alt7 := F & G & H & (io.kWord | (E & !D & lFunction.l13))
+      when(!io.stall) {
+        when(disparity) {
+          alt7 := F & G & H & (io.kWord | (!E & D & lFunction.l31))
+        } otherwise {
+          alt7 := F & G & H & (io.kWord | (E & !D & lFunction.l13))
+        }
       }
 
-      val stageF = RegNext(F).init(False)
-      val stageG = RegNext(G | (!F & !G & !H)).init(False)
-      val stageH = RegNext(H).init(False)
-      val stageJ = RegNext(!H & (G ^ F)).init(False)
+      val stageF = RegNextWhen(F, !io.stall).init(False)
+      val stageG = RegNextWhen(G | (!F & !G & !H), !io.stall).init(False)
+      val stageH = RegNextWhen(H, !io.stall).init(False)
+      val stageJ = RegNextWhen(!H & (G ^ F), !io.stall).init(False)
 
       val f = stageF & !alt7
       val g = stageG
@@ -122,21 +127,23 @@ object Encoding8b10b {
 
     val outputStage = new Area {
       val encoded = Reg(Bits(10 bits)).init(B"0000000000")
-      val kError0 = RegNext(complementation.illegalK).init(False)
-      val kError = RegNext(kError0)
+      val kError0 = RegNextWhen(complementation.illegalK, !io.stall).init(False)
+      val kError = RegNextWhen(kError0, !io.stall)
 
-      disparity := disparityClassification.dos4 ^ complementation.disparity6
+      when(!io.stall) {
+        disparity := disparityClassification.dos4 ^ complementation.disparity6
 
-      encoded(9) := (encoding5b6b.a ^ complementation.compLs6)
-      encoded(8) := (encoding5b6b.b ^ complementation.compLs6)
-      encoded(7) := (encoding5b6b.c ^ complementation.compLs6)
-      encoded(6) := (encoding5b6b.d ^ complementation.compLs6)
-      encoded(5) := (encoding5b6b.e ^ complementation.compLs6)
-      encoded(4) := (encoding5b6b.i ^ complementation.compLs6)
-      encoded(3) := (encoding3b4b.f ^ complementation.compLs4)
-      encoded(2) := (encoding3b4b.g ^ complementation.compLs4)
-      encoded(1) := (encoding3b4b.h ^ complementation.compLs4)
-      encoded(0) := (encoding3b4b.j ^ complementation.compLs4)
+        encoded(9) := (encoding5b6b.a ^ complementation.compLs6)
+        encoded(8) := (encoding5b6b.b ^ complementation.compLs6)
+        encoded(7) := (encoding5b6b.c ^ complementation.compLs6)
+        encoded(6) := (encoding5b6b.d ^ complementation.compLs6)
+        encoded(5) := (encoding5b6b.e ^ complementation.compLs6)
+        encoded(4) := (encoding5b6b.i ^ complementation.compLs6)
+        encoded(3) := (encoding3b4b.f ^ complementation.compLs4)
+        encoded(2) := (encoding3b4b.g ^ complementation.compLs4)
+        encoded(1) := (encoding3b4b.h ^ complementation.compLs4)
+        encoded(0) := (encoding3b4b.j ^ complementation.compLs4)
+      }
     }
 
     io.kError := outputStage.kError
@@ -157,6 +164,7 @@ object Encoding8b10b {
   case class Decoder() extends Component {
     val io = new Bundle {
       val encoded = in Bits (10 bits)
+      val stall = in(Bool())
       val data = out Bits (8 bits)
       val kWord = out Bool ()
       val codeError = out Bool ()
@@ -260,7 +268,9 @@ object Encoding8b10b {
 
       val disparity6b = (e & i & !disparity6a0) | (disparity6a & (e | i)) | disparity6a2
 
-      disparity := fghjP31 | (disparity6b & fghj22)
+      when(!io.stall) {
+        disparity := fghjP31 | (disparity6b & fghj22)
+      }
 
       val error1 = (disparity & disparity6p) | (disparity6n & !disparity)
       val error2 = (disparity & !disparity6n & f & g)
@@ -271,10 +281,10 @@ object Encoding8b10b {
       val error7 = (!disparity & !disparity6p & disparity4n)
       val error8 = (disparity6p & disparity4p) | (disparity6n & disparity4n)
 
-      val error12 = RegNext(error1 | error2).init(False)
-      val error34 = RegNext(error3 | error4).init(False)
-      val error56 = RegNext(error5 | error6).init(False)
-      val error78 = RegNext(error7 | error8).init(False)
+      val error12 = RegNextWhen(error1 | error2, !io.stall).init(False)
+      val error34 = RegNextWhen(error3 | error4, !io.stall).init(False)
+      val error56 = RegNextWhen(error5 | error6, !io.stall).init(False)
+      val error78 = RegNextWhen(error7 | error8, !io.stall).init(False)
 
       val error = error12 | error34 | error56 | error78
     }
@@ -291,9 +301,10 @@ object Encoding8b10b {
       val error8 = (!decoder6b.p31 & e & !i & !g & !h & !j)
       val error9 = (!decoder6b.p13 & !e & i & g & h & j)
 
-      val error = RegNext(
-        error1 | error2 | error3 | error4 | error5 | error6 | error7 | error8 |
-          error9
+      val error = RegNextWhen(
+        error1 | error2 | error3 | error4 | error5 | error6 | error7 |
+          error8 | error9,
+        !io.stall
       ).init(False)
     }
 
@@ -303,15 +314,17 @@ object Encoding8b10b {
       val error3 = (c & d & e & i & !f & !g & !h)
       val error4 = (!c & !d & !e & !i & f & g & h)
 
-      val error = RegNext(error1 | error2 | error3 | error4).init(False)
+      val error = RegNextWhen(error1 | error2 | error3 | error4, !io.stall).init(False)
     }
 
     val outputStage = new Area {
       val decoded = Reg(Bits(8 bits)).init(B"00000000")
       val kWord = Reg(Bool()).init(False)
 
-      decoded := decoder3b4b.decoded ## decoder6b5b.decoded
-      kWord := decoderK.k
+      when(!io.stall) {
+        decoded := decoder3b4b.decoded ## decoder6b5b.decoded
+        kWord := decoderK.k
+      }
     }
 
     io.data := outputStage.decoded

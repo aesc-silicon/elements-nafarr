@@ -13,6 +13,7 @@ class Encoding8b10bTest extends AnyFunSuite {
                      kError: Boolean) {
     dut.io.data #= BigInt(data, 2)
     dut.io.kWord #= kWord
+    dut.io.stall #= false
     dut.clockDomain.waitSampling(1)
     dut.io.data #= BigInt("00000000", 2)
     dut.clockDomain.waitSampling(1)

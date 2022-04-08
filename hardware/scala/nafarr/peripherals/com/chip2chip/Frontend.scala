@@ -448,7 +448,7 @@ object Frontend {
 
       val decider = new StateMachine {
         val channel = getChannel(io.fromLinkLayer.payload)
-        val lockChannel = Reg(LinkLayerChannels()).init.(LinkLayerChannels.NONE)
+        val lockChannel = Reg(LinkLayerChannels()).init(LinkLayerChannels.NONE)
         val indexWidth = if (dataBlocks == 2) 1 else log2Up(dataBlocks - 1)
         val dataBlockIndex = Reg(UInt(indexWidth bits))
 

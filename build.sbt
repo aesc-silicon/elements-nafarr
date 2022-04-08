@@ -10,7 +10,6 @@ lazy val root = (project in file(".")).
     libraryDependencies ++= Seq(
       "com.github.spinalhdl" % "spinalhdl-core_2.11" % spinalVersion,
       "com.github.spinalhdl" % "spinalhdl-lib_2.11" % spinalVersion,
-      "com.github.spinalhdl" % "spinalhdl-crypto_2.11" % "latest.release",
       compilerPlugin("com.github.spinalhdl" % "spinalhdl-idsl-plugin_2.11" % spinalVersion),
       "org.scalatest" %% "scalatest" % "3.2.5",
       "org.yaml" % "snakeyaml" % "1.8"

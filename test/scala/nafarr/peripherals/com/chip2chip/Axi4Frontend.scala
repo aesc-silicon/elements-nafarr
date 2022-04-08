@@ -354,12 +354,12 @@ class Axi4FrontendTest extends AnyFunSuite {
       assert(dut.io.axiIn.ar.ready.toBoolean == false)
       dut.clockDomain.waitSampling(1)
       sleep(1)
-      dut.io.axiIn.ar.valid #= false
       dut.io.toLinkLayer.ready #= false
       assert(dut.io.toLinkLayer.valid.toBoolean == false)
       assert(dut.io.axiIn.ar.ready.toBoolean == true)
       dut.clockDomain.waitSampling(1)
       sleep(1)
+      dut.io.axiIn.ar.valid #= false
       assert(dut.io.axiIn.ar.ready.toBoolean == false)
       dut.clockDomain.waitSampling(1)
       sleep(1)

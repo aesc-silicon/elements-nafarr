@@ -167,19 +167,19 @@ object Frontend {
         val init: State = new State with EntryPoint {
           onEntry(dataBlockIndex := 0)
           whenIsActive {
-            when(io.axiIn.ar.valid && !io.axiIn.ar.ready) {
+            when(io.axiIn.ar.valid) {
               lockChannel := LinkLayerChannels.AR
               goto(sendSingle)
-            } elsewhen (io.axiIn.aw.valid && !io.axiIn.aw.ready) {
+            } elsewhen (io.axiIn.aw.valid) {
               lockChannel := LinkLayerChannels.AW
               goto(sendSingle)
-            } elsewhen (io.axiIn.w.valid && !io.axiIn.w.ready) {
+            } elsewhen (io.axiIn.w.valid) {
               lockChannel := LinkLayerChannels.W
               goto(sendFirst)
-            } elsewhen (io.axiOut.r.valid && !io.axiOut.r.ready) {
+            } elsewhen (io.axiOut.r.valid) {
               lockChannel := LinkLayerChannels.R
               goto(sendFirst)
-            } elsewhen (io.axiOut.b.valid && !io.axiOut.b.ready) {
+            } elsewhen (io.axiOut.b.valid) {
               lockChannel := LinkLayerChannels.B
               goto(sendSingle)
             }
@@ -207,7 +207,7 @@ object Frontend {
               when(lockChannel === LinkLayerChannels.B) {
                 bReady := True
               }
-              goto(init)
+              goto(stall)
             }
           }
         }
@@ -251,10 +251,13 @@ object Frontend {
                 when(lockChannel === LinkLayerChannels.R) {
                   rReady := True
                 }
-                goto(init)
+                goto(stall)
               }
             }
           }
+        }
+        val stall: State = new State {
+          whenIsActive(goto(init))
         }
 
         io.axiIn.ar.ready := arReady

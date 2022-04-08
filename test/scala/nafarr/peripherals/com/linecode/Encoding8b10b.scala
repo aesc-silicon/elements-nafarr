@@ -45,6 +45,7 @@ class Encoding8b10bTest extends AnyFunSuite {
   def decodeTestCase(dut: Encoding8b10b.Decoder, data: String, encoded: String, error: Boolean,
                      kWord: Boolean = false) {
     dut.io.encoded #= BigInt(encoded, 2)
+    dut.io.stall #= false
     dut.clockDomain.waitSampling(1)
     dut.io.encoded #= BigInt("1011010100", 2)
     sleep(1)

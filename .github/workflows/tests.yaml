@@ -17,9 +17,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+        with:
+          path: nafarr
+
+      - name: Checkout SpinalCrypto
+        uses: actions/checkout@v2
+        with:
+          repository: SpinalHDL/SpinalCrypto
 
       - name: Compile
         run: |
+          cd nafarr
           sbt compile
 
       - name: Install verilator
@@ -28,4 +36,5 @@ jobs:
 
       - name: Run tests
         run: |
+          cd nafarr
           sbt test

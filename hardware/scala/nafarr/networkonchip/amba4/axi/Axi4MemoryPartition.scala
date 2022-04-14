@@ -93,18 +93,18 @@ case class Axi4MemoryPartition(
   val readLookup = new Area {
     val chipletId = io.input.ar.id(config.idWidth - 1 downto config.idWidth - chipletIdWidth)
     val address = io.input.ar.addr(boundaryWidth + 12 - 1 downto 12)
-    val approval = RegInit(False)
+    val approvals = Reg(Bits(partitions bits)).init(B(partitions bits, default -> False))
 
-    approval := False
-    when(io.input.ar.valid) {
-      for (index <- 0 until partitions) {
-        /* Permission X is not implemented yet */
+    for (index <- 0 until partitions) {
+      /* Permission X is not implemented yet */
+      approvals(index) := False
+      when(io.input.ar.valid) {
         when(
           lookup(index).valid && lookup(index).chipletId === chipletId && lookup(index)
             .hasReadPermission()
         ) {
           when(address >= lookup(index).lowerBoundary && address < lookup(index).upperBoundary) {
-            approval := True
+            approvals(index) := True
           }
         }
       }
@@ -130,7 +130,7 @@ case class Axi4MemoryPartition(
       // Wait one cycle for register "approval"
       val decide: State = new State {
         whenIsActive {
-          when(approval) {
+          when(approvals.orR) {
             validOutput := True
             goto(approve)
           } otherwise {
@@ -238,17 +238,17 @@ case class Axi4MemoryPartition(
   val writeLookup = new Area {
     val chipletId = io.input.aw.id(config.idWidth - 1 downto config.idWidth - chipletIdWidth)
     val address = io.input.aw.addr(boundaryWidth + 12 - 1 downto 12)
-    val approval = RegInit(False)
+    val approvals = Reg(Bits(partitions bits)).init(B(partitions bits, default -> False))
 
-    approval := False
-    when(io.input.aw.valid) {
-      for (index <- 0 until partitions) {
+    for (index <- 0 until partitions) {
+      when(io.input.aw.valid) {
+        approvals(index) := False
         when(
           lookup(index).valid && lookup(index).chipletId === chipletId && lookup(index)
             .hasWritePermission()
         ) {
           when(address >= lookup(index).lowerBoundary && address < lookup(index).upperBoundary) {
-            approval := True
+            approvals(index) := True
           }
         }
       }
@@ -280,7 +280,7 @@ case class Axi4MemoryPartition(
       // Wait one cycle for register "approval"
       val decide: State = new State {
         whenIsActive {
-          when(approval) {
+          when(approvals.orR) {
             validOutput := True
             goto(approve)
           } otherwise {

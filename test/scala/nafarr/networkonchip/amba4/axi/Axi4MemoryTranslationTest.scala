@@ -14,9 +14,9 @@ import nafarr.CheckTester._
 class Axi4MemoryTranslationTest extends AnyFunSuite {
 
   def lockTable(apb: Apb3Driver) {
-      assert(apb.read(BigInt("00", 16)) == BigInt("110" + "00010000" + "0" * 7 + "0", 2))
+      assert(apb.read(BigInt("00", 16)) == BigInt("111" + "00010000" + "0" * 7 + "0", 2))
       apb.write(BigInt("00", 16), BigInt("1", 2))
-      assert(apb.read(BigInt("00", 16)) == BigInt("110" + "00010000" + "0" * 7 + "1", 2))
+      assert(apb.read(BigInt("00", 16)) == BigInt("111" + "00010000" + "0" * 7 + "1", 2))
   }
 
   def readWrite(apb: Apb3Driver, address: BigInt, data: BigInt, validFlag: Boolean = true) {
@@ -119,11 +119,20 @@ class Axi4MemoryTranslationTest extends AnyFunSuite {
       dut.clockDomain.waitSampling(10)
     }
 
+    compiled.doSim("Verify memory translation 64k page") { dut =>
+      dut.clockDomain.forkStimulus(10)
+      val apb = new Apb3Driver(dut.io.bus, dut.clockDomain)
+
+      verifyPageType(dut, apb, "001", 48)
+
+      dut.clockDomain.waitSampling(10)
+    }
+
     compiled.doSim("Verify memory translation 2m page") { dut =>
       dut.clockDomain.forkStimulus(10)
       val apb = new Apb3Driver(dut.io.bus, dut.clockDomain)
 
-      verifyPageType(dut, apb, "001", 43)
+      verifyPageType(dut, apb, "010", 43)
 
       dut.clockDomain.waitSampling(10)
     }
@@ -132,7 +141,7 @@ class Axi4MemoryTranslationTest extends AnyFunSuite {
       dut.clockDomain.forkStimulus(10)
       val apb = new Apb3Driver(dut.io.bus, dut.clockDomain)
 
-      verifyPageType(dut, apb, "010", 42)
+      verifyPageType(dut, apb, "011", 42)
 
       dut.clockDomain.waitSampling(10)
     }
@@ -141,7 +150,7 @@ class Axi4MemoryTranslationTest extends AnyFunSuite {
       dut.clockDomain.forkStimulus(10)
       val apb = new Apb3Driver(dut.io.bus, dut.clockDomain)
 
-      verifyPageType(dut, apb, "011", 34)
+      verifyPageType(dut, apb, "100", 34)
 
       dut.clockDomain.waitSampling(10)
     }
@@ -150,7 +159,7 @@ class Axi4MemoryTranslationTest extends AnyFunSuite {
       dut.clockDomain.forkStimulus(10)
       val apb = new Apb3Driver(dut.io.bus, dut.clockDomain)
 
-      verifyPageType(dut, apb, "100", 24)
+      verifyPageType(dut, apb, "101", 24)
 
       dut.clockDomain.waitSampling(10)
     }
@@ -159,7 +168,7 @@ class Axi4MemoryTranslationTest extends AnyFunSuite {
       dut.clockDomain.forkStimulus(10)
       val apb = new Apb3Driver(dut.io.bus, dut.clockDomain)
 
-      verifyPageType(dut, apb, "101", 10)
+      verifyPageType(dut, apb, "110", 10)
 
       dut.clockDomain.waitSampling(10)
     }

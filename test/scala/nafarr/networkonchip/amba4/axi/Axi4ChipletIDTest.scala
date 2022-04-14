@@ -255,6 +255,7 @@ class Axi4ChipletIDTest extends AnyFunSuite {
       }
       dut.clockDomain.waitSampling(1)
       sleep(1)
+      dut.io.fromNoc.output.ar.valid #= true
       assert(dut.io.fromNoc.input.ar.ready.toBoolean == false)
 
       dut.clockDomain.waitSampling(10)

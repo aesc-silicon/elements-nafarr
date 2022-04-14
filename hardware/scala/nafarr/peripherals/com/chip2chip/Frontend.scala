@@ -19,8 +19,9 @@ object Frontend {
     val io = new Bundle {
       val axiIn = slave(Axi4(config))
       val axiOut = master(Axi4(config))
-      val toLinkLayer = master(Stream(Bits(128 bits)))
-      val fromLinkLayer = slave(Stream(Bits(128 bits)))
+      // +1 for "payload contains valid data" flag
+      val toLinkLayer = master(Stream(Vec(Bits(128 + 1 bits), dataBlocks)))
+      val fromLinkLayer = slave(Stream(Vec(Bits(128 bits), dataBlocks)))
     }
 
     object LinkLayerChannels extends SpinalEnum() {
@@ -59,7 +60,6 @@ object Frontend {
 
     def getWBusWidth(config: Axi4Config): Int = {
       var width = 0
-      // if (config.useId) width += config.idWidth
       if (config.useStrb) width += config.bytePerWord
       if (config.useLast) width += 1
       if (config.useWUser) width += config.wUserWidth
@@ -149,25 +149,23 @@ object Frontend {
       // Priorities for incoming AXI channels: AR > AW > W > R > B
       val decider = new StateMachine {
         val lockChannel = Reg(LinkLayerChannels()).init(LinkLayerChannels.NONE)
-        val indexWidth = if (dataBlocks == 2) 1 else log2Up(dataBlocks - 1)
-        val dataBlockIndex = Reg(UInt(indexWidth bits))
-        val arReady = Reg(Bool()).init(False)
-        val awReady = Reg(Bool()).init(False)
-        val wReady = Reg(Bool()).init(False)
-        val rReady = Reg(Bool()).init(False)
-        val bReady = Reg(Bool()).init(False)
-        io.toLinkLayer.payload := B(128 bits, default -> false)
+        val payload = Vec(Bits(128 + 1 bits), dataBlocks)
+
+        io.axiIn.ar.ready := False
+        io.axiIn.aw.ready := False
+        io.axiIn.w.ready := False
+        io.axiOut.r.ready := False
+        io.axiOut.b.ready := False
+
+        for (index <- 0 until dataBlocks) {
+          payload(index) := B(0, 128 + 1 bits)
+        }
+        io.toLinkLayer.payload := payload
         io.toLinkLayer.valid := False
-        arReady := False
-        awReady := False
-        wReady := False
-        rReady := False
-        bReady := False
 
         val prevAW = RegInit(False)
 
         val init: State = new State with EntryPoint {
-          onEntry(dataBlockIndex := 0)
           whenIsActive {
             when(io.axiOut.b.valid) {
               lockChannel := LinkLayerChannels.B
@@ -179,13 +177,13 @@ object Frontend {
             } elsewhen (io.axiIn.w.valid) {
               lockChannel := LinkLayerChannels.W
               prevAW := False
-              goto(sendFirst)
+              goto(sendSingle)
             } elsewhen (io.axiIn.ar.valid) {
               lockChannel := LinkLayerChannels.AR
               goto(sendSingle)
             } elsewhen (io.axiOut.r.valid) {
               lockChannel := LinkLayerChannels.R
-              goto(sendFirst)
+              goto(sendSingle)
             }
           }
         }
@@ -193,82 +191,36 @@ object Frontend {
           whenIsActive {
             io.toLinkLayer.valid := True
             when(lockChannel === LinkLayerChannels.AR) {
-              io.toLinkLayer.payload := ar.concat
+              io.axiIn.ar.ready := io.toLinkLayer.ready
+              payload(0) := B"1" ## ar.concat
             }
             when(lockChannel === LinkLayerChannels.AW) {
-              io.toLinkLayer.payload := aw.concat
+              io.axiIn.aw.ready := io.toLinkLayer.ready
+              payload(0) := B"1" ## aw.concat
             }
             when(lockChannel === LinkLayerChannels.B) {
-              io.toLinkLayer.payload := b.concat
+              io.axiOut.b.ready := io.toLinkLayer.ready
+              payload(0) := B"1" ## b.concat
             }
-            when(io.toLinkLayer.ready) {
-              when(lockChannel === LinkLayerChannels.AR) {
-                arReady := True
-              }
-              when(lockChannel === LinkLayerChannels.AW) {
-                awReady := True
-              }
-              when(lockChannel === LinkLayerChannels.B) {
-                bReady := True
-              }
-              goto(stall)
-            }
-          }
-        }
-        val sendFirst: State = new State {
-          whenIsActive {
-            io.toLinkLayer.valid := True
             when(lockChannel === LinkLayerChannels.W) {
-              io.toLinkLayer.payload := w.concat
-            }
-            when(lockChannel === LinkLayerChannels.R) {
-              io.toLinkLayer.payload := r.concat
-            }
-            when(io.toLinkLayer.ready) {
-              goto(sendFurther)
-            }
-          }
-        }
-        val sendFurther: State = new State {
-          whenIsActive {
-            io.toLinkLayer.valid := True
-            when(lockChannel === LinkLayerChannels.W) {
-              if (dataBlocks == 2) {
-                io.toLinkLayer.payload := io.axiIn.w.data
-              } else {
-                io.toLinkLayer.payload := io.axiIn.w.data.subdivideIn(128 bits)(dataBlockIndex)
+              io.axiIn.w.ready := io.toLinkLayer.ready
+              payload(0) := B"1" ## w.concat
+              for (index <- 1 until dataBlocks) {
+                payload(index) := B"1" ## io.axiIn.w.data.subdivideIn(128 bits)(index - 1)
               }
             }
             when(lockChannel === LinkLayerChannels.R) {
-              if (dataBlocks == 2) {
-                io.toLinkLayer.payload := io.axiOut.r.data
-              } else {
-                io.toLinkLayer.payload := io.axiOut.r.data.subdivideIn(128 bits)(dataBlockIndex)
+              io.axiOut.r.ready := io.toLinkLayer.ready
+              payload(0) := B"1" ## r.concat
+              for (index <- 1 until dataBlocks) {
+                payload(index) := B"1" ## io.axiOut.r.data.subdivideIn(128 bits)(index - 1)
               }
             }
             when(io.toLinkLayer.ready) {
-              dataBlockIndex := dataBlockIndex + 1
-              when(dataBlockIndex === dataBlocks - 2) {
-                when(lockChannel === LinkLayerChannels.W) {
-                  wReady := True
-                }
-                when(lockChannel === LinkLayerChannels.R) {
-                  rReady := True
-                }
-                goto(stall)
-              }
+              goto(init)
             }
           }
         }
-        val stall: State = new State {
-          whenIsActive(goto(init))
-        }
-
-        io.axiIn.ar.ready := arReady
-        io.axiIn.aw.ready := awReady
-        io.axiIn.w.ready := wReady
-        io.axiOut.r.ready := rReady
-        io.axiOut.b.ready := bReady
       }
     }
 
@@ -453,14 +405,15 @@ object Frontend {
         channel
       }
 
-      val decider = new StateMachine {
-        val channel = getChannel(io.fromLinkLayer.payload)
-        val lockChannel = Reg(LinkLayerChannels()).init(LinkLayerChannels.NONE)
-        val indexWidth = if (dataBlocks == 2) 1 else log2Up(dataBlocks - 1)
-        val dataBlockIndex = Reg(UInt(indexWidth bits))
-
-        val header = Reg(Bits(128 bits))
-        val payload = Reg(Bits(config.dataWidth bits))
+      val decider = new Area {
+        val payload = Bits(config.dataWidth bits)
+        for (index <- 0 until dataBlocks - 1) {
+          payload(128 + (128 * index) - 1 downto (128 * index)) := io.fromLinkLayer.payload(
+            index + 1
+          )
+        }
+        val header = io.fromLinkLayer.payload(0)
+        val channel = getChannel(header)
 
         io.axiOut.ar.payload := getArChannel(header)
         io.axiOut.aw.payload := getAwChannel(header)
@@ -475,72 +428,27 @@ object Frontend {
         io.axiIn.b.valid := False
         io.axiIn.r.valid := False
 
-        val init: State = new State with EntryPoint {
-          onEntry(dataBlockIndex := 0)
-          whenIsActive {
-            when(io.fromLinkLayer.valid) {
-              lockChannel := channel
-              header := io.fromLinkLayer.payload
-              when(channel === LinkLayerChannels.W || channel === LinkLayerChannels.R) {
-                io.fromLinkLayer.ready := True
-                goto(receiveFurther)
-              } otherwise {
-                goto(acknowledge)
-              }
+        when(io.fromLinkLayer.valid) {
+          switch(channel) {
+            is(LinkLayerChannels.AR) {
+              io.axiOut.ar.valid <> io.fromLinkLayer.valid
+              io.fromLinkLayer.ready <> io.axiOut.ar.ready
             }
-          }
-        }
-        val receiveFurther: State = new State {
-          whenIsActive {
-            io.fromLinkLayer.ready := True
-            when(io.fromLinkLayer.valid) {
-              if (dataBlocks == 2) {
-                payload := io.fromLinkLayer.payload
-                goto(acknowledge)
-              } else {
-                payload.subdivideIn(128 bits)(dataBlockIndex) := io.fromLinkLayer.payload
-                dataBlockIndex := dataBlockIndex + 1
-                when(dataBlockIndex === dataBlocks - 2) {
-                  goto(acknowledge)
-                }
-              }
+            is(LinkLayerChannels.R) {
+              io.axiIn.r.valid <> io.fromLinkLayer.valid
+              io.fromLinkLayer.ready <> io.axiIn.r.ready
             }
-          }
-        }
-        val acknowledge: State = new State {
-          whenIsActive {
-            when(lockChannel === LinkLayerChannels.AR) {
-              io.axiOut.ar.valid := True
-              when(io.axiOut.ar.ready) {
-                io.fromLinkLayer.ready := True
-                goto(init)
-              }
+            is(LinkLayerChannels.AW) {
+              io.axiOut.aw.valid <> io.fromLinkLayer.valid
+              io.fromLinkLayer.ready <> io.axiOut.aw.ready
             }
-            when(lockChannel === LinkLayerChannels.AW) {
-              io.axiOut.aw.valid := True
-              when(io.axiOut.aw.ready) {
-                io.fromLinkLayer.ready := True
-                goto(init)
-              }
+            is(LinkLayerChannels.W) {
+              io.axiOut.w.valid <> io.fromLinkLayer.valid
+              io.fromLinkLayer.ready <> io.axiOut.w.ready
             }
-            when(lockChannel === LinkLayerChannels.B) {
-              io.axiIn.b.valid := True
-              when(io.axiIn.b.ready) {
-                io.fromLinkLayer.ready := True
-                goto(init)
-              }
-            }
-            when(lockChannel === LinkLayerChannels.W) {
-              io.axiOut.w.valid := True
-              when(io.axiOut.w.ready) {
-                goto(init)
-              }
-            }
-            when(lockChannel === LinkLayerChannels.R) {
-              io.axiIn.r.valid := True
-              when(io.axiIn.r.ready) {
-                goto(init)
-              }
+            is(LinkLayerChannels.B) {
+              io.axiIn.b.valid <> io.fromLinkLayer.valid
+              io.fromLinkLayer.ready <> io.axiIn.b.ready
             }
           }
         }

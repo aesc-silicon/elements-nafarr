@@ -7,95 +7,129 @@ object VirtualPhy {
 
   case class Io(ioPins: Int = 16) extends Bundle with IMasterSlave {
     val data = Bits(ioPins bits)
-    val enable = Bool()
-    val stall = Bool()
+    val aux = Bool()
+    val fec = Bool()
 
     override def asMaster() = {
-      out(data, enable)
-      in(stall)
+      out(data, aux, fec)
     }
     override def asSlave() = {
-      in(data, enable)
-      out(stall)
+      in(data, aux, fec)
     }
 
     def <<(that: Io) = that >> this
     def >>(that: Io) = {
       that.data := this.data
-      that.enable := this.enable
-      this.stall := that.stall
+      that.aux := this.aux
+      that.fec := this.fec
     }
   }
 
   case class Tx(ioPins: Int = 16) extends Component {
     val io = new Bundle {
       val phy = master(Io(ioPins))
-      val fromLinkLayer = slave(Stream(Bits(ioPins * 10 bits)))
+      val fromLinkLayer = slave(Stream(DataBlockContainer(ioPins)))
+      val enable = in(Bool())
     }
 
-    val data = Reg(Bits(ioPins bits)).init(B(ioPins bits, default -> false))
-    val enable = Reg(Bool()).init(False)
-    val ready = Reg(Bool()).init(False)
-    val run = Reg(Bool()).init(False)
-    when(!run && io.fromLinkLayer.valid && !io.phy.stall && !ready) {
-      run := True
-    }
+    val data = Reg(Bits(ioPins bits)).init(B(0, ioPins bits))
+    val aux = Reg(Bool()).init(False)
+    val fec = Reg(Bool()).init(False)
 
     val indexCounter = Reg(UInt(log2Up(10) bits)).init(0)
-    ready := False
-    when(run) {
-      indexCounter := indexCounter + 1
-      when(indexCounter === 9) {
-        indexCounter := 0
-        ready := True
-        run := False
+    val run = Reg(Bool()).init(False)
+    val validCycle = indexCounter === 0 && io.enable && io.fromLinkLayer.valid
+
+    io.fromLinkLayer.ready := False
+    indexCounter := indexCounter + 1
+    when(validCycle) {
+      run := True
+    }
+    when(indexCounter === 9) {
+      indexCounter := 0
+      run := False
+      when(run) {
+        io.fromLinkLayer.ready := True
       }
     }
 
-    enable := False
-    when(run) {
-      enable := True
-    }
+    aux := False
+    fec := False
     for (index <- 0 until ioPins) {
       data(index) := False
-      when(run) {
-        data(index) := io.fromLinkLayer.payload.subdivideIn(10 bits)(index)(indexCounter)
+      when(validCycle || run) {
+        data(index) := io.fromLinkLayer.payload.data(index)(indexCounter)
+        aux := io.fromLinkLayer.payload.aux
+        fec := io.fromLinkLayer.payload.fec
       }
     }
     io.phy.data := data
-    io.phy.enable := enable
-    io.fromLinkLayer.ready := ready
+    io.phy.aux := aux
+    io.phy.fec := fec
   }
 
   case class Rx(ioPins: Int = 16) extends Component {
     val io = new Bundle {
       val phy = slave(Io(ioPins))
-      val fromPhy = master(Stream(Bits(ioPins * 10 bits)))
+      val fromPhy = master(Stream(DataBlockContainer(ioPins)))
+      val locked = out(Bool())
+      val pushError = out(Bool())
     }
 
-    val data = Vec(Reg(Bits(10 bits)), ioPins)
-    val indexCounter = Reg(UInt(log2Up(10) bits)).init(0)
-    val valid = Reg(Bool()).init(False)
-    when(io.phy.enable) {
-      indexCounter := indexCounter + 1
+    val indexCounter = Reg(UInt(log2Up(10) bits))
+    val locked = Reg(Bool()).init(False)
+    val run = Reg(Bool()).init(False)
+    val sync = B"1001111100"
+    val syncInv = B"0110000011"
+
+    val findSync = Reg(Bits(20 bits)).init(B(0, 20 bits))
+    findSync := findSync(18 downto 0) ## io.phy.data(0)
+    val nextSync = findSync(18 downto 0) ## io.phy.data(0)
+
+    val container = Reg(DataBlockContainer(ioPins))
+    val tmp = Reg(Bits(ioPins bits))
+    io.fromPhy.payload := container
+
+    io.fromPhy.valid := False
+    indexCounter := indexCounter + 1
+    when(locked) {
+      when(indexCounter === 0) {
+        when(run) {
+          io.fromPhy.valid := True
+        }
+        for (index <- 0 until ioPins) {
+          tmp(index) := io.phy.data(index)
+        }
+      } otherwise {
+        for (index <- 0 until ioPins) {
+          container.data(index)(0) := tmp(index)
+          container.data(index)(indexCounter) := io.phy.data(index)
+        }
+      }
       when(indexCounter === 9) {
+        run := True
         indexCounter := 0
-        valid := True
+        container.aux := io.phy.aux
+        container.fec := io.phy.fec
+      }
+    } otherwise {
+      when(
+        (nextSync(9 downto 0) === sync || nextSync(9 downto 0) === syncInv) &&
+          (nextSync(19 downto 10) === sync || nextSync(19 downto 10) === syncInv)
+      ) {
+        indexCounter := 0
+        locked := True
+        run := False
       }
     }
-    when(valid && io.fromPhy.ready) {
-      valid := False
-    }
 
-    for (index <- 0 until ioPins) {
-      when(io.phy.enable) {
-        data(index)(indexCounter) := io.phy.data(index)
-      }
+    val pushError = Reg(Bool()).init(False)
+    pushError := False
+    when(io.fromPhy.valid && !io.fromPhy.ready) {
+      pushError := True
     }
+    io.pushError := pushError
 
-    val stallNext = RegNext(io.phy.enable || valid && !io.fromPhy.ready)
-    io.phy.stall := stallNext
-    io.fromPhy.valid := valid && indexCounter === 0
-    io.fromPhy.payload := data.asBits
+    io.locked := locked
   }
 }

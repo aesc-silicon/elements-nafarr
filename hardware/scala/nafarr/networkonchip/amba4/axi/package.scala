@@ -7,7 +7,8 @@ import spinal.lib.bus.amba3.apb._
 
 package object axi {
   val axi4Config = new Area {
-    val coreSmall = Axi4Config(32, 128, 4)
+    val coreUpsized = Axi4Config(32, 128, 4)
+    val coreSmall = Axi4Config(32, 32, 4)
     val core = Axi4Config(64, 128, 4)
     val noc = Axi4Config(64, 128, 14, rUserWidth = 10, wUserWidth = 10, bUserWidth = 10)
   }

@@ -6,29 +6,11 @@ import spinal.lib.fsm._
 import spinal.lib.bus.amba4.axi._
 import spinal.lib.bus.amba3.apb._
 
-/*
- *   val extensionEntries = 16
-    val translationEntries = 16
-
-    val input = io.core.input
-    if (addMemoryExtension) {
-      val extension = Axi4MemoryExtension(coreSmallConfig, coreConfig, apb3Config, extensionEntries)
-      extension.io.input <> 
-    } else {
-
-    }
-
-
-    translation.io.input <> io.core.input
-    translation.io.output
-*/
-
-
-case class Axi4NodeWithExtensionAndTranslation(nocConfig: Axi4Config, coreConfig: Axi4Config, coreSmallConfig: Axi4Config) extends Component {
+case class Axi4NodeWithExtensionAndTranslation(nocConfig: Axi4Config, coreConfig: Axi4Config, coreUpsizedConfig: Axi4Config) extends Component {
   val io = new Bundle {
     val core = new Bundle {
-      val input = slave(Axi4(coreSmallConfig))
-      val output = master(Axi4(coreSmallConfig))
+      val input = slave(Axi4(coreUpsizedConfig))
+      val output = master(Axi4(coreUpsizedConfig))
     }
     val north = new Bundle {
       val input = slave(Axi4(nocConfig))
@@ -62,7 +44,7 @@ case class Axi4NodeWithExtensionAndTranslation(nocConfig: Axi4Config, coreConfig
   local.io.local <> router.io.local
   local.io.bus.router <> router.io.bus
 
-  val extension = Axi4MemoryExtension(coreSmallConfig, coreConfig, apb3Config, extensionEntries)
+  val extension = Axi4MemoryExtension(coreUpsizedConfig, coreConfig, apb3Config, extensionEntries)
   extension.io.fromCore.input <> io.core.output
   extension.io.fromNoc.output <> io.core.input
   local.io.bus.extension <> extension.io.bus

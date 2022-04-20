@@ -32,7 +32,7 @@ class Axi4MemoryExtensionTest extends AnyFunSuite {
 
   test("Axi4MemoryExtension") {
     val compiled = SimConfig.withWave.compile {
-      val dut = Axi4MemoryExtension(axi4Config.coreSmall, axi4Config.core, apb3Config)
+      val dut = Axi4MemoryExtension(axi4Config.coreUpsized, axi4Config.core, apb3Config)
       dut
     }
     compiled.doSim("Lock lookup table") { dut =>

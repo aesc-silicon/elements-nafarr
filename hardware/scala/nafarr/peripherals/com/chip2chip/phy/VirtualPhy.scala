@@ -18,6 +18,13 @@ object VirtualPhy {
       in(data, enable)
       out(stall)
     }
+
+    def << (that: Io) = that >> this
+    def >> (that: Io) = {
+      that.data := this.data
+      that.enable := this.enable
+      this.stall := that.stall
+    }
   }
 
   case class Tx(ioPins: Int = 16) extends Component {

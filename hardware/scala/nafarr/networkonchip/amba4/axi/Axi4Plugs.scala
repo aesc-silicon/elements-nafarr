@@ -5,7 +5,6 @@ import spinal.lib._
 import spinal.lib.bus.amba4.axi._
 import spinal.lib.bus.amba3.apb._
 
-
 object Axi4Plugs {
 
   case class Manager(config: Axi4Config) extends Component {

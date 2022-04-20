@@ -47,7 +47,6 @@ case class Axi4LocalPort(
   val partition = new Axi4MemoryPartition(nocConfig, apb3Config, partitionEntries)
   partition.io.output <> chipletId.io.fromNoc.input
 
-
   apbMapping += chipletId.io.bus -> (0x10000, 4 KiB)
   apbMapping += partition.io.bus -> (0x20000, 4 KiB)
   apbMapping += blockage.io.bus -> (0x30000, 4 KiB)
@@ -65,7 +64,11 @@ case class Axi4LocalPort(
       dataWidth = 32,
       idWidth = nocConfig.idWidth
     )
-    val config = bridge.axiConfig.copy(addressWidth = nocConfig.addressWidth, bUserWidth = nocConfig.bUserWidth, rUserWidth = nocConfig.rUserWidth)
+    val config = bridge.axiConfig.copy(
+      addressWidth = nocConfig.addressWidth,
+      bUserWidth = nocConfig.bUserWidth,
+      rUserWidth = nocConfig.rUserWidth
+    )
 
     val decoder = Apb3Decoder(
       master = bridge.io.apb,

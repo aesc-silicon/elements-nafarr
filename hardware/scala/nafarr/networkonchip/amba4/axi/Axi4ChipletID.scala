@@ -5,7 +5,14 @@ import spinal.lib._
 import spinal.lib.bus.amba4.axi._
 import spinal.lib.bus.amba3.apb._
 
-case class Axi4ChipletID(coreConfig: Axi4Config, nocConfig: Axi4Config, apb3Config: Apb3Config, wFifoDepth: Int = 10, rFifoDepth: Int = 10, bFifoDpeth: Int = 10) extends Component {
+case class Axi4ChipletID(
+    coreConfig: Axi4Config,
+    nocConfig: Axi4Config,
+    apb3Config: Apb3Config,
+    wFifoDepth: Int = 10,
+    rFifoDepth: Int = 10,
+    bFifoDpeth: Int = 10
+) extends Component {
 
   val io = new Bundle {
     val fromCore = new Area {
@@ -240,7 +247,6 @@ case class Axi4ChipletID(coreConfig: Axi4Config, nocConfig: Axi4Config, apb3Conf
   if (coreConfig.useResp) {
     io.fromNoc.input.b.resp <> io.fromNoc.output.b.resp
   }
-
 
   io.fromNoc.input.r.valid := io.fromNoc.output.r.valid & arLogging.fifo.io.pop.valid
   io.fromNoc.input.r.ready <> io.fromNoc.output.r.ready

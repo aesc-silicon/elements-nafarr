@@ -6,7 +6,11 @@ import spinal.lib.fsm._
 import spinal.lib.bus.amba4.axi._
 import spinal.lib.bus.amba3.apb._
 
-case class Axi4NodeWithExtensionAndTranslation(nocConfig: Axi4Config, coreConfig: Axi4Config, coreUpsizedConfig: Axi4Config) extends Component {
+case class Axi4NodeWithExtensionAndTranslation(
+    nocConfig: Axi4Config,
+    coreConfig: Axi4Config,
+    coreUpsizedConfig: Axi4Config
+) extends Component {
   val io = new Bundle {
     val core = new Bundle {
       val input = slave(Axi4(coreUpsizedConfig))

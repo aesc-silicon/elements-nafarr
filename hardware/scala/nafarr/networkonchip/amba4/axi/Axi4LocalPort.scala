@@ -14,7 +14,8 @@ case class Axi4LocalPort(
     coreConfig: Axi4Config,
     apb3Config: Apb3Config,
     hasMemoryExtension: Boolean = false,
-    hasMemoryTranslation: Boolean = false
+    hasMemoryTranslation: Boolean = false,
+    partitionEntries: Int = 16
 ) extends Component {
   val io = new Bundle {
     val core = new Bundle {
@@ -31,8 +32,6 @@ case class Axi4LocalPort(
       val translation = if (hasMemoryTranslation) master(Apb3(apb3Config)) else null
     }
   }
-
-  val partitionEntries = 16
 
   val apbMapping = ArrayBuffer[(Apb3, SizeMapping)]()
 

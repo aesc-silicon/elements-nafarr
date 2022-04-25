@@ -549,8 +549,8 @@ case class Axi4Router(
     inputDepth: Int = 4,
     outputDepth: Int = 4
 ) extends Component {
-  require(inputDepth > 1)
-  require(outputDepth > 1)
+  require(inputDepth > 0)
+  require(outputDepth > 0)
 
   val io = new Bundle {
     val local = new Bundle {

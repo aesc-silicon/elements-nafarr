@@ -8,10 +8,7 @@ import spinal.lib.bus.amba3.apb._
 case class Axi4ChipletID(
     coreConfig: Axi4Config,
     nocConfig: Axi4Config,
-    apb3Config: Apb3Config,
-    wFifoDepth: Int = 10,
-    rFifoDepth: Int = 10,
-    bFifoDpeth: Int = 10
+    apb3Config: Apb3Config
 ) extends Component {
 
   val io = new Bundle {

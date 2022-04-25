@@ -1,16 +1,15 @@
 #include "gpio.h"
-#include "soc.h"
 
-int gpio_init(void)
+int gpio_init(struct gpio_driver *driver, unsigned int base_address)
 {
-	volatile struct gpio *gpio = (struct gpio *)GPIO_BASE;
+	driver->regs = (struct gpio_regs *)base_address;
 
 	return 1;
 }
 
-unsigned int gpio_value_get(unsigned int pin)
+unsigned int gpio_value_get(struct gpio_driver *driver, unsigned int pin)
 {
-	volatile struct gpio_regs *gpio = (struct gpio_regs *)GPIO_BASE;
+	volatile struct gpio_regs *gpio = driver->regs;
 	unsigned int val;
 
 	val = gpio->data_in >> pin;
@@ -18,9 +17,9 @@ unsigned int gpio_value_get(unsigned int pin)
 	return val & 0x1;
 }
 
-void gpio_value_set(unsigned int pin)
+void gpio_value_set(struct gpio_driver *driver, unsigned int pin)
 {
-	volatile struct gpio_regs *gpio = (struct gpio_regs *)GPIO_BASE;
+	volatile struct gpio_regs *gpio = driver->regs;
 	unsigned int val;
 
 	val = 1 << pin;
@@ -29,9 +28,9 @@ void gpio_value_set(unsigned int pin)
 	gpio->data_out = val;
 }
 
-void gpio_value_clr(unsigned int pin)
+void gpio_value_clr(struct gpio_driver *driver, unsigned int pin)
 {
-	volatile struct gpio_regs *gpio = (struct gpio_regs *)GPIO_BASE;
+	volatile struct gpio_regs *gpio = driver->regs;
 	unsigned int val;
 
 	val = 1 << pin;
@@ -40,9 +39,9 @@ void gpio_value_clr(unsigned int pin)
 	gpio->data_out = val;
 }
 
-void gpio_dir_set(unsigned int pin)
+void gpio_dir_set(struct gpio_driver *driver, unsigned int pin)
 {
-	volatile struct gpio_regs *gpio = (struct gpio_regs *)GPIO_BASE;
+	volatile struct gpio_regs *gpio = driver->regs;
 	unsigned int val;
 
 	val = 1 << pin;
@@ -51,9 +50,9 @@ void gpio_dir_set(unsigned int pin)
 	gpio->dir_en = val;
 }
 
-void gpio_dir_clr(unsigned int pin)
+void gpio_dir_clr(struct gpio_driver *driver, unsigned int pin)
 {
-	volatile struct gpio_regs *gpio = (struct gpio_regs *)GPIO_BASE;
+	volatile struct gpio_regs *gpio = driver->regs;
 	unsigned int val;
 
 	val = 1 << pin;

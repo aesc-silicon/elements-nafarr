@@ -1,9 +1,17 @@
 #include "mtimer.h"
-#include "soc.h"
 
-unsigned int mtimer_sleep(unsigned int cmp_high, unsigned int cmp_low)
+int mtimer_init(struct mtimer_driver *driver, unsigned int base_address)
 {
-	volatile struct mtimer_regs *mtimer = (struct mtimer_regs *)TIMER_BASE;
+	driver->regs = (struct mtimer_regs *)base_address;
+
+	return 1;
+}
+
+
+unsigned int mtimer_sleep(struct mtimer_driver *driver, unsigned int cmp_high,
+	unsigned int cmp_low)
+{
+	volatile struct mtimer_regs *mtimer = driver->regs;
 
 	mtimer->cmp_low = cmp_low;
 	mtimer->cmp_high = cmp_high;

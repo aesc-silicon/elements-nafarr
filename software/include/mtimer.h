@@ -16,7 +16,12 @@ struct mtimer_regs {
 	unsigned int irq_clr;
 };
 
-unsigned int mtimer_arm(unsigned int cmp_high, unsigned int cmp_low);
-unsigned int mtimer_irq_clr(void);
+struct mtimer_driver {
+	volatile struct mtimer_regs *regs;
+};
+
+int mtimer_init(struct mtimer_driver *driver, unsigned int base_address);
+unsigned int mtimer_sleep(struct mtimer_driver *driver, unsigned int cmp_high,
+	unsigned int cmp_low);
 
 #endif

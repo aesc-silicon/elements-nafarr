@@ -22,6 +22,13 @@ object MachineTimer {
     io.interrupt := ctrl.io.interrupt
 
     val mapper = MachineTimerCtrl.Mapper(factory(io.bus), ctrl.io, p)
+
+    def headerBareMetal(name: String, address: BigInt, size: BigInt) = {
+      val baseAddress = "%08x".format(address.toInt)
+      val regSize = "%04x".format(size.toInt)
+      var dt = s"""#define ${name.toUpperCase}_BASE\t\t0x${baseAddress}"""
+      dt
+    }
   }
 }
 

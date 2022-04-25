@@ -10,9 +10,16 @@ struct uart_regs {
 	unsigned int ie;
 };
 
-int uart_init(void);
-void uart_puts(unsigned char *str);
-void uart_putc(unsigned char c);
-int uart_getc(unsigned char *c);
+struct uart_driver {
+	volatile struct uart_regs *regs;
+};
+
+#define UART_CALC_FREQUENCY(freq, baud, bits) (freq / baud / bits)
+
+int uart_init(struct uart_driver *driver, unsigned int base_address,
+	unsigned int frequency);
+void uart_puts(struct uart_driver *driver, unsigned char *str);
+void uart_putc(struct uart_driver *driver, unsigned char c);
+int uart_getc(struct uart_driver *driver, unsigned char *c);
 
 #endif

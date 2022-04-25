@@ -30,7 +30,7 @@ object Gpio {
 
     val mapper = GpioCtrl.Mapper(factory(io.bus), ctrl.io, p)
 
-    def deviceTree(name: String, address: BigInt, size: BigInt, irqNumber: Int = -1) = {
+    def deviceTreeZephyr(name: String, address: BigInt, size: BigInt, irqNumber: Int = -1) = {
       val baseAddress = "%08x".format(address.toInt)
       val regSize = "%04x".format(size.toInt)
       var dt = s"""
@@ -48,6 +48,12 @@ object Gpio {
 \t\t\tgpio-controller;
 \t\t\t#gpio-cells = <2>;
 \t\t};"""
+      dt
+    }
+    def headerBareMetal(name: String, address: BigInt, size: BigInt, irqNumber: Int = -1) = {
+      val baseAddress = "%08x".format(address.toInt)
+      val regSize = "%04x".format(size.toInt)
+      var dt = s"""#define ${name.toUpperCase}_BASE\t\t0x${baseAddress}\n"""
       dt
     }
   }

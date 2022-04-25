@@ -55,7 +55,7 @@ object Uart {
     val mapper = UartCtrl.Mapper(factory(io.bus), ctrl.io, p)
 
     val clockSpeed = ClockDomain.current.frequency.getValue.toInt
-    def deviceTree(name: String, address: BigInt, size: BigInt, irqNumber: Int = -1) = {
+    def deviceTreeZephyr(name: String, address: BigInt, size: BigInt, irqNumber: Int = -1) = {
       val baseAddress = "%08x".format(address.toInt)
       val regSize = "%04x".format(size.toInt)
       val baudrate = this.p.init.baudrate
@@ -74,6 +74,16 @@ object Uart {
 \t\t\tclock-frequency = <$clockSpeed>;
 \t\t\tcurrent-speed = <$baudrate>;
 \t\t};"""
+      dt
+    }
+    def headerBareMetal(name: String, address: BigInt, size: BigInt, irqNumber: Int = -1) = {
+      val baseAddress = "%08x".format(address.toInt)
+      val regSize = "%04x".format(size.toInt)
+      var dt = s"""
+#define ${name.toUpperCase}_BASE\t\t0x${baseAddress}
+#define ${name.toUpperCase}_FREQ\t\t${clockSpeed}
+#define ${name.toUpperCase}_BAUD\t\t${this.p.init.baudrate}
+"""
       dt
     }
   }

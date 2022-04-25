@@ -15,12 +15,16 @@ struct gpio_regs {
 	int irq_rising_pending;
 };
 
-int GPIO_init(void);
-unsigned int gpio_value_get(unsigned int pin);
-void gpio_value_set(unsigned int pin);
-void gpio_value_clr(unsigned int pin);
+struct gpio_driver {
+	volatile struct gpio_regs *regs;
+};
 
-void gpio_dir_set(unsigned int pin);
-void gpio_dir_clr(unsigned int pin);
+int gpio_init(struct gpio_driver *driver, unsigned int base_address);
+unsigned int gpio_value_get(struct gpio_driver *driver, unsigned int pin);
+void gpio_value_set(struct gpio_driver *driver, unsigned int pin);
+void gpio_value_clr(struct gpio_driver *driver, unsigned int pin);
+
+void gpio_dir_set(struct gpio_driver *driver, unsigned int pin);
+void gpio_dir_clr(struct gpio_driver *driver, unsigned int pin);
 
 #endif

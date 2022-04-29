@@ -21,15 +21,15 @@ class Axi4ChipletIDTest extends AnyFunSuite {
 
   def readWrite(apb: Apb3Driver, address: BigInt, data: BigInt) {
       println(s"Write: ${data}")
-      apb.write(address, data)
-      val read = apb.read(address)
+      apb.write(address * 4, data)
+      val read = apb.read(address * 4)
       println(s"Read: ${read}")
       assert(read == data)
   }
   def readWriteFail(apb: Apb3Driver, address: BigInt, data: BigInt) {
       println(s"Write: ${data}")
-      apb.write(address, data)
-      val read = apb.read(address)
+      apb.write(address * 4, data)
+      val read = apb.read(address * 4)
       println(s"Read: ${read}")
       assert(read != data)
   }
@@ -308,7 +308,8 @@ class Axi4ChipletIDTest extends AnyFunSuite {
 
       dut.io.fromNoc.input.ar.valid #= true
       dut.io.fromNoc.output.ar.ready #= true
-      dut.io.fromNoc.input.ar.addr #= BigInt("1010111011" + "1" * 54, 2)
+      dut.io.fromNoc.input.ar.addr #= BigInt("1010111010" + "1" * 54, 2)
+      dut.io.fromNoc.input.ar.id #= BigInt("10101110110000", 2)
 
       dut.clockDomain.waitSampling(1)
       sleep(1)
@@ -362,6 +363,7 @@ class Axi4ChipletIDTest extends AnyFunSuite {
         sleep(1)
         assert(dut.io.fromNoc.input.aw.ready.toBoolean == true)
       }
+      dut.io.fromNoc.output.aw.ready #= false
       dut.clockDomain.waitSampling(1)
       sleep(1)
       assert(dut.io.fromNoc.input.aw.ready.toBoolean == false)
@@ -419,7 +421,8 @@ class Axi4ChipletIDTest extends AnyFunSuite {
 
       dut.io.fromNoc.input.aw.valid #= true
       dut.io.fromNoc.output.aw.ready #= true
-      dut.io.fromNoc.input.aw.addr #= BigInt("1010111011" + "1" * 54, 2)
+      dut.io.fromNoc.input.aw.addr #= BigInt("1010111010" + "1" * 54, 2)
+      dut.io.fromNoc.input.aw.id #= BigInt("10101110110000", 2)
 
       dut.clockDomain.waitSampling(1)
       sleep(1)

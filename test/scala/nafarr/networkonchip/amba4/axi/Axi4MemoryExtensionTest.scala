@@ -20,14 +20,14 @@ class Axi4MemoryExtensionTest extends AnyFunSuite {
   }
 
   def readWrite(apb: Apb3Driver, address: BigInt, data: BigInt, validFlag: Boolean = true) {
-      apb.write(address, data)
+      apb.write(address * 4, data)
       val compare = if (validFlag) BigInt("100000000000000", 2) + data else data
-      assert(apb.read(address) == compare)
+      assert(apb.read(address * 4) == compare)
   }
   def readWriteFail(apb: Apb3Driver, address: BigInt, data: BigInt, validFlag: Boolean = true) {
-      apb.write(address, data)
+      apb.write(address * 4, data)
       val compare = if (validFlag) BigInt("100000000000000", 2) + data else data
-      assert(apb.read(address) != compare)
+      assert(apb.read(address * 4) != compare)
   }
 
   test("Axi4MemoryExtension") {

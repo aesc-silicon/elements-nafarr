@@ -21,16 +21,16 @@ class Axi4MemoryPartitionTest extends AnyFunSuite {
 
   def readWrite(apb: Apb3Driver, address: BigInt, data: BigInt, validFlag: Boolean = true) {
       println(s"Write: ${data}")
-      apb.write(address, data)
+      apb.write(address * 4, data)
       val compare = if (validFlag) BigInt("1", 2) + data else data
-      val read = apb.read(address)
+      val read = apb.read(address * 4)
       println(s"Read: ${read} compared with: ${compare}")
       assert(read == compare)
   }
   def readWriteFail(apb: Apb3Driver, address: BigInt, data: BigInt, validFlag: Boolean = true) {
-      apb.write(address, data)
+      apb.write(address * 4, data)
       val compare = if (validFlag) BigInt("1", 2) + data else data
-      assert(apb.read(address) != compare)
+      assert(apb.read(address * 4) != compare)
   }
 
   def verifyPageType(dut: Axi4MemoryTranslation, apb: Apb3Driver, page: String, size: Int) {

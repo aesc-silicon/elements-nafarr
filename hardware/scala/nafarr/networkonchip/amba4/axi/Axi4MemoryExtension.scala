@@ -39,9 +39,9 @@ case class Axi4MemoryExtension(
     factory.read(locked, 0x0, 0)
     factory.read(U(lookupEntries, log2Up(lookupEntries) + 1 bits).asBits, 0x0, 8)
     for (index <- 0 until lookupEntries) {
-      factory.read(lookup(index).physical, 0x1 + index, 0)
-      factory.read(lookup(index).virtual, 0x1 + index, 0 + physicalWidth)
-      factory.read(lookup(index).valid, 0x1 + index, 0 + physicalWidth + virtualWidth)
+      factory.read(lookup(index).physical, 0x4 + (index * 0x4), 0)
+      factory.read(lookup(index).virtual, 0x4 + (index * 0x4), 0 + physicalWidth)
+      factory.read(lookup(index).valid, 0x4 + (index * 0x4), 0 + physicalWidth + virtualWidth)
     }
 
     val tmpLookup = Vec(MemoryTranslationLookupRow(physicalWidth, virtualWidth), lookupEntries)
@@ -50,10 +50,10 @@ case class Axi4MemoryExtension(
       tmpLookup(index).virtual := B(virtualWidth bits, default -> false)
       tmpLookup(index).valid := True
 
-      factory.write(tmpLookup(index).physical, 0x1 + index, 0)
-      factory.write(tmpLookup(index).virtual, 0x1 + index, 0 + physicalWidth)
+      factory.write(tmpLookup(index).physical, 0x4 + (index * 0x4), 0)
+      factory.write(tmpLookup(index).virtual, 0x4 + (index * 0x4), 0 + physicalWidth)
 
-      factory.onWrite(0x1 + index) {
+      factory.onWrite(0x4 + (index * 0x4)) {
         when(!locked) {
           lookup(index) := tmpLookup(index)
         }

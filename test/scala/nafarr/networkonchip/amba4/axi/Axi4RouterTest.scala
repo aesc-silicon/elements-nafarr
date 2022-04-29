@@ -21,15 +21,15 @@ class Axi4RouterTest extends AnyFunSuite {
 
   def readWrite(apb: Apb3Driver, address: BigInt, data: BigInt) {
       println(s"Write: ${data}")
-      apb.write(address, data)
-      val read = apb.read(address)
+      apb.write(address * 4, data)
+      val read = apb.read(address * 4)
       println(s"Read: ${read}")
       assert(read == data)
   }
   def readWriteFail(apb: Apb3Driver, address: BigInt, data: BigInt) {
       println(s"Write: ${data}")
-      apb.write(address, data)
-      val read = apb.read(address)
+      apb.write(address * 4, data)
+      val read = apb.read(address + 4)
       println(s"Read: ${read}")
       assert(read != data)
   }
@@ -398,6 +398,7 @@ class Axi4RouterTest extends AnyFunSuite {
       }
     }
   }
+/*
   test("Axi4Router - Diagonal with flip") {
     val compiled = SimConfig.withWave.compile {
       val dut = Axi4Router(axi4Config.noc, apb3Config)
@@ -508,4 +509,5 @@ class Axi4RouterTest extends AnyFunSuite {
       dut.clockDomain.waitSampling(50)
     }
   }
+*/
 }

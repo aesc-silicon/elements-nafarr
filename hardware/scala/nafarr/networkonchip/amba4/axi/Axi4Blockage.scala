@@ -16,7 +16,7 @@ case class Axi4Blockage(config: Axi4Config) extends Component {
   val busInterface = new Area {
     val factory = Apb3SlaveFactory(io.bus)
 
-    factory.read(blocked, 0x0, 0)
+    factory.read(blocked, 0x0)
     factory.onWrite(0x0) {
       blocked := False
     }
@@ -25,10 +25,11 @@ case class Axi4Blockage(config: Axi4Config) extends Component {
   io.output.ar.addr := io.input.ar.addr
   when(!blocked) {
     io.output.ar.valid := io.input.ar.valid
+    io.input.ar.ready := io.output.ar.ready
   } otherwise {
     io.output.ar.valid := False
+    io.input.ar.ready := False
   }
-  io.output.ar.ready <> io.input.ar.ready
   io.output.ar.id <> io.input.ar.id
   if (config.useRegion) {
     io.output.ar.region <> io.input.ar.region

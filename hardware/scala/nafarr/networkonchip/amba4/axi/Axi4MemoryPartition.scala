@@ -38,13 +38,19 @@ case class Axi4MemoryPartition(
     factory.read(id, 0x0, 16)
 
     for (index <- 0 until partitions) {
-      factory.read(lookup(index).lowerBoundary(31 downto 0), 0x1 + (index * 5))
-      factory.read(lookup(index).lowerBoundary(boundaryWidth - 1 downto 32), 0x1 + (index * 5) + 1)
-      factory.read(lookup(index).upperBoundary(31 downto 0), 0x1 + (index * 5) + 2)
-      factory.read(lookup(index).upperBoundary(boundaryWidth - 1 downto 32), 0x1 + (index * 5) + 3)
-      factory.read(lookup(index).valid, 0x1 + (index * 5) + 4, 0)
-      factory.read(lookup(index).rwxPermission, 0x1 + (index * 5) + 4, 8)
-      factory.read(lookup(index).chipletId, 0x1 + (index * 5) + 4, 16)
+      factory.read(lookup(index).lowerBoundary(31 downto 0), 0x4 + (index * 0x14))
+      factory.read(
+        lookup(index).lowerBoundary(boundaryWidth - 1 downto 32),
+        0x4 + (index * 0x14) + 0x4
+      )
+      factory.read(lookup(index).upperBoundary(31 downto 0), 0x4 + (index * 0x14) + 0x8)
+      factory.read(
+        lookup(index).upperBoundary(boundaryWidth - 1 downto 32),
+        0x4 + (index * 0x14) + 0xc
+      )
+      factory.read(lookup(index).valid, 0x4 + (index * 0x14) + 0x10, 0)
+      factory.read(lookup(index).rwxPermission, 0x4 + (index * 0x14) + 0x10, 8)
+      factory.read(lookup(index).chipletId, 4 + (index * 0x14) + 0x10, 16)
     }
 
     val tmpLookup = Vec(MemoryPartitionRow(boundaryWidth), partitions)
@@ -55,25 +61,25 @@ case class Axi4MemoryPartition(
       tmpLookup(index).rwxPermission := lookup(index).rwxPermission
       tmpLookup(index).valid := True
 
-      factory.write(tmpLookup(index).lowerBoundary(31 downto 0), 0x1 + (index * 5))
+      factory.write(tmpLookup(index).lowerBoundary(31 downto 0), 0x4 + (index * 0x14))
       factory.write(
         tmpLookup(index).lowerBoundary(boundaryWidth - 1 downto 32),
-        0x1 + (index * 5) + 1
+        0x4 + (index * 0x14) + 0x4
       )
-      factory.write(tmpLookup(index).upperBoundary(31 downto 0), 0x1 + (index * 5) + 2)
+      factory.write(tmpLookup(index).upperBoundary(31 downto 0), 0x4 + (index * 0x14) + 0x8)
       factory.write(
         tmpLookup(index).upperBoundary(boundaryWidth - 1 downto 32),
-        0x1 + (index * 5) + 3
+        0x4 + (index * 0x14) + 0xc
       )
-      factory.write(tmpLookup(index).rwxPermission, 0x1 + (index * 5) + 4, 8)
-      factory.write(tmpLookup(index).chipletId, 0x1 + (index * 5) + 4, 16)
+      factory.write(tmpLookup(index).rwxPermission, 0x4 + (index * 0x14) + 0x10, 8)
+      factory.write(tmpLookup(index).chipletId, 0x4 + (index * 0x14) + 0x10, 16)
 
-      val realIndex = index * 5
-      factory.onWrite(0x1 + realIndex + 0)(when(!locked) { lookup(index) := tmpLookup(index) })
-      factory.onWrite(0x1 + realIndex + 1)(when(!locked) { lookup(index) := tmpLookup(index) })
-      factory.onWrite(0x1 + realIndex + 2)(when(!locked) { lookup(index) := tmpLookup(index) })
-      factory.onWrite(0x1 + realIndex + 3)(when(!locked) { lookup(index) := tmpLookup(index) })
-      factory.onWrite(0x1 + realIndex + 4)(when(!locked) { lookup(index) := tmpLookup(index) })
+      val realIndex = index * 0x14
+      factory.onWrite(0x4 + realIndex + 0x00)(when(!locked) { lookup(index) := tmpLookup(index) })
+      factory.onWrite(0x4 + realIndex + 0x04)(when(!locked) { lookup(index) := tmpLookup(index) })
+      factory.onWrite(0x4 + realIndex + 0x08)(when(!locked) { lookup(index) := tmpLookup(index) })
+      factory.onWrite(0x4 + realIndex + 0x0c)(when(!locked) { lookup(index) := tmpLookup(index) })
+      factory.onWrite(0x4 + realIndex + 0x10)(when(!locked) { lookup(index) := tmpLookup(index) })
     }
 
     when(!locked) {
@@ -135,6 +141,7 @@ case class Axi4MemoryPartition(
       val approve: State = new State {
         whenIsActive {
           io.input.ar.ready := io.output.ar.ready
+          validOutput := True
           when(io.output.ar.ready) {
             validOutput := False
             goto(idle)

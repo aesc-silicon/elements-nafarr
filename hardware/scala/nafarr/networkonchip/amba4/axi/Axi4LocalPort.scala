@@ -15,7 +15,8 @@ case class Axi4LocalPort(
     apb3Config: Apb3Config,
     hasMemoryExtension: Boolean = false,
     hasMemoryTranslation: Boolean = false,
-    partitionEntries: Int = 16
+    partitionEntries: Int = 16,
+    hasBlockage: Boolean = true
 ) extends Component {
   val io = new Bundle {
     val core = new Bundle {
@@ -39,16 +40,20 @@ case class Axi4LocalPort(
   chipletId.io.fromCore.input <> io.core.input
   chipletId.io.fromNoc.output <> io.core.output
 
-  val blockage = new Axi4Blockage(nocConfig)
-  blockage.io.input <> chipletId.io.fromCore.output
-  io.local.output <> blockage.io.output
-
   val partition = new Axi4MemoryPartition(nocConfig, apb3Config, partitionEntries)
   partition.io.output <> chipletId.io.fromNoc.input
 
+  if (hasBlockage) {
+    val blockage = new Axi4Blockage(nocConfig)
+    blockage.io.input <> chipletId.io.fromCore.output
+    io.local.output <> blockage.io.output
+    apbMapping += blockage.io.bus -> (0x30000, 4 KiB)
+  } else {
+    io.local.output <> chipletId.io.fromCore.output
+  }
+
   apbMapping += chipletId.io.bus -> (0x10000, 4 KiB)
   apbMapping += partition.io.bus -> (0x20000, 4 KiB)
-  apbMapping += blockage.io.bus -> (0x30000, 4 KiB)
   apbMapping += io.bus.router -> (0x40000, 4 KiB)
   if (hasMemoryExtension) {
     apbMapping += io.bus.extension -> (0x50000, 4 KiB)
@@ -79,11 +84,80 @@ case class Axi4LocalPort(
 
     val downsizer = Axi4Downsizer(nocConfig, apbBus.config)
 
+    val localInput = Axi4(nocConfig)
+    localInput.ar.valid <> io.local.input.ar.valid
+    localInput.ar.ready <> io.local.input.ar.ready
+    localInput.ar.addr := (B"0000000000" ## io.local.input.ar.addr(53 downto 0)).asUInt
+    localInput.ar.id := io.local.input.ar.id
+    if (nocConfig.useRegion) {
+      localInput.ar.region <> io.local.input.ar.region
+    }
+    if (nocConfig.useLen) {
+      localInput.ar.len <> io.local.input.ar.len
+    }
+    if (nocConfig.useSize) {
+      localInput.ar.size <> io.local.input.ar.size
+    }
+    if (nocConfig.useBurst) {
+      localInput.ar.burst <> io.local.input.ar.burst
+    }
+    if (nocConfig.useLock) {
+      localInput.ar.lock <> io.local.input.ar.lock
+    }
+    if (nocConfig.useCache) {
+      localInput.ar.cache <> io.local.input.ar.cache
+    }
+    if (nocConfig.useQos) {
+      localInput.ar.qos <> io.local.input.ar.qos
+    }
+    if (nocConfig.arUserWidth > 0) {
+      localInput.ar.user <> io.local.input.ar.user
+    }
+    if (nocConfig.useProt) {
+      localInput.ar.prot <> io.local.input.ar.prot
+    }
+
+    localInput.aw.valid <> io.local.input.aw.valid
+    localInput.aw.ready <> io.local.input.aw.ready
+    localInput.aw.addr := (B"0000000000" ## io.local.input.aw.addr(53 downto 0)).asUInt
+    localInput.aw.id := io.local.input.aw.id
+    if (nocConfig.useRegion) {
+      localInput.aw.region <> io.local.input.aw.region
+    }
+    if (nocConfig.useLen) {
+      localInput.aw.len <> io.local.input.aw.len
+    }
+    if (nocConfig.useSize) {
+      localInput.aw.size <> io.local.input.aw.size
+    }
+    if (nocConfig.useBurst) {
+      localInput.aw.burst <> io.local.input.aw.burst
+    }
+    if (nocConfig.useLock) {
+      localInput.aw.lock <> io.local.input.aw.lock
+    }
+    if (nocConfig.useCache) {
+      localInput.aw.cache <> io.local.input.aw.cache
+    }
+    if (nocConfig.useQos) {
+      localInput.aw.qos <> io.local.input.aw.qos
+    }
+    if (nocConfig.awUserWidth > 0) {
+      localInput.aw.user <> io.local.input.aw.user
+    }
+    if (nocConfig.useProt) {
+      localInput.aw.prot <> io.local.input.aw.prot
+    }
+
+    localInput.r <> io.local.input.r
+    localInput.w <> io.local.input.w
+    localInput.b <> io.local.input.b
+
     val axiCrossbar = Axi4CrossbarFactory()
-    axiCrossbar.addSlave(partition.io.input, (0x00000000000000L, 8 PiB))
-    axiCrossbar.addSlave(downsizer.io.input, (0x20000000000000L, 1 MiB))
+    axiCrossbar.addSlave(partition.io.input, (0x00000000000000L, 128 MiB))
+    axiCrossbar.addSlave(downsizer.io.input, (0x00000008000000L, 1 MiB))
     axiCrossbar.addConnections(
-      io.local.input -> List(partition.io.input, downsizer.io.input)
+      localInput -> List(partition.io.input, downsizer.io.input)
     )
     axiCrossbar.build()
 

@@ -29,15 +29,15 @@ case class Axi4ChipletID(
     val factory = Apb3SlaveFactory(io.bus)
 
     factory.read(locked, 0x0)
-    factory.read(id, 0x1)
+    factory.read(id, 0x4)
 
     factory.onWrite(0x0) {
       locked := True
     }
     val tmpId = UInt(10 bits)
     tmpId := U(0, 10 bits)
-    factory.write(tmpId, 0x1)
-    factory.onWrite(0x1) {
+    factory.write(tmpId, 0x4)
+    factory.onWrite(0x4) {
       when(!locked) {
         id := tmpId
       }
@@ -150,7 +150,9 @@ case class Axi4ChipletID(
     val fifo = StreamFifo(Bits(10 bits), 10)
     val fire = io.fromNoc.input.ar.valid && io.fromNoc.output.ar.ready
     fifo.io.push.valid := fire
-    fifo.io.push.payload := io.fromNoc.input.ar.addr(63 downto 54).asBits
+    fifo.io.push.payload := io.fromNoc.input.ar
+      .id(coreConfig.idWidth + 9 downto coreConfig.idWidth)
+      .asBits
 
     io.fromNoc.input.ar.ready := io.fromNoc.output.ar.ready & fifo.io.push.ready
   }
@@ -190,7 +192,9 @@ case class Axi4ChipletID(
     val fifo = StreamFifo(Bits(10 bits), 10)
     val fire = io.fromNoc.input.aw.valid && io.fromNoc.output.aw.ready
     fifo.io.push.valid := fire
-    fifo.io.push.payload := io.fromNoc.input.aw.addr(63 downto 54).asBits
+    fifo.io.push.payload := io.fromNoc.input.aw
+      .id(coreConfig.idWidth + 9 downto coreConfig.idWidth)
+      .asBits
 
     io.fromNoc.input.aw.ready := io.fromNoc.output.aw.ready & fifo.io.push.ready
   }

@@ -193,29 +193,41 @@ case class RoutingDecoderLogic[T <: spinal.core.Bundle](
     when(routeLocal) {
       connectHandshake(0)
     } elsewhen (routeNorth && routeEast) {
+      connectHandshake(1)
+      /*
       when(flip) {
         connectHandshake(1)
       } otherwise {
         connectHandshake(2)
       }
+       */
     } elsewhen (routeEast && routeSouth) {
+      connectHandshake(2)
+      /*
       when(flip) {
         connectHandshake(2)
       } otherwise {
         connectHandshake(3)
       }
+       */
     } elsewhen (routeSouth && routeWest) {
+      connectHandshake(3)
+      /*
       when(flip) {
         connectHandshake(3)
       } otherwise {
         connectHandshake(4)
       }
+       */
     } elsewhen (routeWest && routeNorth) {
+      connectHandshake(4)
+      /*
       when(flip) {
         connectHandshake(4)
       } otherwise {
         connectHandshake(1)
       }
+       */
     } elsewhen (routeNorth) {
       connectHandshake(1)
     } elsewhen (routeEast) {
@@ -584,8 +596,8 @@ case class Axi4Router(
     val factory = Apb3SlaveFactory(io.bus)
 
     factory.read(locked, 0x0)
-    factory.read(id, 0x1, 0)
-    factory.read(directions.directions, 0x1, 16)
+    factory.read(id, 0x4, 0)
+    factory.read(directions.directions, 0x4, 16)
 
     factory.onWrite(0x0) {
       locked := True
@@ -594,9 +606,9 @@ case class Axi4Router(
     val tmpDirection = RoutingDirections()
     tmpId := id
     tmpDirection := directions
-    factory.write(tmpId, 0x1, 0)
-    factory.write(tmpDirection.directions, 0x1, 16)
-    factory.onWrite(0x1) {
+    factory.write(tmpId, 0x4, 0)
+    factory.write(tmpDirection.directions, 0x4, 16)
+    factory.onWrite(0x4) {
       when(!locked) {
         id := tmpId
         directions := tmpDirection

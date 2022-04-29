@@ -164,24 +164,28 @@ object Frontend {
         rReady := False
         bReady := False
 
+        val prevAW = RegInit(False)
+
         val init: State = new State with EntryPoint {
           onEntry(dataBlockIndex := 0)
           whenIsActive {
-            when(io.axiIn.ar.valid) {
-              lockChannel := LinkLayerChannels.AR
+            when(io.axiOut.b.valid) {
+              lockChannel := LinkLayerChannels.B
               goto(sendSingle)
-            } elsewhen (io.axiIn.aw.valid) {
+            } elsewhen (io.axiIn.aw.valid && !prevAW) {
               lockChannel := LinkLayerChannels.AW
+              prevAW := True
               goto(sendSingle)
             } elsewhen (io.axiIn.w.valid) {
               lockChannel := LinkLayerChannels.W
+              prevAW := False
               goto(sendFirst)
+            } elsewhen (io.axiIn.ar.valid) {
+              lockChannel := LinkLayerChannels.AR
+              goto(sendSingle)
             } elsewhen (io.axiOut.r.valid) {
               lockChannel := LinkLayerChannels.R
               goto(sendFirst)
-            } elsewhen (io.axiOut.b.valid) {
-              lockChannel := LinkLayerChannels.B
-              goto(sendSingle)
             }
           }
         }

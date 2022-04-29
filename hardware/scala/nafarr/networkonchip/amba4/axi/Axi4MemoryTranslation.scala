@@ -47,12 +47,12 @@ case class Axi4MemoryTranslation(
     factory.read(U(lookupEntries, log2Up(lookupEntries) + 1 bits).asBits, 0x0, 8)
     factory.read(U(supportedPages, pageTypeWidth + 1 bits).asBits, 0x0, 16)
     for (index <- 0 until lookupEntries) {
-      factory.read(lookup(index).physical(31 downto 0), 0x1 + (index * 5))
-      factory.read(lookup(index).physical(physicalWidth - 1 downto 32), 0x1 + (index * 5) + 1)
-      factory.read(lookup(index).virtual(31 downto 0), 0x1 + (index * 5) + 2)
-      factory.read(lookup(index).virtual(physicalWidth - 1 downto 32), 0x1 + (index * 5) + 3)
-      factory.read(lookup(index).valid, 0x1 + (index * 5) + 4, 0)
-      factory.read(lookup(index).pageType, 0x1 + (index * 5) + 4, 8)
+      factory.read(lookup(index).physical(31 downto 0), 0x4 + (index * 0x14))
+      factory.read(lookup(index).physical(physicalWidth - 1 downto 32), 0x4 + (index * 0x14) + 0x4)
+      factory.read(lookup(index).virtual(31 downto 0), 0x4 + (index * 0x14) + 0x8)
+      factory.read(lookup(index).virtual(physicalWidth - 1 downto 32), 0x4 + (index * 0x14) + 0xc)
+      factory.read(lookup(index).valid, 0x4 + (index * 0x14) + 0x10, 0)
+      factory.read(lookup(index).pageType, 0x4 + (index * 0x14) + 0x10, 8)
     }
 
     val tmpLookup =
@@ -63,18 +63,24 @@ case class Axi4MemoryTranslation(
       tmpLookup(index).pageType := lookup(index).pageType
       tmpLookup(index).valid := True
 
-      factory.write(tmpLookup(index).physical(31 downto 0), 0x1 + (index * 5))
-      factory.write(tmpLookup(index).physical(physicalWidth - 1 downto 32), 0x1 + (index * 5) + 1)
-      factory.write(tmpLookup(index).virtual(31 downto 0), 0x1 + (index * 5) + 2)
-      factory.write(tmpLookup(index).virtual(virtualWidth - 1 downto 32), 0x1 + (index * 5) + 3)
-      factory.write(tmpLookup(index).pageType, 0x1 + (index * 5) + 4, 8)
+      factory.write(tmpLookup(index).physical(31 downto 0), 0x4 + (index * 0x14))
+      factory.write(
+        tmpLookup(index).physical(physicalWidth - 1 downto 32),
+        0x4 + (index * 0x14) + 0x4
+      )
+      factory.write(tmpLookup(index).virtual(31 downto 0), 0x4 + (index * 0x14) + 0x8)
+      factory.write(
+        tmpLookup(index).virtual(virtualWidth - 1 downto 32),
+        0x4 + (index * 0x14) + 0xc
+      )
+      factory.write(tmpLookup(index).pageType, 0x4 + (index * 0x14) + 0x10, 8)
 
-      val realIndex = index * 5
-      factory.onWrite(0x1 + realIndex + 0)(when(!locked) { lookup(index) := tmpLookup(index) })
-      factory.onWrite(0x1 + realIndex + 1)(when(!locked) { lookup(index) := tmpLookup(index) })
-      factory.onWrite(0x1 + realIndex + 2)(when(!locked) { lookup(index) := tmpLookup(index) })
-      factory.onWrite(0x1 + realIndex + 3)(when(!locked) { lookup(index) := tmpLookup(index) })
-      factory.onWrite(0x1 + realIndex + 4)(when(!locked) { lookup(index) := tmpLookup(index) })
+      val realIndex = index * 0x14
+      factory.onWrite(0x4 + realIndex + 0x00)(when(!locked) { lookup(index) := tmpLookup(index) })
+      factory.onWrite(0x4 + realIndex + 0x04)(when(!locked) { lookup(index) := tmpLookup(index) })
+      factory.onWrite(0x4 + realIndex + 0x08)(when(!locked) { lookup(index) := tmpLookup(index) })
+      factory.onWrite(0x4 + realIndex + 0x0c)(when(!locked) { lookup(index) := tmpLookup(index) })
+      factory.onWrite(0x4 + realIndex + 0x10)(when(!locked) { lookup(index) := tmpLookup(index) })
     }
 
     when(!locked) {

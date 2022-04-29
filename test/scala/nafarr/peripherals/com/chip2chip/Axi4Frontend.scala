@@ -330,7 +330,7 @@ class Axi4FrontendTest extends AnyFunSuite {
       dut.clockDomain.waitSampling(1)
       sleep(1)
       assert(dut.io.toLinkLayer.valid.toBoolean == true)
-      assert(dut.input.decider.lockChannel.toBigInt == BigInt("001", 2))
+      assert(dut.input.decider.lockChannel.toBigInt == BigInt("010", 2))
       dut.clockDomain.waitSampling(3)
       dut.io.toLinkLayer.ready #= true
       assert(dut.io.axiIn.ar.ready.toBoolean == false)
@@ -338,10 +338,10 @@ class Axi4FrontendTest extends AnyFunSuite {
       sleep(1)
       dut.io.toLinkLayer.ready #= false
       assert(dut.io.toLinkLayer.valid.toBoolean == false)
-      assert(dut.io.axiIn.ar.ready.toBoolean == true)
+      assert(dut.io.axiIn.aw.ready.toBoolean == true)
       dut.clockDomain.waitSampling(1)
       sleep(1)
-      assert(dut.io.axiIn.ar.ready.toBoolean == false)
+      assert(dut.io.axiIn.aw.ready.toBoolean == false)
       dut.clockDomain.waitSampling(1)
       sleep(1)
 
@@ -361,24 +361,6 @@ class Axi4FrontendTest extends AnyFunSuite {
       sleep(1)
       dut.io.axiIn.ar.valid #= false
       assert(dut.io.axiIn.ar.ready.toBoolean == false)
-      dut.clockDomain.waitSampling(1)
-      sleep(1)
-
-      dut.clockDomain.waitSampling(1)
-      sleep(1)
-      assert(dut.io.toLinkLayer.valid.toBoolean == true)
-      assert(dut.input.decider.lockChannel.toBigInt == BigInt("010", 2))
-      dut.clockDomain.waitSampling(3)
-      dut.io.toLinkLayer.ready #= true
-      assert(dut.io.axiIn.aw.ready.toBoolean == false)
-      dut.clockDomain.waitSampling(1)
-      sleep(1)
-      dut.io.toLinkLayer.ready #= false
-      assert(dut.io.toLinkLayer.valid.toBoolean == false)
-      assert(dut.io.axiIn.aw.ready.toBoolean == true)
-      dut.clockDomain.waitSampling(1)
-      sleep(1)
-      assert(dut.io.axiIn.aw.ready.toBoolean == false)
       dut.clockDomain.waitSampling(1)
       sleep(1)
 

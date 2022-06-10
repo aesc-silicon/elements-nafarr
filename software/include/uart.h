@@ -21,5 +21,8 @@ int uart_init(struct uart_driver *driver, unsigned int base_address,
 void uart_puts(struct uart_driver *driver, unsigned char *str);
 void uart_putc(struct uart_driver *driver, unsigned char c);
 int uart_getc(struct uart_driver *driver, unsigned char *c);
+int uart_irq_rx_enable(struct uart_driver *driver);
+int uart_irq_rx_disable(struct uart_driver *driver);
+int uart_irq_rx_ready(struct uart_driver *driver);
 
 #endif

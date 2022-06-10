@@ -23,10 +23,13 @@ object MachineTimer {
 
     val mapper = MachineTimerCtrl.Mapper(factory(io.bus), ctrl.io, p)
 
+    val clockSpeed = ClockDomain.current.frequency.getValue.toInt
     def headerBareMetal(name: String, address: BigInt, size: BigInt) = {
       val baseAddress = "%08x".format(address.toInt)
       val regSize = "%04x".format(size.toInt)
-      var dt = s"""#define ${name.toUpperCase}_BASE\t\t0x${baseAddress}"""
+      var dt = s"""#define ${name.toUpperCase}_BASE\t\t0x${baseAddress}
+#define ${name.toUpperCase}_FREQ\t\t${clockSpeed}
+"""
       dt
     }
   }

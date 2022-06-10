@@ -1,5 +1,7 @@
 #include "uart.h"
 
+#define DEV_UART_IRQ_RX_EN		(1 << 1)
+
 int uart_init(struct uart_driver *driver, unsigned int base_address,
 		unsigned int frequency)
 {
@@ -40,4 +42,30 @@ int uart_getc(struct uart_driver *driver, unsigned char *c)
 	}
 
 	return -1;
+}
+
+int uart_irq_rx_enable(struct uart_driver *driver)
+{
+	volatile struct uart_regs *uart = driver->regs;
+
+	uart->ip |= DEV_UART_IRQ_RX_EN;
+	uart->ie |= DEV_UART_IRQ_RX_EN;
+
+	return 1;
+}
+
+int uart_irq_rx_disable(struct uart_driver *driver)
+{
+	volatile struct uart_regs *uart = driver->regs;
+
+	uart->ie &= ~DEV_UART_IRQ_RX_EN;
+
+	return 1;
+}
+
+int uart_irq_rx_ready(struct uart_driver *driver)
+{
+	volatile struct uart_regs *uart = driver->regs;
+
+	return !!(uart->ip & DEV_UART_IRQ_RX_EN);
 }

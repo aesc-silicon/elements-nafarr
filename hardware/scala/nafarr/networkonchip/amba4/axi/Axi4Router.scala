@@ -193,41 +193,29 @@ case class RoutingDecoderLogic[T <: spinal.core.Bundle](
     when(routeLocal) {
       connectHandshake(0)
     } elsewhen (routeNorth && routeEast) {
-      connectHandshake(1)
-      /*
       when(flip) {
         connectHandshake(1)
       } otherwise {
         connectHandshake(2)
       }
-       */
     } elsewhen (routeEast && routeSouth) {
-      connectHandshake(2)
-      /*
       when(flip) {
         connectHandshake(2)
       } otherwise {
         connectHandshake(3)
       }
-       */
     } elsewhen (routeSouth && routeWest) {
-      connectHandshake(3)
-      /*
       when(flip) {
         connectHandshake(3)
       } otherwise {
         connectHandshake(4)
       }
-       */
     } elsewhen (routeWest && routeNorth) {
-      connectHandshake(4)
-      /*
       when(flip) {
         connectHandshake(4)
       } otherwise {
         connectHandshake(1)
       }
-       */
     } elsewhen (routeNorth) {
       connectHandshake(1)
     } elsewhen (routeEast) {

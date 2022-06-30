@@ -23,8 +23,7 @@ object HammingCode1611 {
   }
 
   def calculateExtendedParity(dw: Bits, parity: Bits): Bool = {
-    return dw(0) ^ dw(1) ^ dw(2) ^ dw(3) ^ dw(4) ^ dw(5) ^ dw(6) ^ dw(7) ^
-      parity(0) ^ parity(1) ^ parity(2) ^ parity(3)
+    return (dw ## parity).xorR
   }
 
   case class Encoder() extends Component {

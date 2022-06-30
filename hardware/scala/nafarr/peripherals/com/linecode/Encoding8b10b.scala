@@ -33,7 +33,7 @@ object Encoding8b10b {
     val G = io.data(6)
     val H = io.data(7)
 
-    val disparity = Reg(Bool()).init(False)
+    val disparity = RegInit(False)
 
     val lFunction = new Area {
       val aEqB = A === B
@@ -64,8 +64,8 @@ object Encoding8b10b {
     }
 
     val complementation = new Area {
-      val compLs4 = Reg(Bool()).init(False)
-      val compLs6 = Reg(Bool()).init(False)
+      val compLs4 = RegInit(False)
+      val compLs6 = RegInit(False)
 
       val illegalK = io.kWord & (A | B | !C | !D | !E) & (!F | !G | !H | !E | !lFunction.l31)
 
@@ -81,7 +81,6 @@ object Encoding8b10b {
     }
 
     val encoding5b6b = new Area {
-
       val stageA = RegNextWhen(A, !io.stall).init(False)
       val stageB0 = RegNextWhen(B & !lFunction.l40, !io.stall).init(False)
       val stageB1 = RegNextWhen(lFunction.l04, !io.stall).init(False)
@@ -104,7 +103,7 @@ object Encoding8b10b {
     }
 
     val encoding3b4b = new Area {
-      val alt7 = Reg(Bool()).init(False)
+      val alt7 = RegInit(False)
 
       when(!io.stall) {
         when(disparity) {
@@ -126,7 +125,7 @@ object Encoding8b10b {
     }
 
     val outputStage = new Area {
-      val encoded = Reg(Bits(10 bits)).init(B"0000000000")
+      val encoded = RegInit(B"0000000000")
       val kError0 = RegNextWhen(complementation.illegalK, !io.stall).init(False)
       val kError = RegNextWhen(kError0, !io.stall)
 

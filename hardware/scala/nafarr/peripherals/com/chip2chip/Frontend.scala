@@ -146,7 +146,7 @@ object Frontend {
         val concat = LinkLayerChannels.B ## fillZeros ## user ## resp ## id
       }
 
-      // Priorities for incoming AXI channels: AR > AW > W > R > B
+      // Priorities for incoming AXI channels: B > AW > W > R > AR
       val decider = new StateMachine {
         val lockChannel = Reg(LinkLayerChannels()).init(LinkLayerChannels.NONE)
         val payload = Vec(Bits(128 + 1 bits), dataBlocks)
@@ -169,52 +169,54 @@ object Frontend {
           whenIsActive {
             when(io.axiOut.b.valid) {
               lockChannel := LinkLayerChannels.B
-              goto(sendSingle)
+              goto(send)
             } elsewhen (io.axiIn.aw.valid && !prevAW) {
               lockChannel := LinkLayerChannels.AW
               prevAW := True
-              goto(sendSingle)
+              goto(send)
             } elsewhen (io.axiIn.w.valid) {
               lockChannel := LinkLayerChannels.W
               prevAW := False
-              goto(sendSingle)
-            } elsewhen (io.axiIn.ar.valid) {
-              lockChannel := LinkLayerChannels.AR
-              goto(sendSingle)
+              goto(send)
             } elsewhen (io.axiOut.r.valid) {
               lockChannel := LinkLayerChannels.R
-              goto(sendSingle)
+              goto(send)
+            } elsewhen (io.axiIn.ar.valid) {
+              lockChannel := LinkLayerChannels.AR
+              goto(send)
             }
           }
         }
-        val sendSingle: State = new State {
+        val send: State = new State {
           whenIsActive {
             io.toLinkLayer.valid := True
-            when(lockChannel === LinkLayerChannels.AR) {
+            switch(lockChannel) {
+            is (LinkLayerChannels.AR) {
               io.axiIn.ar.ready := io.toLinkLayer.ready
               payload(0) := B"1" ## ar.concat
             }
-            when(lockChannel === LinkLayerChannels.AW) {
+            is(LinkLayerChannels.AW) {
               io.axiIn.aw.ready := io.toLinkLayer.ready
               payload(0) := B"1" ## aw.concat
             }
-            when(lockChannel === LinkLayerChannels.B) {
+            is(LinkLayerChannels.B) {
               io.axiOut.b.ready := io.toLinkLayer.ready
               payload(0) := B"1" ## b.concat
             }
-            when(lockChannel === LinkLayerChannels.W) {
+            is(LinkLayerChannels.W) {
               io.axiIn.w.ready := io.toLinkLayer.ready
               payload(0) := B"1" ## w.concat
               for (index <- 1 until dataBlocks) {
                 payload(index) := B"1" ## io.axiIn.w.data.subdivideIn(128 bits)(index - 1)
               }
             }
-            when(lockChannel === LinkLayerChannels.R) {
+            is(LinkLayerChannels.R) {
               io.axiOut.r.ready := io.toLinkLayer.ready
               payload(0) := B"1" ## r.concat
               for (index <- 1 until dataBlocks) {
                 payload(index) := B"1" ## io.axiOut.r.data.subdivideIn(128 bits)(index - 1)
               }
+            }
             }
             when(io.toLinkLayer.ready) {
               goto(init)

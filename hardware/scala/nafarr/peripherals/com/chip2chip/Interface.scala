@@ -7,8 +7,15 @@ import nafarr.peripherals.com.chip2chip.phy._
 
 object Interface {
 
-  case class Axi4Interface(config: Axi4Config, phyCount: Int = 1, ioPins: Int = 16)
-      extends Component {
+  case class Axi4Interface(
+    config: Axi4Config,
+    phyCount: Int = 1,
+    ioPins: Int = 16,
+    outputDepth: Int = 4,
+    inputDepth: Int = 8,
+    transactionsDepth: Int = 8,
+    responsesDepth: Int = 8
+  ) extends Component {
     val io = new Bundle {
       val axiIn = slave(Axi4(config))
       val axiOut = master(Axi4(config))
@@ -25,7 +32,7 @@ object Interface {
     frontend.io.fromLinkLayer <> multiplexer.io.toFrontend
 
     for (index <- 0 until phyCount) {
-      val controller = ControllerLayer.ControllerLayer(ioPins, ioPins)
+      val controller = ControllerLayer.ControllerLayer(ioPins, ioPins, outputDepth, inputDepth, transactionsDepth, responsesDepth)
       controller.io.fromFrontend <> multiplexer.io.toLinkLayer(index)
       multiplexer.io.fromLinkLayer(index) <> controller.io.toFrontend
 

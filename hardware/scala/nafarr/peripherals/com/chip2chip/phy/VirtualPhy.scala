@@ -83,8 +83,8 @@ object VirtualPhy {
     val syncInv = B"0110000011"
 
     val findSync = Reg(Bits(20 bits)).init(B(0, 20 bits))
-    findSync := findSync(18 downto 0) ## io.phy.data(0)
-    val nextSync = findSync(18 downto 0) ## io.phy.data(0)
+    val findSyncNext = findSync(18 downto 0) ## io.phy.data(0)
+    findSync := findSyncNext
 
     val container = Reg(DataBlockContainer(ioPins))
     val tmp = Reg(Bits(ioPins bits))
@@ -114,8 +114,8 @@ object VirtualPhy {
       }
     } otherwise {
       when(
-        (nextSync(9 downto 0) === sync || nextSync(9 downto 0) === syncInv) &&
-          (nextSync(19 downto 10) === sync || nextSync(19 downto 10) === syncInv)
+        (findSyncNext(9 downto 0) === sync || findSyncNext(9 downto 0) === syncInv) &&
+          (findSyncNext(19 downto 10) === sync || findSyncNext(19 downto 10) === syncInv)
       ) {
         indexCounter := 0
         locked := True

@@ -31,7 +31,7 @@ object Gpio {
     val mapper = GpioCtrl.Mapper(factory(io.bus), ctrl.io, p)
 
     def deviceTreeZephyr(name: String, address: BigInt, size: BigInt, irqNumber: Int = -1) = {
-      val baseAddress = "%08x".format(address.toInt)
+      val baseAddress = "%x".format(address.toInt)
       val regSize = "%04x".format(size.toInt)
       var dt = s"""
 \t\t$name: $name@$baseAddress {

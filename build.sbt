@@ -5,7 +5,7 @@ lazy val root = (project in file(".")).
     inThisBuild(List(
       organization := "com.github.spinalhdl",
       scalaVersion := "2.11.12",
-      version      := spinalVersion
+      version      := "1.0.0"
     )),
     libraryDependencies ++= Seq(
       "com.github.spinalhdl" % "spinalhdl-core_2.11" % spinalVersion,

@@ -174,23 +174,26 @@ case class Axi4MemoryTranslation(
     for (index <- 0 until lookupEntries) {
       when(lookup(index).valid) {
         val page4k = lookup(index).physical(63 - 12 downto 12 - 12) === physical(63 downto 12)
+        val page64k = lookup(index).physical(63 - 12 downto 16 - 12) === physical(63 downto 16)
         val page2m = lookup(index).physical(63 - 12 downto 21 - 12) === physical(63 downto 21)
         val page4m = lookup(index).physical(63 - 12 downto 22 - 12) === physical(63 downto 22)
         val page1g = lookup(index).physical(63 - 12 downto 30 - 12) === physical(63 downto 30)
         val page1t = lookup(index).physical(63 - 12 downto 40 - 12) === physical(63 downto 40)
         val pageId = lookup(index).physical(63 - 12 downto 54 - 12) === physical(63 downto 54)
 
-        when(lookup(index).pageType === U"000" && page4k) {
+        when(lookup(index).pageType === U(0) && page4k) {
           virtualAddress := lookup(index).virtual(63 - 12 downto 12 - 12) ## pAddr(11 downto 0)
-        } elsewhen (lookup(index).pageType === U"001" && page2m) {
+        } elsewhen (lookup(index).pageType === U(1) && page64k) {
+          virtualAddress := lookup(index).virtual(63 - 12 downto 16 - 12) ## pAddr(15 downto 0)
+        } elsewhen (lookup(index).pageType === U(2) && page2m) {
           virtualAddress := lookup(index).virtual(63 - 12 downto 21 - 12) ## pAddr(20 downto 0)
-        } elsewhen (lookup(index).pageType === U"010" && page4m) {
+        } elsewhen (lookup(index).pageType === U(3) && page4m) {
           virtualAddress := lookup(index).virtual(63 - 12 downto 22 - 12) ## pAddr(21 downto 0)
-        } elsewhen (lookup(index).pageType === U"011" && page1g) {
+        } elsewhen (lookup(index).pageType === U(4) && page1g) {
           virtualAddress := lookup(index).virtual(63 - 12 downto 30 - 12) ## pAddr(29 downto 0)
-        } elsewhen (lookup(index).pageType === U"100" && page1t) {
+        } elsewhen (lookup(index).pageType === U(5) && page1t) {
           virtualAddress := lookup(index).virtual(63 - 12 downto 40 - 12) ## pAddr(39 downto 0)
-        } elsewhen (lookup(index).pageType === U"101" && pageId) {
+        } elsewhen (lookup(index).pageType === U(6) && pageId) {
           virtualAddress := lookup(index).virtual(63 - 12 downto 54 - 12) ## pAddr(53 downto 0)
         }
       }

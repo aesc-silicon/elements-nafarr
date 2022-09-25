@@ -65,8 +65,7 @@ object SpiMaster {
 \t\t$name: $name@$baseAddress {
 \t\t\tcompatible = "elements,spi";
 \t\t\treg = <0x$baseAddress 0x$regSize>;
-\t\t\tstatus = "okay";
-\t\t\tlabel = "$name";"""
+\t\t\tstatus = "okay";"""
       if (irqNumber > 0) {
         dt += s"""
 \t\t\tinterrupt-parent = <&plic>;

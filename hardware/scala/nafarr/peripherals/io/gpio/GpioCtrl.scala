@@ -64,7 +64,7 @@ object GpioCtrl {
     val io = Io(p)
 
     if (p.readBufferDepth > 0) {
-      io.value := BufferCC(io.gpio.pins.read, bufferDepth = p.readBufferDepth)
+      io.value := BufferCC(io.gpio.pins.read, bufferDepth = Some(p.readBufferDepth))
     } else {
       io.value := io.gpio.pins.read
     }

@@ -58,7 +58,7 @@ object PioCtrl {
 
     val value = Bits(parameter.width bits)
     if (parameter.readBufferDepth > 0) {
-      value := BufferCC(io.pio.pins.read, bufferDepth = parameter.readBufferDepth)
+      value := BufferCC(io.pio.pins.read, bufferDepth = Some(parameter.readBufferDepth))
     } else {
       value := io.pio.pins.read
     }

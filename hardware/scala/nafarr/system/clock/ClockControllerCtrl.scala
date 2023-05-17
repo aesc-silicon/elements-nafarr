@@ -73,7 +73,7 @@ object ClockControllerCtrl {
       )
 
       val clockCtrl = new ClockingArea(clockCtrlClockDomain) {
-        val pll = PLL.PLLE2_BASE(CLKFBOUT_MULT = multiply).connect()
+        val pll = PLL.PLLE2_ADV(CLKFBOUT_MULT = multiply).connect()
       }
 
       def addClock(index: Int, frequency: HertzNumber) = index match {

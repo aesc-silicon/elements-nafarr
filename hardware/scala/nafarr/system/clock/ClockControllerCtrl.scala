@@ -5,7 +5,8 @@ import spinal.lib._
 import spinal.lib.bus.misc.BusSlaveFactory
 import scala.collection.mutable.Map
 
-import nafarr.blackboxes.xilinx.a7.PLL
+import nafarr.blackboxes.xilinx.a7.XilinxPLL
+import nafarr.blackboxes.lattice.ecp5.LatticePLL
 import nafarr.system.reset.ResetControllerCtrl.ResetControllerCtrl
 
 object ClockControllerCtrl {
@@ -73,7 +74,7 @@ object ClockControllerCtrl {
       )
 
       val clockCtrl = new ClockingArea(clockCtrlClockDomain) {
-        val pll = PLL.PLLE2_BASE(CLKFBOUT_MULT = multiply).connect()
+        val pll = XilinxPLL.PLLE2_BASE(CLKFBOUT_MULT = multiply).connect()
       }
 
       def addClock(index: Int, frequency: HertzNumber) = index match {
@@ -98,6 +99,45 @@ object ClockControllerCtrl {
         io.buildConnection.clocks(domainIndex) := addClock(index, domain.frequency)
         generatedClocks = generatedClocks :+ getClockPin(index)
       }
+    }
+
+    def buildLatticeECP5Pll(
+        clock: Bool,
+        clockFrequency: HertzNumber,
+        clocks: List[String],
+        CLKI_DIV: Int = 1,
+        CLKFB_DIV: Int = 1,
+        CLKOP_DIV: Int = 1
+    ) {
+      val clockCtrlClockDomain = ClockDomain(
+        clock = clock,
+        frequency = FixedFrequency(clockFrequency),
+        config = ClockDomainConfig(
+          resetKind = BOOT
+        )
+      )
+
+      val clockCtrl = new ClockingArea(clockCtrlClockDomain) {
+        val pll = LatticePLL.EHXPLLL().connect()
+      }
+
+      def addClock(index: Int, frequency: HertzNumber) = index match {
+        case 0 => clockCtrl.pll.addClock0(frequency)
+        case 1 => clockCtrl.pll.addClock1(frequency)
+        case 2 => clockCtrl.pll.addClock2(frequency)
+      }
+      def getClockPin(index: Int) = index match {
+        case 0 => clockCtrl.pll.CLKOS
+        case 1 => clockCtrl.pll.CLKOS2
+        case 2 => clockCtrl.pll.CLKOS3
+      }
+
+      for ((clock, index) <- clocks.zipWithIndex) {
+        val (domainIndex, domain) = parameter.getDomainByName(clock)
+        io.buildConnection.clocks(domainIndex) := addClock(index, domain.frequency)
+        generatedClocks = generatedClocks :+ getClockPin(index)
+      }
+      clockCtrl.pll.calculate(CLKI_DIV, CLKFB_DIV, CLKOP_DIV)
     }
 
     def buildDummy(clock: Bool) {

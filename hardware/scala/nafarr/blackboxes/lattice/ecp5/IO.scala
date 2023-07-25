@@ -63,8 +63,11 @@ object LatticeCmosIo {
 
 object FakeIo {
   def apply() = FakeIo()
-  def apply(pin: TriState[Bool]) = FakeIo().withTriState(pin)
-  def apply(in: Bool, out: Bool, en: Bool) = FakeIo().withBools(in, out, en)
+  def apply(pin: TriState[Bool]) = FakeIo().withTriState(pin, false)
+  def apply(pin: TriState[Bool], inverted: Boolean) = FakeIo().withTriState(pin, inverted)
+  def apply(in: Bool, out: Bool, en: Bool) = FakeIo().withBools(in, out, en, false)
+  def apply(in: Bool, out: Bool, en: Bool, inverted: Boolean) =
+    FakeIo().withBools(in, out, en, inverted)
 
   case class FakeIo() extends Component {
     val io = new Bundle {
@@ -78,14 +81,20 @@ object FakeIo {
     }
     io.O := io.IO
 
-    def withTriState(pin: TriState[Bool]) = {
-      this.io.I := pin.write
+    def withTriState(pin: TriState[Bool], inverted: Boolean) = {
+      if (inverted)
+        this.io.I := !pin.write
+      else
+        this.io.I := pin.write
       this.io.T := pin.writeEnable
       pin.read := this.io.O
       this
     }
-    def withBools(in: Bool, out: Bool, en: Bool) = {
-      this.io.I := out
+    def withBools(in: Bool, out: Bool, en: Bool, inverted: Boolean) = {
+      if (inverted)
+        this.io.I := !out
+      else
+        this.io.I := out
       this.io.T := en
       in := this.io.O
       this
@@ -114,7 +123,8 @@ object FakeI {
 
 object FakeO {
   def apply() = FakeO()
-  def apply(pin: Bool) = FakeO().withBool(pin)
+  def apply(pin: Bool) = FakeO().withBool(pin, false)
+  def apply(pin: Bool, inverted: Boolean) = FakeO().withBool(pin, inverted)
 
   case class FakeO() extends Component {
     val io = new Bundle {
@@ -124,8 +134,11 @@ object FakeO {
 
     io.O := io.I
 
-    def withBool(pin: Bool) = {
-      this.io.I := pin
+    def withBool(pin: Bool, inverted: Boolean) = {
+      if (inverted)
+        this.io.I := !pin
+      else
+        this.io.I := pin
       this
     }
     def driveHigh() = {

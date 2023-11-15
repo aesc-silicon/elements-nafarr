@@ -228,7 +228,7 @@ object UartCtrl {
 
       val irqCtrl = new InterruptCtrl(2)
       irqCtrl.driveFrom(busCtrl, 0x10)
-      irqCtrl.io.inputs(0) := !ctrl.write.valid
+      irqCtrl.io.inputs(0) := False // FIXME wrong signal for TX IRQ: !ctrl.write.valid
       irqCtrl.io.inputs(1) := ctrl.read.valid
       ctrl.pendingInterrupts := irqCtrl.io.pendings
 

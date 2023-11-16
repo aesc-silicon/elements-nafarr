@@ -34,6 +34,7 @@ object Plic {
 
     val targets = Seq(
       PlicTarget(
+        id = 0,
         gateways = gateways,
         priorityWidth = p.priorityWidth
       )

@@ -18,41 +18,41 @@ object GpioCtrl {
     *  @param interrupt list of pin numbers which are interrupt capable. Defaults to null.
     */
   case class Parameter(
-      width: Int,
+      io: Gpio.Parameter,
       readBufferDepth: Int = 0,
       var output: Seq[Int] = null,
       var input: Seq[Int] = null,
       var interrupt: Seq[Int] = null
   ) {
-    require(width < 33, "Only up to 32 GPIOs are allowed.")
     if (output == null)
-      output = (0 until width)
+      output = (0 until io.width)
     if (input == null)
-      input = (0 until width)
+      input = (0 until io.width)
     if (interrupt == null)
-      interrupt = (0 until width)
+      interrupt = (0 until io.width)
   }
   object Parameter {
-    def default = Parameter(32, 1, null, null, null)
-    def full(width: Int = 32) = Parameter(width, 1, null, null, null)
-    def noInterrupt(width: Int = 32) = Parameter(width, 1, null, null, Seq[Int]())
-    def onlyOutput(width: Int = 32) = Parameter(width, 0, null, Seq[Int](), Seq[Int]())
-    def onlyInput(width: Int = 32) = Parameter(width, 0, Seq[Int](), null, null)
+    def default = Parameter(Gpio.Parameter(32), 1, null, null, null)
+    def full(width: Int = 32) = Parameter(Gpio.Parameter(width), 1, null, null, null)
+    def noInterrupt(width: Int = 32) = Parameter(Gpio.Parameter(width), 1, null, null, Seq[Int]())
+    def onlyOutput(width: Int = 32) =
+      Parameter(Gpio.Parameter(width), 0, null, Seq[Int](), Seq[Int]())
+    def onlyInput(width: Int = 32) = Parameter(Gpio.Parameter(width), 0, Seq[Int](), null, null)
   }
 
   case class Config(p: Parameter) extends Bundle {
-    val write = Bits(p.width bits)
-    val direction = Bits(p.width bits)
+    val write = Bits(p.io.width bits)
+    val direction = Bits(p.io.width bits)
   }
   case class InterruptConfig(p: Parameter) extends Bundle {
-    val valid = out(Bits(p.width bits))
-    val pending = in(Bits(p.width bits))
+    val valid = out(Bits(p.io.width bits))
+    val pending = in(Bits(p.io.width bits))
   }
 
   case class Io(p: Parameter) extends Bundle {
-    val gpio = Gpio.Io(p)
+    val gpio = Gpio.Io(p.io)
     val config = in(Config(p))
-    val value = out(Bits(p.width bits))
+    val value = out(Bits(p.io.width bits))
     val interrupt = out(Bool)
     val irqHigh = InterruptConfig(p)
     val irqLow = InterruptConfig(p)
@@ -112,7 +112,7 @@ object GpioCtrl {
       p: Parameter
   ) extends Area {
 
-    for (i <- 0 until p.width) {
+    for (i <- 0 until p.io.width) {
       if (p.input.contains(i))
         busCtrl.read(ctrl.value(i), 0x00, i)
       if (p.output.contains(i)) {
@@ -133,16 +133,16 @@ object GpioCtrl {
 
     val interrupt = new Area {
 
-      val irqHighCtrl = new InterruptCtrl(p.width)
+      val irqHighCtrl = new InterruptCtrl(p.io.width)
       irqHighCtrl.driveFrom(busCtrl, 0x10)
-      val irqLowCtrl = new InterruptCtrl(p.width)
+      val irqLowCtrl = new InterruptCtrl(p.io.width)
       irqLowCtrl.driveFrom(busCtrl, 0x18)
-      val irqRiseCtrl = new InterruptCtrl(p.width)
+      val irqRiseCtrl = new InterruptCtrl(p.io.width)
       irqRiseCtrl.driveFrom(busCtrl, 0x20)
-      val irqFallCtrl = new InterruptCtrl(p.width)
+      val irqFallCtrl = new InterruptCtrl(p.io.width)
       irqFallCtrl.driveFrom(busCtrl, 0x28)
 
-      for (i <- 0 until p.width) {
+      for (i <- 0 until p.io.width) {
         if (p.interrupt.contains(i)) {
           irqHighCtrl.io.inputs(i) := ctrl.irqHigh.valid(i)
           irqLowCtrl.io.inputs(i) := ctrl.irqLow.valid(i)

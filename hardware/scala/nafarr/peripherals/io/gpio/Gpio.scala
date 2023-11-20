@@ -9,7 +9,11 @@ import spinal.lib.bus.wishbone._
 import spinal.lib.io.{TriStateArray, TriState}
 
 object Gpio {
-  case class Io(p: GpioCtrl.Parameter) extends Bundle {
+  case class Parameter(width: Int) {
+    require(width < 33, "Only up to 32 GPIOs are allowed.")
+  }
+
+  case class Io(p: Parameter) extends Bundle {
     val pins = master(TriStateArray(p.width bits))
   }
 
@@ -20,7 +24,7 @@ object Gpio {
   ) extends Component {
     val io = new Bundle {
       val bus = slave(busType())
-      val gpio = Io(p)
+      val gpio = Io(p.io)
       val interrupt = out(Bool)
     }
 

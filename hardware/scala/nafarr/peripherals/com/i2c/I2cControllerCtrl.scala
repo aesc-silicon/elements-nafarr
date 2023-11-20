@@ -22,7 +22,7 @@ object I2cControllerCtrl {
 
   case class Io(p: I2cCtrl.Parameter) extends Bundle {
     val config = in(Config(p))
-    val i2c = master(I2c.Io(p))
+    val i2c = master(I2c.Io(p.io))
     val interrupt = out(Bool)
     val pendingInterrupts = in(Bits(2 bits))
     val cmd = slave(Stream(I2cController.Cmd(p)))
@@ -280,11 +280,11 @@ object I2cControllerCtrl {
     }
 
     val interruptCtrl = new Area {
-      val irqCtrl = new InterruptCtrl(2 + p.interrupts)
+      val irqCtrl = new InterruptCtrl(2 + p.io.interrupts)
       irqCtrl.driveFrom(busCtrl, 0x10)
       irqCtrl.io.inputs(0) := !cmdLogic.stream.valid
       irqCtrl.io.inputs(1) := rspLogic.stream.valid
-      for (i <- 0 until p.interrupts) {
+      for (i <- 0 until p.io.interrupts) {
         irqCtrl.io.inputs(2 + i) := ctrl.i2c.interrupts(i)
       }
       ctrl.pendingInterrupts := irqCtrl.io.pendings

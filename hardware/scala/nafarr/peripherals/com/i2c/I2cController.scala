@@ -28,7 +28,7 @@ object I2cController {
   ) extends Component {
     val io = new Bundle {
       val bus = slave(busType())
-      val i2c = master(I2c.Io(p))
+      val i2c = master(I2c.Io(p.io))
       val interrupt = out(Bool)
     }
 

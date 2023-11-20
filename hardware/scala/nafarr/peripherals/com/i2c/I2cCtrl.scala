@@ -27,25 +27,27 @@ object I2cCtrl {
   case class Parameter(
       permission: PermissionParameter,
       memory: MemoryMappedParameter,
-      timerWidth: Int = 16,
-      interrupts: Int = 0
+      io: I2c.Parameter,
+      timerWidth: Int = 16
   ) {
     require(timerWidth > 1)
-    require(interrupts >= 0)
   }
 
   object Parameter {
     def lightweight = Parameter(
       permission = PermissionParameter.full,
-      memory = MemoryMappedParameter.lightweight
+      memory = MemoryMappedParameter.lightweight,
+      io = I2c.Parameter()
     )
     def default = Parameter(
       permission = PermissionParameter.full,
-      memory = MemoryMappedParameter.default
+      memory = MemoryMappedParameter.default,
+      io = I2c.Parameter()
     )
     def full = Parameter(
       permission = PermissionParameter.full,
-      memory = MemoryMappedParameter.full
+      memory = MemoryMappedParameter.full,
+      io = I2c.Parameter()
     )
   }
 }

@@ -5,7 +5,11 @@ import spinal.lib._
 import spinal.lib.io.ReadableOpenDrain
 
 object I2c {
-  case class Io(p: I2cCtrl.Parameter) extends Bundle with IMasterSlave {
+  case class Parameter(interrupts: Int = 0) {
+    require(interrupts >= 0)
+  }
+
+  case class Io(p: I2c.Parameter) extends Bundle with IMasterSlave {
     val scl = ReadableOpenDrain(Bool)
     val sda = ReadableOpenDrain(Bool)
     val interrupts = Bits(p.interrupts bits)

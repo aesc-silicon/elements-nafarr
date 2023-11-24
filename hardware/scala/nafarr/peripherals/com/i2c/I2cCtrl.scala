@@ -28,9 +28,15 @@ object I2cCtrl {
       permission: PermissionParameter,
       memory: MemoryMappedParameter,
       io: I2c.Parameter,
-      timerWidth: Int = 16
+      timerWidth: Int = 16,
+      timeoutWidth: Int = 16,
+      samplerWidth: Int = 3,
+      addressWidth: Int = 7
   ) {
-    require(timerWidth > 1)
+    require(timerWidth > 1, "Timer width needs to be at least 1 bit")
+    require(timeoutWidth > 1, "Timeout width needs to be at least 1 bit")
+    require(samplerWidth > 2, "Sample window size should be at least 3")
+    require(addressWidth == 7, "Address width can only be 7") // 10 bit not supported yet
   }
 
   object Parameter {
@@ -47,6 +53,11 @@ object I2cCtrl {
     def full = Parameter(
       permission = PermissionParameter.full,
       memory = MemoryMappedParameter.full,
+      io = I2c.Parameter()
+    )
+    def unmapped = Parameter(
+      permission = null,
+      memory = null,
       io = I2c.Parameter()
     )
   }

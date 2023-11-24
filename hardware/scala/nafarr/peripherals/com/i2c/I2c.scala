@@ -20,8 +20,8 @@ object I2c {
       in(interrupts)
     }
     override def asSlave(): Unit = {
-      slave(scl)
-      slave(sda)
+      master(scl)
+      master(sda)
       out(interrupts)
     }
   }

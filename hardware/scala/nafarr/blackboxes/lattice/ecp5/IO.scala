@@ -2,7 +2,7 @@ package nafarr.blackboxes.lattice.ecp5
 
 import spinal.core._
 import spinal.core.sim._
-import spinal.lib.io.TriState
+import spinal.lib.io.{TriState, ReadableOpenDrain}
 import spinal.lib.History
 
 abstract class LatticeIo(pin: String) extends Bundle {
@@ -15,6 +15,7 @@ abstract class LatticeIo(pin: String) extends Bundle {
   var clockSpeed: HertzNumber = 1 Hz
   var comment_ = ""
   var pullType = ""
+  var isOpendrain = false
 
   def getPin() = this.pinName
   def getIoStandard() = this.ioStandardName
@@ -49,15 +50,23 @@ object LatticeCmosIo {
       this.comment_ = comment
       this
     }
-    // Only valid for IBUF, OBUFT and IOBUF!
+    def pullUp = {
+      this.pull("UP")
+    }
+    def pullDown = {
+      this.pull("DOWN")
+    }
     def pull(pull: String) = {
       this.pullType = pull
+      this
+    }
+    def opendrain = {
+      this.isOpendrain = true
       this
     }
     def <>(that: FakeIo.FakeIo) = that.io.IO := this.PAD
     def <>(that: FakeI.FakeI) = that.io.I := this.PAD
     def <>(that: FakeO.FakeO) = this.PAD := that.io.O
-
   }
 }
 
@@ -65,6 +74,7 @@ object FakeIo {
   def apply() = FakeIo()
   def apply(pin: TriState[Bool]) = FakeIo().withTriState(pin, false)
   def apply(pin: TriState[Bool], inverted: Boolean) = FakeIo().withTriState(pin, inverted)
+  def apply(pin: ReadableOpenDrain[Bool]) = FakeIo().withReadableOpenDrain(pin)
   def apply(in: Bool, out: Bool, en: Bool) = FakeIo().withBools(in, out, en, false)
   def apply(in: Bool, out: Bool, en: Bool, inverted: Boolean) =
     FakeIo().withBools(in, out, en, inverted)
@@ -89,6 +99,9 @@ object FakeIo {
       this.io.T := pin.writeEnable
       pin.read := this.io.O
       this
+    }
+    def withReadableOpenDrain(pin: ReadableOpenDrain[Bool]) = {
+      this.withBools(pin.read, False, pin.write, false)
     }
     def withBools(in: Bool, out: Bool, en: Bool, inverted: Boolean) = {
       if (inverted)

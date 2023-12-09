@@ -22,7 +22,8 @@ object GpioCtrl {
       readBufferDepth: Int = 0,
       var output: Seq[Int] = null,
       var input: Seq[Int] = null,
-      var interrupt: Seq[Int] = null
+      var interrupt: Seq[Int] = null,
+      invertWriteEnable: Boolean = false
   ) {
     if (output == null)
       output = (0 until io.width)
@@ -33,10 +34,12 @@ object GpioCtrl {
   }
   object Parameter {
     def default = Parameter(Gpio.Parameter(32), 1, null, null, null)
-    def full(width: Int = 32) = Parameter(Gpio.Parameter(width), 1, null, null, null)
-    def noInterrupt(width: Int = 32) = Parameter(Gpio.Parameter(width), 1, null, null, Seq[Int]())
-    def onlyOutput(width: Int = 32) =
-      Parameter(Gpio.Parameter(width), 0, null, Seq[Int](), Seq[Int]())
+    def full(width: Int = 32, invertWriteEnable: Boolean = false) =
+      Parameter(Gpio.Parameter(width), 1, null, null, null, invertWriteEnable)
+    def noInterrupt(width: Int = 32, invertWriteEnable: Boolean = false) =
+      Parameter(Gpio.Parameter(width), 1, null, null, Seq[Int](), invertWriteEnable)
+    def onlyOutput(width: Int = 32, invertWriteEnable: Boolean = false) =
+      Parameter(Gpio.Parameter(width), 0, null, Seq[Int](), Seq[Int](), invertWriteEnable)
     def onlyInput(width: Int = 32) = Parameter(Gpio.Parameter(width), 0, Seq[Int](), null, null)
   }
 
@@ -69,7 +72,11 @@ object GpioCtrl {
       io.value := io.gpio.pins.read
     }
     io.gpio.pins.write := io.config.write
-    io.gpio.pins.writeEnable := io.config.direction
+    if (p.invertWriteEnable) {
+      io.gpio.pins.writeEnable := ~io.config.direction
+    } else {
+      io.gpio.pins.writeEnable := io.config.direction
+    }
 
     val synchronized = BufferCC(io.gpio.pins.read)
     val last = RegNext(synchronized)

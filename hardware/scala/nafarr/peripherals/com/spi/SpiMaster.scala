@@ -46,7 +46,7 @@ object SpiMaster {
   ) extends Component {
     val io = new Bundle {
       val bus = slave(busType())
-      val spi = master(Spi.Io(p))
+      val spi = master(Spi.Io(p.io))
       val interrupt = out(Bool)
     }
 

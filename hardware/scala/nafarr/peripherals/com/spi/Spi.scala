@@ -4,7 +4,9 @@ import spinal.core._
 import spinal.lib._
 
 object Spi {
-  case class Io(p: SpiCtrl.Parameter) extends Bundle with IMasterSlave {
+  case class Parameter(ssWidth: Int) {}
+
+  case class Io(p: Spi.Parameter) extends Bundle with IMasterSlave {
     val ss = Bits(p.ssWidth bits)
     val sclk = Bool
     val mosi = Bool

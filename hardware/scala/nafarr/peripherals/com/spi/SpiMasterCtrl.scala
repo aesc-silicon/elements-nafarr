@@ -26,7 +26,7 @@ object SpiMasterCtrl {
   case class Io(p: SpiCtrl.Parameter) extends Bundle {
     val config = in(Config(p))
     val modeConfig = in(ModeConfig(p))
-    val spi = master(Spi.Io(p))
+    val spi = master(Spi.Io(p.io))
     val interrupt = out(Bool)
     val pendingInterrupts = in(Bits(2 bits))
     val cmd = slave(Stream(SpiMaster.Cmd(p)))

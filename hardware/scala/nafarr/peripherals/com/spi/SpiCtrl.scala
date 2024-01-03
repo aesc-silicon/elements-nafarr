@@ -41,7 +41,8 @@ object SpiCtrl {
   case class Parameter(
       permission: PermissionParameter,
       memory: MemoryMappedParameter,
-      init: InitParameter = null,
+      init: InitParameter,
+      io: Spi.Parameter,
       ssWidth: Int = 1,
       timerWidth: Int = 16,
       dataWidth: Int = 8
@@ -55,22 +56,26 @@ object SpiCtrl {
     def lightweight = Parameter(
       permission = PermissionParameter.full,
       memory = MemoryMappedParameter.lightweight,
-      init = InitParameter.default
+      init = InitParameter.default,
+      io = Spi.Parameter(1)
     )
     def default = Parameter(
       permission = PermissionParameter.full,
       memory = MemoryMappedParameter.default,
-      init = InitParameter.default
+      init = InitParameter.default,
+      io = Spi.Parameter(1)
     )
     def xip = Parameter(
       permission = PermissionParameter.full,
       memory = MemoryMappedParameter.default,
-      init = InitParameter.xip
+      init = InitParameter.xip,
+      io = Spi.Parameter(1)
     )
     def full = Parameter(
       permission = PermissionParameter.full,
       memory = MemoryMappedParameter.full,
-      init = InitParameter.default
+      init = InitParameter.default,
+      io = Spi.Parameter(1)
     )
   }
 }

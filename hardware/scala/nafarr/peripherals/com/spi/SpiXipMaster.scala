@@ -18,7 +18,7 @@ object SpiXipMaster {
     val io = new Bundle {
       val bus = slave(busType())
       val dataBus = slave(Axi4Shared(dataBusConfig))
-      val spi = master(Spi.Io(p))
+      val spi = master(Spi.Io(p.io))
       val interrupt = out(Bool)
     }
 

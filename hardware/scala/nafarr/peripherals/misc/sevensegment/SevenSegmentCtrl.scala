@@ -31,7 +31,7 @@ object SevenSegmentCtrl {
 
       select := select.rotateLeft(1)
       muxer := muxer + 1
-      when(muxer === p.count) {
+      when(muxer === p.count - 1) {
         muxer := 0
       }
     }

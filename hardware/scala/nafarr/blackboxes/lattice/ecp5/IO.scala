@@ -164,3 +164,19 @@ object FakeO {
     }
   }
 }
+
+object USRMCLK {
+  def apply(pin: Bool) = USRMCLK().withBool(pin)
+
+  case class USRMCLK() extends BlackBox {
+    val USRMCLKI = in(Bool())
+    val USRMCLKTS = in(Bool())
+
+    addRTLPath(System.getenv("NAFARR_BASE") + "/hardware/scala/nafarr/blackboxes/lattice/ecp5/IO.v")
+
+    def withBool(pin: Bool) = {
+      this.USRMCLKI := pin
+      this.USRMCLKTS := True
+    }
+  }
+}

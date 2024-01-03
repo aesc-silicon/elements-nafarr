@@ -24,7 +24,7 @@ object I2cControllerCtrl {
     val config = in(Config(p))
     val i2c = master(I2c.Io(p.io))
     val interrupt = out(Bool)
-    val pendingInterrupts = in(Bits(2 bits))
+    val pendingInterrupts = in(Bits(2 + p.io.interrupts bits))
     val cmd = slave(Stream(I2cController.Cmd(p)))
     val rsp = master(Stream(I2cController.Rsp(p)))
   }

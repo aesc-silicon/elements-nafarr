@@ -2,7 +2,7 @@ package nafarr.blackboxes.xilinx.a7
 
 import spinal.core._
 import spinal.core.sim._
-import spinal.lib.io.TriState
+import spinal.lib.io.{TriState, ReadableOpenDrain}
 import spinal.lib.History
 
 abstract class XilinxIo(pin: String) extends Bundle {
@@ -192,8 +192,12 @@ object XilinxLvdsOutput {
 
 object IOBUF {
   def apply() = IOBUF()
-  def apply(pin: TriState[Bool]) = IOBUF().withTriState(pin)
-  def apply(in: Bool, out: Bool, en: Bool) = IOBUF().withBools(in, out, en)
+  def apply(pin: TriState[Bool]) = IOBUF().withTriState(pin, false)
+  def apply(pin: TriState[Bool], inverted: Boolean) = IOBUF().withTriState(pin, inverted)
+  def apply(pin: ReadableOpenDrain[Bool]) = IOBUF().withReadableOpenDrain(pin)
+  def apply(in: Bool, out: Bool, en: Bool) = IOBUF().withBools(in, out, en, false)
+  def apply(in: Bool, out: Bool, en: Bool, inverted: Boolean) =
+    IOBUF().withBools(in, out, en, inverted)
 
   case class IOBUF(
       DRIVE: Int = 12,
@@ -217,14 +221,24 @@ object IOBUF {
     }
     O := IO
 
-    def withTriState(pin: TriState[Bool]) = {
-      this.I := pin.write
+    def withTriState(pin: TriState[Bool], inverted: Boolean) = {
+      if (inverted)
+        this.I := !pin.write
+      else
+        this.I := pin.write
       this.T := !pin.writeEnable
       pin.read := this.O
       this
     }
-    def withBools(in: Bool, out: Bool, en: Bool) = {
-      this.I := out
+    def withReadableOpenDrain(pin: ReadableOpenDrain[Bool]) = {
+      this.withBools(pin.read, False, pin.write, false)
+    }
+
+    def withBools(in: Bool, out: Bool, en: Bool, inverted: Boolean) = {
+      if (inverted)
+        this.I := !out
+      else
+        this.I := out
       this.T := !en
       in := this.O
       this

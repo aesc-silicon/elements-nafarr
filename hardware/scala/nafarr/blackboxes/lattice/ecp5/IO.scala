@@ -42,6 +42,12 @@ object LatticeCmosIo {
       this.ioTerm = term
       this
     }
+    def slewRateFast = {
+      this.slew("FAST")
+    }
+    def slewRateSlow = {
+      this.slew("SLOW")
+    }
     def slew(slew: String) = {
       this.ioSlew = slew
       this

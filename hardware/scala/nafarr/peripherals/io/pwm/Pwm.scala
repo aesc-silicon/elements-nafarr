@@ -12,7 +12,6 @@ object Pwm {
 
   case class Io(p: Parameter) extends Bundle {
     val output = out(Bits(p.channels bits))
-    // TODO input
   }
 
   class Core[T <: spinal.core.Data with IMasterSlave](

@@ -7,15 +7,16 @@ import spinal.lib.misc.InterruptCtrl
 import spinal.lib.io.{TriStateArray, TriState}
 
 object GpioCtrl {
-  def apply(p: Parameter = Parameter.default) = GpioCtrl(p)
+  def apply(p: Parameter = Parameter.default()) = GpioCtrl(p)
 
   /** Parameters for GPIO controller.
     *
-    *  @param width bit width of the controller and therefore the number of GPIOs.
+    *  @param io Gpio.Parameter class with IO parameters
     *  @param readBufferDepth register depth for reading values. Disabled when 0. Defaults to 0.
     *  @param output list of pin numbers which can drive an output signal. Defaults to null.
     *  @param input list of pin numbers which can read ana input signal. Defaults to null
     *  @param interrupt list of pin numbers which are interrupt capable. Defaults to null.
+    *  @param invertWriteEnable change the write enable pin to active low. Defaults to false.
     */
   case class Parameter(
       io: Gpio.Parameter,
@@ -33,8 +34,7 @@ object GpioCtrl {
       interrupt = (0 until io.width)
   }
   object Parameter {
-    def default = Parameter(Gpio.Parameter(32), 1, null, null, null)
-    def full(width: Int = 32, invertWriteEnable: Boolean = false) =
+    def default(width: Int = 32, invertWriteEnable: Boolean = false) =
       Parameter(Gpio.Parameter(width), 1, null, null, null, invertWriteEnable)
     def noInterrupt(width: Int = 32, invertWriteEnable: Boolean = false) =
       Parameter(Gpio.Parameter(width), 1, null, null, Seq[Int](), invertWriteEnable)
@@ -139,7 +139,6 @@ object GpioCtrl {
     }
 
     val interrupt = new Area {
-
       val irqHighCtrl = new InterruptCtrl(p.io.width)
       irqHighCtrl.driveFrom(busCtrl, 0x10)
       val irqLowCtrl = new InterruptCtrl(p.io.width)
@@ -167,7 +166,6 @@ object GpioCtrl {
       ctrl.irqLow.pending := irqLowCtrl.io.pendings
       ctrl.irqRise.pending := irqRiseCtrl.io.pendings
       ctrl.irqFall.pending := irqFallCtrl.io.pendings
-
     }
   }
 }

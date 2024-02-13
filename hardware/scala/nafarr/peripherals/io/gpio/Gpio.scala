@@ -7,6 +7,7 @@ import spinal.lib.bus.amba3.apb._
 import spinal.lib.bus.avalon._
 import spinal.lib.bus.wishbone._
 import spinal.lib.io.{TriStateArray, TriState}
+import nafarr.peripherals.PeripheralsComponent
 
 object Gpio {
   case class Parameter(width: Int) {
@@ -21,7 +22,7 @@ object Gpio {
       p: GpioCtrl.Parameter,
       busType: HardType[T],
       factory: T => BusSlaveFactory
-  ) extends Component {
+  ) extends PeripheralsComponent {
     val io = new Bundle {
       val bus = slave(busType())
       val gpio = Io(p.io)
@@ -34,7 +35,12 @@ object Gpio {
 
     val mapper = GpioCtrl.Mapper(factory(io.bus), ctrl.io, p)
 
-    def deviceTreeZephyr(name: String, address: BigInt, size: BigInt, irqNumber: Int = -1) = {
+    def deviceTreeZephyr(
+        name: String,
+        address: BigInt,
+        size: BigInt,
+        irqNumber: Option[Int] = null
+    ) = {
       val baseAddress = "%x".format(address.toInt)
       val regSize = "%04x".format(size.toInt)
       var dt = s"""
@@ -42,7 +48,7 @@ object Gpio {
 \t\t\tcompatible = "elements,gpio";
 \t\t\treg = <0x$baseAddress 0x$regSize>;
 \t\t\tstatus = "okay";"""
-      if (irqNumber > 0) {
+      if (irqNumber.isDefined) {
         dt += s"""
 \t\t\tinterrupt-parent = <&plic>;
 \t\t\tinterrupts = <$irqNumber 1>;"""
@@ -53,7 +59,12 @@ object Gpio {
 \t\t};"""
       dt
     }
-    def headerBareMetal(name: String, address: BigInt, size: BigInt, irqNumber: Int = -1) = {
+    def headerBareMetal(
+        name: String,
+        address: BigInt,
+        size: BigInt,
+        irqNumber: Option[Int] = null
+    ) = {
       val baseAddress = "%08x".format(address.toInt)
       val regSize = "%04x".format(size.toInt)
       var dt = s"""#define ${name.toUpperCase}_BASE\t\t0x${baseAddress}\n"""

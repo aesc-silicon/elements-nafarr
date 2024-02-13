@@ -1,4 +1,4 @@
-package nafarr.peripherals.com.i2c
+package nafarr.peripherals.com.spi
 
 import org.scalatest.funsuite.AnyFunSuite
 
@@ -8,27 +8,33 @@ import spinal.core.sim._
 import nafarr.CheckTester._
 import spinal.lib.bus.amba3.apb.sim.Apb3Driver
 
-
-class Apb3I2cControllerTest extends AnyFunSuite {
+class Apb3SpiControllerTest extends AnyFunSuite {
   test("parameters") {
     generationShouldPass {
       val cd = ClockDomain.current.copy(frequency = FixedFrequency(100 MHz))
       val area = new ClockingArea(cd) {
-        val dut = Apb3I2cController(I2cCtrl.Parameter.lightweight)
+        val dut = Apb3SpiController(SpiCtrl.Parameter.lightweight())
       }
       area.dut
     }
     generationShouldPass {
       val cd = ClockDomain.current.copy(frequency = FixedFrequency(100 MHz))
       val area = new ClockingArea(cd) {
-        val dut = Apb3I2cController(I2cCtrl.Parameter.default)
+        val dut = Apb3SpiController(SpiCtrl.Parameter.default())
       }
       area.dut
     }
     generationShouldPass {
       val cd = ClockDomain.current.copy(frequency = FixedFrequency(100 MHz))
       val area = new ClockingArea(cd) {
-        val dut = Apb3I2cController(I2cCtrl.Parameter.full)
+        val dut = Apb3SpiController(SpiCtrl.Parameter.xip())
+      }
+      area.dut
+    }
+    generationShouldPass {
+      val cd = ClockDomain.current.copy(frequency = FixedFrequency(100 MHz))
+      val area = new ClockingArea(cd) {
+        val dut = Apb3SpiController(SpiCtrl.Parameter.full())
       }
       area.dut
     }
@@ -37,7 +43,7 @@ class Apb3I2cControllerTest extends AnyFunSuite {
     val compiled = SimConfig.withWave.compile {
       val cd = ClockDomain.current.copy(frequency = FixedFrequency(100 MHz))
       val area = new ClockingArea(cd) {
-        val dut = Apb3I2cController(I2cCtrl.Parameter.default)
+        val dut = Apb3SpiController(SpiCtrl.Parameter.default())
       }
       area.dut
     }

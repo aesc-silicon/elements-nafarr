@@ -6,10 +6,11 @@ import spinal.lib.bus.misc._
 import spinal.lib.bus.amba3.apb._
 import spinal.lib.bus.avalon._
 import spinal.lib.bus.wishbone._
+import nafarr.peripherals.PeripheralsComponent
 
-object SpiMaster {
+object SpiController {
   object CmdMode extends SpinalEnum(binarySequential) {
-    val DATA, SS = newElement()
+    val DATA, CS = newElement()
   }
 
   case class CmdData(p: SpiCtrl.Parameter) extends Bundle {
@@ -17,14 +18,14 @@ object SpiMaster {
     val read = Bool
   }
 
-  case class CmdSs(p: SpiCtrl.Parameter) extends Bundle {
+  case class CmdCs(p: SpiCtrl.Parameter) extends Bundle {
     val enable = Bool
-    val index = UInt(log2Up(p.ssWidth) bits)
+    val index = UInt(log2Up(p.io.csWidth) bits)
   }
 
   case class Cmd(p: SpiCtrl.Parameter) extends Bundle {
     val mode = CmdMode()
-    val args = Bits(Math.max(widthOf(CmdData(p)), log2Up(p.ssWidth) + 1) bits)
+    val args = Bits(Math.max(widthOf(CmdData(p)), widthOf(CmdCs(p))) bits)
 
     def isData = mode === CmdMode.DATA
     def argsData = {
@@ -32,8 +33,8 @@ object SpiMaster {
       ret.assignFromBits(args)
       ret
     }
-    def argsSs = {
-      val ret = CmdSs(p)
+    def argsCs = {
+      val ret = CmdCs(p)
       ret.assignFromBits(args)
       ret
     }
@@ -43,22 +44,27 @@ object SpiMaster {
       p: SpiCtrl.Parameter,
       busType: HardType[T],
       factory: T => BusSlaveFactory
-  ) extends Component {
+  ) extends PeripheralsComponent {
     val io = new Bundle {
       val bus = slave(busType())
       val spi = master(Spi.Io(p.io))
       val interrupt = out(Bool)
     }
 
-    val spiMasterCtrl = SpiMasterCtrl(p)
-    spiMasterCtrl.io.spi <> io.spi
-    io.interrupt := spiMasterCtrl.io.interrupt
+    val spiControllerCtrl = SpiControllerCtrl(p)
+    spiControllerCtrl.io.spi <> io.spi
+    io.interrupt := spiControllerCtrl.io.interrupt
 
     val busFactory = factory(io.bus)
-    SpiMasterCtrl.Mapper(busFactory, spiMasterCtrl.io, p)
-    SpiMasterCtrl.StreamMapper(busFactory, spiMasterCtrl.io, p)
+    SpiControllerCtrl.Mapper(busFactory, spiControllerCtrl.io, p)
+    SpiControllerCtrl.StreamMapper(busFactory, spiControllerCtrl.io, p)
 
-    def deviceTreeZephyr(name: String, address: BigInt, size: BigInt, irqNumber: Int = -1) = {
+    def deviceTreeZephyr(
+        name: String,
+        address: BigInt,
+        size: BigInt,
+        irqNumber: Option[Int] = null
+    ) = {
       val baseAddress = "%x".format(address.toInt)
       val regSize = "%04x".format(size.toInt)
       var dt = s"""
@@ -66,7 +72,7 @@ object SpiMaster {
 \t\t\tcompatible = "elements,spi";
 \t\t\treg = <0x$baseAddress 0x$regSize>;
 \t\t\tstatus = "okay";"""
-      if (irqNumber > 0) {
+      if (irqNumber.isDefined) {
         dt += s"""
 \t\t\tinterrupt-parent = <&plic>;
 \t\t\tinterrupts = <$irqNumber 1>;"""
@@ -75,7 +81,12 @@ object SpiMaster {
 \t\t};"""
       dt
     }
-    def headerBareMetal(name: String, address: BigInt, size: BigInt, irqNumber: Int = -1) = {
+    def headerBareMetal(
+        name: String,
+        address: BigInt,
+        size: BigInt,
+        irqNumber: Option[Int] = null
+    ) = {
       val baseAddress = "%08x".format(address.toInt)
       val regSize = "%04x".format(size.toInt)
       var dt = s"""#define ${name.toUpperCase}_BASE\t\t0x${baseAddress}\n"""
@@ -84,28 +95,28 @@ object SpiMaster {
   }
 }
 
-case class Apb3SpiMaster(
+case class Apb3SpiController(
     parameter: SpiCtrl.Parameter,
     busConfig: Apb3Config = Apb3Config(12, 32)
-) extends SpiMaster.Core[Apb3](
+) extends SpiController.Core[Apb3](
       parameter,
       Apb3(busConfig),
       Apb3SlaveFactory(_)
     ) { val dummy = 0 }
 
-case class WishboneSpiMaster(
+case class WishboneSpiController(
     parameter: SpiCtrl.Parameter,
     busConfig: WishboneConfig = WishboneConfig(12, 32)
-) extends SpiMaster.Core[Wishbone](
+) extends SpiController.Core[Wishbone](
       parameter,
       Wishbone(busConfig),
       WishboneSlaveFactory(_)
     ) { val dummy = 0 }
 
-case class AvalonMMSpiMaster(
+case class AvalonMMSpiController(
     parameter: SpiCtrl.Parameter,
     busConfig: AvalonMMConfig = AvalonMMConfig.fixed(12, 32, 1)
-) extends SpiMaster.Core[AvalonMM](
+) extends SpiController.Core[AvalonMM](
       parameter,
       AvalonMM(busConfig),
       AvalonMMSlaveFactory(_)

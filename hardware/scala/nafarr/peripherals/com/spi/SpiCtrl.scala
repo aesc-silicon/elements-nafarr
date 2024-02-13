@@ -10,7 +10,7 @@ object SpiCtrl {
   )
   object InitParameter {
     def default = InitParameter(false, false, 100 kHz)
-    def xip = InitParameter(false, false, 1 MHz)
+    def fast = InitParameter(false, false, 1 MHz)
   }
 
   case class PermissionParameter(
@@ -43,39 +43,37 @@ object SpiCtrl {
       memory: MemoryMappedParameter,
       init: InitParameter,
       io: Spi.Parameter,
-      ssWidth: Int = 1,
       timerWidth: Int = 16,
       dataWidth: Int = 8
   ) {
-    require(ssWidth > 0)
     require(timerWidth > 1)
     require(dataWidth > 0)
   }
 
   object Parameter {
-    def lightweight = Parameter(
+    def lightweight(csWidth: Int = 1) = Parameter(
       permission = PermissionParameter.full,
       memory = MemoryMappedParameter.lightweight,
       init = InitParameter.default,
-      io = Spi.Parameter(1)
+      io = Spi.Parameter(csWidth)
     )
-    def default = Parameter(
+    def default(csWidth: Int = 1) = Parameter(
       permission = PermissionParameter.full,
       memory = MemoryMappedParameter.default,
       init = InitParameter.default,
-      io = Spi.Parameter(1)
+      io = Spi.Parameter(csWidth)
     )
-    def xip = Parameter(
+    def xip(csWidth: Int = 1) = Parameter(
       permission = PermissionParameter.full,
       memory = MemoryMappedParameter.default,
-      init = InitParameter.xip,
-      io = Spi.Parameter(1)
+      init = InitParameter.fast,
+      io = Spi.Parameter(csWidth)
     )
-    def full = Parameter(
+    def full(csWidth: Int = 1) = Parameter(
       permission = PermissionParameter.full,
       memory = MemoryMappedParameter.full,
-      init = InitParameter.default,
-      io = Spi.Parameter(1)
+      init = InitParameter.fast,
+      io = Spi.Parameter(csWidth)
     )
   }
 }

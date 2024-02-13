@@ -2,27 +2,27 @@ package nafarr.peripherals.com.spi
 
 import spinal.core._
 import spinal.lib._
+import spinal.lib.io.{TriStateArray, TriState}
 
 object Spi {
-  case class Parameter(ssWidth: Int) {}
+  case class Parameter(csWidth: Int) {}
 
   case class Io(p: Spi.Parameter) extends Bundle with IMasterSlave {
-    val ss = Bits(p.ssWidth bits)
+    val cs = Bits(p.csWidth bits)
     val sclk = Bool
-    val mosi = Bool
-    val miso = Bool
+    // dq[0] - mosi
+    // dp[1] - miso
+    val dq = TriStateArray(2 bits)
 
     override def asMaster(): Unit = {
-      out(ss)
+      out(cs)
       out(sclk)
-      out(mosi)
-      in(miso)
+      master(dq)
     }
     override def asSlave(): Unit = {
-      in(ss)
+      in(cs)
       in(sclk)
-      in(mosi)
-      out(miso)
+      slave(dq)
     }
   }
 }

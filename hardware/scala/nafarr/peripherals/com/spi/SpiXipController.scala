@@ -8,7 +8,7 @@ import spinal.lib.bus.amba4.axi._
 import spinal.lib.bus.avalon._
 import spinal.lib.bus.wishbone._
 
-object SpiXipMaster {
+object SpiXipController {
   class Core[T <: spinal.core.Data with IMasterSlave](
       p: SpiCtrl.Parameter,
       dataBusConfig: Axi4Config,
@@ -17,30 +17,30 @@ object SpiXipMaster {
   ) extends Component {
     val io = new Bundle {
       val bus = slave(busType())
-      val dataBus = slave(Axi4Shared(dataBusConfig))
+      val dataBus = slave(Axi4ReadOnly(dataBusConfig))
       val spi = master(Spi.Io(p.io))
       val interrupt = out(Bool)
     }
 
-    val spiMasterCtrl = SpiMasterCtrl(p)
-    spiMasterCtrl.io.spi <> io.spi
+    val spiControllerCtrl = SpiControllerCtrl(p)
+    spiControllerCtrl.io.spi <> io.spi
     io.interrupt := False
 
-    val spiXipMasterCtrl = SpiXipMasterCtrl(p, dataBusConfig)
-    spiMasterCtrl.io.cmd << spiXipMasterCtrl.io.cmd
-    spiXipMasterCtrl.io.rsp << spiMasterCtrl.io.rsp
-    spiXipMasterCtrl.io.bus << io.dataBus
+    val spiXipControllerCtrl = SpiXipControllerCtrl(p, dataBusConfig)
+    spiControllerCtrl.io.cmd << spiXipControllerCtrl.io.cmd
+    spiXipControllerCtrl.io.rsp << spiControllerCtrl.io.rsp
+    spiXipControllerCtrl.io.bus << io.dataBus
 
     val busFactory = factory(io.bus)
-    SpiMasterCtrl.Mapper(busFactory, spiMasterCtrl.io, p)
+    SpiControllerCtrl.Mapper(busFactory, spiControllerCtrl.io, p)
   }
 }
 
-case class Axi4SharedSpiXipMaster(
+case class Axi4ReadOnlySpiXipController(
     parameter: SpiCtrl.Parameter,
     dataBusConfig: Axi4Config = Axi4Config(20, 32, 4),
     busConfig: Apb3Config = Apb3Config(12, 32)
-) extends SpiXipMaster.Core[Apb3](
+) extends SpiXipController.Core[Apb3](
       parameter,
       dataBusConfig,
       Apb3(busConfig),

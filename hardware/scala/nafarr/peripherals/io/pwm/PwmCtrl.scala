@@ -66,7 +66,7 @@ object PwmCtrl {
       val channel = new Area {
         val periodCounter = Reg(UInt(p.channelPeriodWidth bits)).init(0)
         val pulseCounter = Reg(UInt(p.channelPulseWidth bits)).init(0)
-        val lock = Reg(True)
+        val lock = RegInit(True)
         def tick = !lock && clockDivider.tick
 
         io.pwm.output(i) := io.channels(i).invert

@@ -110,6 +110,7 @@ object HyperBus {
     val read = Bool
     val data = Bits(p.frontend.dataWidth bits)
     val last = Bool
+    val error = Bool
   }
 
   case class Io(p: HyperBusCtrl.Parameter) extends Bundle with IMasterSlave {

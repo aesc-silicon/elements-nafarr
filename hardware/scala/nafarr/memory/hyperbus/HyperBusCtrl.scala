@@ -43,6 +43,7 @@ object HyperBusCtrl {
       registerRspFifoDepth: Int = 4
   ) {
     val supportedDevices = partitions.length
+    val memorySpace = (for (partition <- partitions) yield partition._1).sum
     require(supportedDevices < 9, "Only up to 8 devices supported for one HyperBus interface.")
   }
   case class PhyParameter(
@@ -87,11 +88,17 @@ object HyperBusCtrl {
     require(dataWidth % 8 == 0, "Data width has to be a multiple of 8")
   }
 
+  case class Partition(p: Parameter) extends Bundle {
+    val low = UInt(32 bits)
+    val high = UInt(32 bits)
+    val readable = Bool()
+  }
+
   case class Config(p: Parameter) extends Bundle {
     val phy = slave(HyperBus.Phy.Config(p))
     val latencyCycles = in(UInt(log2Up(6) bits))
     val cmd = slave(Stream(Bits(32 bits)))
-    val rsp = master(Stream(Bits(16 bits)))
+    val rsp = master(Stream(Bits(17 bits)))
   }
 
   case class Io(p: Parameter) extends Bundle {
@@ -168,7 +175,17 @@ object HyperBusCtrl {
     io.frontend.payload.id := frontend.io.pop.payload.id
     io.frontend.payload.read := frontend.io.pop.payload.read
     io.frontend.payload.data := 0
-    io.frontend.payload.last := True
+    io.frontend.payload.last := frontend.io.pop.payload.last
+    io.frontend.payload.error := False
+
+    val partitions = Vec(Reg(Partition(p)), p.hyperbus.partitions.length)
+    var lowAddress = BigInt(0)
+    for ((partition, idx) <- p.hyperbus.partitions.zipWithIndex) {
+      partitions(idx).low := lowAddress
+      lowAddress = lowAddress + partition._1
+      partitions(idx).high := lowAddress
+      partitions(idx).readable := Bool(partition._2)
+    }
 
     val fsm = new StateMachine {
       val counter = Reg(UInt(3 bits))
@@ -192,7 +209,18 @@ object HyperBusCtrl {
             ca(2 downto 0) := frontend.io.pop.payload.addr.asBits(2 downto 0)
 
             val cmd = HyperBus.Phy.CmdCs(p)
-            cmd.index := 0
+            val addr = frontend.io.pop.payload.addr(log2Up(p.hyperbus.memorySpace) - 1 downto 0)
+            if (partitions.length == 1) {
+              // TODO error when !inPartitions
+              // TODO error when frontend.io.pop.payload.read && !_.read
+              cmd.index := 0
+            } else {
+              val (inPartitions, index) = partitions.sFindFirst(x => x.low <= addr && addr < x.high)
+              // TODO error when !inPartitions
+              // TODO error when frontend.io.pop.payload.read && !_.read
+              // TODO split access over partition boundary
+              cmd.index := index
+            }
             cmd.latencyCycles := io.config.latencyCycles
             when(!frontend.io.pop.payload.memory && !frontend.io.pop.payload.read) {
               cmd.latencyCycles := 0
@@ -393,10 +421,29 @@ object HyperBusCtrl {
               goto(init)
             }
           } otherwise {
-            io.config.rsp.payload := data(15 downto 0)
+            io.config.rsp.payload := False ## data(15 downto 0)
             when(!frontend.io.pop.payload.read) {
               io.config.rsp.payload := 0
             }
+            io.config.rsp.valid := True
+            when(io.config.rsp.fire) {
+              frontend.io.pop.ready := True
+              goto(init)
+            }
+          }
+        }
+      }
+      val error: State = new State {
+        whenIsActive {
+          when(frontend.io.pop.memory) {
+            io.frontend.error := True
+            io.frontend.valid := True
+            when(io.frontend.fire) {
+              frontend.io.pop.ready := True
+              goto(init)
+            }
+          } otherwise {
+            io.config.rsp.payload := True ## data(15 downto 0)
             io.config.rsp.valid := True
             when(io.config.rsp.fire) {
               frontend.io.pop.ready := True

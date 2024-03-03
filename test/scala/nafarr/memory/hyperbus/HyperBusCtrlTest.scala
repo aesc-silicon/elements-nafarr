@@ -33,11 +33,11 @@ class HyperBusCtrlTest extends AnyFunSuite {
     }
   }
 
-  def fakeFrontend(dut: HyperBusCtrl.HyperBusCtrl, read: Boolean = true) {
+  def fakeFrontend(dut: HyperBusCtrl.HyperBusCtrl, read: Boolean = true, address: BigInt = BigInt(104)) {
     val fakeFrontendFork = fork {
       dut.io.controller.payload.id #= BigInt(13)
       dut.io.controller.payload.unaligned #= false
-      dut.io.controller.payload.addr #= BigInt(104)
+      dut.io.controller.payload.addr #= address
       dut.io.controller.payload.data #= BigInt("CAFEBABE", 16)
       dut.io.controller.payload.strobe#= BigInt("0011", 2)
       dut.io.controller.payload.read #= read
@@ -305,6 +305,138 @@ class HyperBusCtrlTest extends AnyFunSuite {
       checkPhyCmd(dut, false, true)
       sendPhyRsp(dut, true)
       checkFrontendRsp(dut, false)
+
+      dut.clockDomain.waitSampling(100)
+    }
+  }
+
+  test("HyperBusCtrl-Partitions") {
+    val compiled = SimConfig.withWave.compile {
+      val cd = ClockDomain.current.copy(frequency = FixedFrequency(100 MHz))
+      val area = new ClockingArea(cd) {
+        val hyperbusPartitions = List[(BigInt, Boolean)](
+          (0x800000L, true),
+          (0x800000L, true),
+          (0x800000L, true),
+          (0x800000L, true)
+        )
+        val dut = HyperBusCtrl(HyperBusCtrl.Parameter.default(hyperbusPartitions))
+      }
+      area.dut
+    }
+    compiled.doSim("default signals") { dut =>
+      dut.clockDomain.forkStimulus(10)
+      setSignalDefaults(dut)
+      dut.clockDomain.waitSampling(5)
+
+      assert(dut.io.phy.cmd.valid.toBoolean == false)
+      assert(dut.io.phy.rsp.ready.toBoolean == false)
+      assert(dut.io.frontend.valid.toBoolean == false)
+      assert(dut.io.controller.ready.toBoolean == false)
+      assert(dut.io.config.cmd.ready.toBoolean == false)
+      assert(dut.io.config.rsp.valid.toBoolean == false)
+    }
+    compiled.doSim("partition hits - CS0 low") { dut =>
+      dut.clockDomain.forkStimulus(10)
+      setSignalDefaults(dut)
+      dut.clockDomain.waitSampling(5)
+
+      fakeFrontend(dut, true, BigInt(0))
+      dut.clockDomain.waitSampling(2)
+      sleep(2)
+      assert(dut.io.phy.cmd.payload.args.toBigInt == BigInt("111000", 2))
+      assert(dut.io.phy.cmd.valid.toBoolean == true)
+
+      dut.clockDomain.waitSampling(100)
+    }
+    compiled.doSim("partition hits - CS0 high") { dut =>
+      dut.clockDomain.forkStimulus(10)
+      setSignalDefaults(dut)
+      dut.clockDomain.waitSampling(5)
+
+      fakeFrontend(dut, true, BigInt(0x7FFFFFL))
+      dut.clockDomain.waitSampling(2)
+      sleep(2)
+      assert(dut.io.phy.cmd.payload.args.toBigInt == BigInt("111000", 2))
+      assert(dut.io.phy.cmd.valid.toBoolean == true)
+
+      dut.clockDomain.waitSampling(100)
+    }
+    compiled.doSim("partition hits - CS1 low") { dut =>
+      dut.clockDomain.forkStimulus(10)
+      setSignalDefaults(dut)
+      dut.clockDomain.waitSampling(5)
+
+      fakeFrontend(dut, true, BigInt(0x800000L))
+      dut.clockDomain.waitSampling(2)
+      sleep(2)
+      assert(dut.io.phy.cmd.payload.args.toBigInt == BigInt("111001", 2))
+      assert(dut.io.phy.cmd.valid.toBoolean == true)
+
+      dut.clockDomain.waitSampling(100)
+    }
+    compiled.doSim("partition hits - CS1 high") { dut =>
+      dut.clockDomain.forkStimulus(10)
+      setSignalDefaults(dut)
+      dut.clockDomain.waitSampling(5)
+
+      fakeFrontend(dut, true, BigInt(0xFFFFFFL))
+      dut.clockDomain.waitSampling(2)
+      sleep(2)
+      assert(dut.io.phy.cmd.payload.args.toBigInt == BigInt("111001", 2))
+      assert(dut.io.phy.cmd.valid.toBoolean == true)
+
+      dut.clockDomain.waitSampling(100)
+    }
+    compiled.doSim("partition hits - CS2 low") { dut =>
+      dut.clockDomain.forkStimulus(10)
+      setSignalDefaults(dut)
+      dut.clockDomain.waitSampling(5)
+
+      fakeFrontend(dut, true, BigInt(0x1000000L))
+      dut.clockDomain.waitSampling(2)
+      sleep(2)
+      assert(dut.io.phy.cmd.payload.args.toBigInt == BigInt("111010", 2))
+      assert(dut.io.phy.cmd.valid.toBoolean == true)
+
+      dut.clockDomain.waitSampling(100)
+    }
+    compiled.doSim("partition hits - CS2 high") { dut =>
+      dut.clockDomain.forkStimulus(10)
+      setSignalDefaults(dut)
+      dut.clockDomain.waitSampling(5)
+
+      fakeFrontend(dut, true, BigInt(0x17FFFFFL))
+      dut.clockDomain.waitSampling(2)
+      sleep(2)
+      assert(dut.io.phy.cmd.payload.args.toBigInt == BigInt("111010", 2))
+      assert(dut.io.phy.cmd.valid.toBoolean == true)
+
+      dut.clockDomain.waitSampling(100)
+    }
+    compiled.doSim("partition hits - CS3 low") { dut =>
+      dut.clockDomain.forkStimulus(10)
+      setSignalDefaults(dut)
+      dut.clockDomain.waitSampling(5)
+
+      fakeFrontend(dut, true, BigInt(0x1800000L))
+      dut.clockDomain.waitSampling(2)
+      sleep(2)
+      assert(dut.io.phy.cmd.payload.args.toBigInt == BigInt("111011", 2))
+      assert(dut.io.phy.cmd.valid.toBoolean == true)
+
+      dut.clockDomain.waitSampling(100)
+    }
+    compiled.doSim("partition hits - CS3 high") { dut =>
+      dut.clockDomain.forkStimulus(10)
+      setSignalDefaults(dut)
+      dut.clockDomain.waitSampling(5)
+
+      fakeFrontend(dut, true, BigInt(0x1FFFFFFL))
+      dut.clockDomain.waitSampling(2)
+      sleep(2)
+      assert(dut.io.phy.cmd.payload.args.toBigInt == BigInt("111011", 2))
+      assert(dut.io.phy.cmd.valid.toBoolean == true)
 
       dut.clockDomain.waitSampling(100)
     }

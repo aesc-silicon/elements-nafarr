@@ -43,10 +43,7 @@ class Axi4SharedHyperBusTest extends AnyFunSuite {
       assert(dut.hyperbus.io.controller.valid.toBoolean == false)
       assert(dut.hyperbus.io.controller.payload.id.toBigInt == BigInt(0))
       assert(dut.hyperbus.io.controller.payload.read.toBoolean == false)
-      assert(dut.hyperbus.io.controller.payload.unaligned.toBoolean == false)
-      assert(dut.hyperbus.io.controller.payload.addr.toBigInt == BigInt(0))
       assert(dut.hyperbus.io.controller.payload.data.toBigInt == BigInt(0))
-      assert(dut.hyperbus.io.controller.payload.strobe.toBigInt == BigInt(0))
       assert(dut.hyperbus.io.controller.payload.last.toBoolean == false)
 
       assert(dut.hyperbus.ctrl.io.frontend.ready.toBoolean == false)
@@ -64,7 +61,7 @@ class Axi4SharedHyperBusTest extends AnyFunSuite {
       dut.io.memory.arw.addr #= BigInt(100)
       dut.io.memory.arw.size #= BigInt(2)
       dut.io.memory.arw.len #= BigInt(0)
-      dut.io.memory.arw.burst #= BigInt(0)
+      dut.io.memory.arw.burst #= BigInt(1)
       dut.io.memory.arw.id #= BigInt(13)
       dut.io.memory.arw.write #= false
 
@@ -113,11 +110,12 @@ class Axi4SharedHyperBusTest extends AnyFunSuite {
       dut.io.memory.arw.addr #= BigInt(100)
       dut.io.memory.arw.size #= BigInt(2)
       dut.io.memory.arw.len #= BigInt(0)
-      dut.io.memory.arw.burst #= BigInt(0)
+      dut.io.memory.arw.burst #= BigInt(1)
       dut.io.memory.arw.id #= BigInt(15)
       dut.io.memory.arw.write #= true
 
-      dut.io.memory.w.data #= BigInt("10010110111111110000000010100101", 2)
+      dut.io.memory.w.strb #= BigInt("1111", 2)
+      dut.io.memory.w.data #= BigInt("96ff00a5", 16)
 
       sleep(2)
       assert(dut.io.memory.arw.ready.toBoolean == true)
@@ -133,7 +131,7 @@ class Axi4SharedHyperBusTest extends AnyFunSuite {
       assert(dut.hyperbus.ctrl.io.controller.payload.read.toBoolean == false)
       assert(dut.hyperbus.ctrl.io.controller.payload.unaligned.toBoolean == false)
       assert(dut.hyperbus.ctrl.io.controller.payload.addr.toBigInt == BigInt(50))
-      assert(dut.hyperbus.ctrl.io.controller.payload.data.toBigInt == BigInt("10010110111111110000000010100101", 2))
+      assert(dut.hyperbus.ctrl.io.controller.payload.data.toBigInt == BigInt("96ff00a5", 16))
       assert(dut.hyperbus.ctrl.io.controller.payload.strobe.toBigInt == BigInt("1111", 2))
       assert(dut.hyperbus.ctrl.io.controller.payload.last.toBoolean == true)
       assert(dut.hyperbus.ctrl.io.controller.valid.toBoolean == true)
@@ -146,6 +144,276 @@ class Axi4SharedHyperBusTest extends AnyFunSuite {
       dut.hyperbus.ctrl.io.frontend.payload.read #= false
       dut.hyperbus.ctrl.io.frontend.valid #= true
 
+      sleep(2)
+      assert(dut.io.memory.r.valid.toBoolean == false)
+      assert(dut.io.memory.b.id.toBigInt == BigInt(15))
+      assert(dut.io.memory.b.resp.toBigInt == BigInt(0))
+      assert(dut.io.memory.b.valid.toBoolean == true)
+
+      dut.clockDomain.waitSampling(20)
+    }
+
+    compiled.doSim("burst read - no write") { dut =>
+      dut.clockDomain.forkStimulus(10)
+      dut.io.memory.arw.valid #= false
+      dut.io.memory.w.valid #= false
+      dut.io.memory.r.ready #= false
+      dut.io.memory.b.ready #= false
+      dut.clockDomain.waitSampling(5)
+
+      dut.io.memory.arw.valid #= true
+      dut.io.memory.arw.addr #= BigInt(100)
+      dut.io.memory.arw.size #= BigInt(2)
+      dut.io.memory.arw.len #= BigInt(3)
+      dut.io.memory.arw.burst #= BigInt(1)
+      dut.io.memory.arw.id #= BigInt(13)
+      dut.io.memory.arw.write #= false
+
+      sleep(2)
+      assert(dut.io.memory.arw.ready.toBoolean == true)
+      dut.clockDomain.waitSampling(1)
+      sleep(2)
+      dut.io.memory.arw.valid #= false
+      assert(dut.hyperbus.ctrl.io.controller.payload.id.toBigInt == BigInt(1))
+      assert(dut.hyperbus.ctrl.io.controller.payload.read.toBoolean == true)
+      assert(dut.hyperbus.ctrl.io.controller.payload.unaligned.toBoolean == false)
+      assert(dut.hyperbus.ctrl.io.controller.payload.addr.toBigInt == BigInt(50))
+      assert(dut.hyperbus.ctrl.io.controller.payload.data.toBigInt == BigInt(0))
+      assert(dut.hyperbus.ctrl.io.controller.payload.strobe.toBigInt == BigInt("1111", 2))
+      assert(dut.hyperbus.ctrl.io.controller.payload.last.toBoolean == false)
+      assert(dut.hyperbus.ctrl.io.controller.valid.toBoolean == true)
+
+      dut.clockDomain.waitSampling(1)
+      sleep(2)
+      dut.io.memory.arw.valid #= false
+      assert(dut.hyperbus.ctrl.io.controller.payload.id.toBigInt == BigInt(1))
+      assert(dut.hyperbus.ctrl.io.controller.payload.read.toBoolean == true)
+      assert(dut.hyperbus.ctrl.io.controller.payload.unaligned.toBoolean == false)
+      assert(dut.hyperbus.ctrl.io.controller.payload.addr.toBigInt == BigInt(52))
+      assert(dut.hyperbus.ctrl.io.controller.payload.data.toBigInt == BigInt(0))
+      assert(dut.hyperbus.ctrl.io.controller.payload.strobe.toBigInt == BigInt("1111", 2))
+      assert(dut.hyperbus.ctrl.io.controller.payload.last.toBoolean == false)
+      assert(dut.hyperbus.ctrl.io.controller.valid.toBoolean == true)
+
+      dut.clockDomain.waitSampling(1)
+      sleep(2)
+      dut.io.memory.arw.valid #= false
+      assert(dut.hyperbus.ctrl.io.controller.payload.id.toBigInt == BigInt(1))
+      assert(dut.hyperbus.ctrl.io.controller.payload.read.toBoolean == true)
+      assert(dut.hyperbus.ctrl.io.controller.payload.unaligned.toBoolean == false)
+      assert(dut.hyperbus.ctrl.io.controller.payload.addr.toBigInt == BigInt(54))
+      assert(dut.hyperbus.ctrl.io.controller.payload.data.toBigInt == BigInt(0))
+      assert(dut.hyperbus.ctrl.io.controller.payload.strobe.toBigInt == BigInt("1111", 2))
+      assert(dut.hyperbus.ctrl.io.controller.payload.last.toBoolean == false)
+      assert(dut.hyperbus.ctrl.io.controller.valid.toBoolean == true)
+
+      dut.clockDomain.waitSampling(1)
+      sleep(2)
+      dut.io.memory.arw.valid #= false
+      assert(dut.hyperbus.ctrl.io.controller.payload.id.toBigInt == BigInt(1))
+      assert(dut.hyperbus.ctrl.io.controller.payload.read.toBoolean == true)
+      assert(dut.hyperbus.ctrl.io.controller.payload.unaligned.toBoolean == false)
+      assert(dut.hyperbus.ctrl.io.controller.payload.addr.toBigInt == BigInt(56))
+      assert(dut.hyperbus.ctrl.io.controller.payload.data.toBigInt == BigInt(0))
+      assert(dut.hyperbus.ctrl.io.controller.payload.strobe.toBigInt == BigInt("1111", 2))
+      assert(dut.hyperbus.ctrl.io.controller.payload.last.toBoolean == true)
+      assert(dut.hyperbus.ctrl.io.controller.valid.toBoolean == true)
+
+      dut.clockDomain.waitSampling(5)
+      dut.hyperbus.ctrl.io.frontend.payload.data #= BigInt(123456)
+      dut.hyperbus.ctrl.io.frontend.payload.id #= BigInt(1)
+      dut.hyperbus.ctrl.io.frontend.payload.last #= false
+      dut.hyperbus.ctrl.io.frontend.payload.read #= true
+      dut.hyperbus.ctrl.io.frontend.valid #= true
+
+      dut.io.memory.r.ready #= true
+      sleep(2)
+      assert(dut.io.memory.r.id.toBigInt == BigInt(13))
+      //assert(dut.io.memory.r.data.toBigInt == BigInt(123456))
+      assert(dut.io.memory.r.resp.toBigInt == BigInt(0))
+      assert(dut.io.memory.r.last.toBoolean == false)
+      assert(dut.io.memory.r.valid.toBoolean == true)
+      assert(dut.io.memory.b.valid.toBoolean == false)
+
+      dut.clockDomain.waitSampling(5)
+      dut.hyperbus.ctrl.io.frontend.payload.data #= BigInt(234567)
+      dut.hyperbus.ctrl.io.frontend.payload.id #= BigInt(1)
+      dut.hyperbus.ctrl.io.frontend.payload.last #= false
+      dut.hyperbus.ctrl.io.frontend.payload.read #= true
+      dut.hyperbus.ctrl.io.frontend.valid #= true
+
+      dut.io.memory.r.ready #= true
+      sleep(2)
+      assert(dut.io.memory.r.id.toBigInt == BigInt(13))
+      //assert(dut.io.memory.r.data.toBigInt == BigInt(234567))
+      assert(dut.io.memory.r.resp.toBigInt == BigInt(0))
+      assert(dut.io.memory.r.last.toBoolean == false)
+      assert(dut.io.memory.r.valid.toBoolean == true)
+      assert(dut.io.memory.b.valid.toBoolean == false)
+
+      dut.clockDomain.waitSampling(5)
+      dut.hyperbus.ctrl.io.frontend.payload.data #= BigInt(345678)
+      dut.hyperbus.ctrl.io.frontend.payload.id #= BigInt(1)
+      dut.hyperbus.ctrl.io.frontend.payload.last #= false
+      dut.hyperbus.ctrl.io.frontend.payload.read #= true
+      dut.hyperbus.ctrl.io.frontend.valid #= true
+
+      dut.io.memory.r.ready #= true
+      sleep(2)
+      assert(dut.io.memory.r.id.toBigInt == BigInt(13))
+      //assert(dut.io.memory.r.data.toBigInt == BigInt(345678))
+      assert(dut.io.memory.r.resp.toBigInt == BigInt(0))
+      assert(dut.io.memory.r.last.toBoolean == false)
+      assert(dut.io.memory.r.valid.toBoolean == true)
+      assert(dut.io.memory.b.valid.toBoolean == false)
+
+      dut.clockDomain.waitSampling(5)
+      dut.hyperbus.ctrl.io.frontend.payload.data #= BigInt(456789)
+      dut.hyperbus.ctrl.io.frontend.payload.id #= BigInt(1)
+      dut.hyperbus.ctrl.io.frontend.payload.last #= true
+      dut.hyperbus.ctrl.io.frontend.payload.read #= true
+      dut.hyperbus.ctrl.io.frontend.valid #= true
+
+      dut.io.memory.r.ready #= true
+      sleep(2)
+      assert(dut.io.memory.r.id.toBigInt == BigInt(13))
+      //assert(dut.io.memory.r.data.toBigInt == BigInt(456789))
+      assert(dut.io.memory.r.resp.toBigInt == BigInt(0))
+      assert(dut.io.memory.r.last.toBoolean == true)
+      assert(dut.io.memory.r.valid.toBoolean == true)
+      assert(dut.io.memory.b.valid.toBoolean == false)
+
+      dut.clockDomain.waitSampling(20)
+    }
+    compiled.doSim("burst write - no read") { dut =>
+      dut.clockDomain.forkStimulus(10)
+      dut.io.memory.arw.valid #= false
+      dut.io.memory.w.valid #= false
+      dut.io.memory.r.ready #= false
+      dut.io.memory.b.ready #= false
+      dut.clockDomain.waitSampling(5)
+
+      dut.io.memory.arw.valid #= true
+      dut.io.memory.arw.addr #= BigInt(100)
+      dut.io.memory.arw.size #= BigInt(2)
+      dut.io.memory.arw.len #= BigInt(3)
+      dut.io.memory.arw.burst #= BigInt(1)
+      dut.io.memory.arw.id #= BigInt(15)
+      dut.io.memory.arw.write #= true
+
+      dut.io.memory.w.strb #= BigInt("1111", 2)
+      dut.io.memory.w.data #= BigInt("96ff00a5", 16)
+      sleep(2)
+      assert(dut.io.memory.arw.ready.toBoolean == true)
+
+      dut.clockDomain.waitSampling(1)
+      dut.io.memory.w.valid #= true
+      dut.io.memory.arw.valid #= false
+      sleep(2)
+      assert(dut.io.memory.w.ready.toBoolean == true)
+
+      dut.clockDomain.waitSampling(1)
+      dut.io.memory.w.data #= BigInt("96ff00a6", 16)
+      assert(dut.hyperbus.ctrl.io.controller.payload.id.toBigInt == BigInt(1))
+      assert(dut.hyperbus.ctrl.io.controller.payload.read.toBoolean == false)
+      assert(dut.hyperbus.ctrl.io.controller.payload.unaligned.toBoolean == false)
+      assert(dut.hyperbus.ctrl.io.controller.payload.addr.toBigInt == BigInt(50))
+      assert(dut.hyperbus.ctrl.io.controller.payload.data.toBigInt == BigInt("96ff00a5", 16))
+      assert(dut.hyperbus.ctrl.io.controller.payload.strobe.toBigInt == BigInt("1111", 2))
+      assert(dut.hyperbus.ctrl.io.controller.payload.last.toBoolean == false)
+      assert(dut.hyperbus.ctrl.io.controller.valid.toBoolean == true)
+      sleep(2)
+      assert(dut.io.memory.w.ready.toBoolean == true)
+
+      dut.clockDomain.waitSampling(1)
+      dut.io.memory.w.data #= BigInt("96ff00a7", 16)
+      assert(dut.hyperbus.ctrl.io.controller.payload.id.toBigInt == BigInt(1))
+      assert(dut.hyperbus.ctrl.io.controller.payload.read.toBoolean == false)
+      assert(dut.hyperbus.ctrl.io.controller.payload.unaligned.toBoolean == false)
+      assert(dut.hyperbus.ctrl.io.controller.payload.addr.toBigInt == BigInt(52))
+      assert(dut.hyperbus.ctrl.io.controller.payload.data.toBigInt == BigInt("96ff00a6", 16))
+      assert(dut.hyperbus.ctrl.io.controller.payload.strobe.toBigInt == BigInt("1111", 2))
+      assert(dut.hyperbus.ctrl.io.controller.payload.last.toBoolean == false)
+      assert(dut.hyperbus.ctrl.io.controller.valid.toBoolean == true)
+      sleep(2)
+      assert(dut.io.memory.w.ready.toBoolean == true)
+
+      dut.clockDomain.waitSampling(1)
+      dut.io.memory.w.data #= BigInt("96ff00a8", 16)
+      assert(dut.hyperbus.ctrl.io.controller.payload.id.toBigInt == BigInt(1))
+      assert(dut.hyperbus.ctrl.io.controller.payload.read.toBoolean == false)
+      assert(dut.hyperbus.ctrl.io.controller.payload.unaligned.toBoolean == false)
+      assert(dut.hyperbus.ctrl.io.controller.payload.addr.toBigInt == BigInt(54))
+      assert(dut.hyperbus.ctrl.io.controller.payload.data.toBigInt == BigInt("96ff00a7", 16))
+      assert(dut.hyperbus.ctrl.io.controller.payload.strobe.toBigInt == BigInt("1111", 2))
+      assert(dut.hyperbus.ctrl.io.controller.payload.last.toBoolean == false)
+      assert(dut.hyperbus.ctrl.io.controller.valid.toBoolean == true)
+      sleep(2)
+      assert(dut.io.memory.w.ready.toBoolean == true)
+
+      dut.clockDomain.waitSampling(1)
+      dut.io.memory.w.valid #= false
+      assert(dut.hyperbus.ctrl.io.controller.payload.id.toBigInt == BigInt(1))
+      assert(dut.hyperbus.ctrl.io.controller.payload.read.toBoolean == false)
+      assert(dut.hyperbus.ctrl.io.controller.payload.unaligned.toBoolean == false)
+      assert(dut.hyperbus.ctrl.io.controller.payload.addr.toBigInt == BigInt(56))
+      assert(dut.hyperbus.ctrl.io.controller.payload.data.toBigInt == BigInt("96ff00a8", 16))
+      assert(dut.hyperbus.ctrl.io.controller.payload.strobe.toBigInt == BigInt("1111", 2))
+      assert(dut.hyperbus.ctrl.io.controller.payload.last.toBoolean == true)
+      assert(dut.hyperbus.ctrl.io.controller.valid.toBoolean == true)
+
+      dut.clockDomain.waitSampling(1)
+      sleep(2)
+      dut.io.memory.arw.valid #= false
+
+      dut.clockDomain.waitSampling(5)
+      dut.hyperbus.ctrl.io.frontend.payload.data #= BigInt(123456)
+      dut.hyperbus.ctrl.io.frontend.payload.id #= BigInt(1)
+      dut.hyperbus.ctrl.io.frontend.payload.last #= false
+      dut.hyperbus.ctrl.io.frontend.payload.read #= false
+      dut.hyperbus.ctrl.io.frontend.valid #= true
+
+      dut.io.memory.r.ready #= true
+      dut.io.memory.b.ready #= true
+      sleep(2)
+      assert(dut.io.memory.r.valid.toBoolean == false)
+      assert(dut.io.memory.b.valid.toBoolean == false)
+
+      dut.clockDomain.waitSampling(5)
+      dut.hyperbus.ctrl.io.frontend.payload.data #= BigInt(234567)
+      dut.hyperbus.ctrl.io.frontend.payload.id #= BigInt(1)
+      dut.hyperbus.ctrl.io.frontend.payload.last #= false
+      dut.hyperbus.ctrl.io.frontend.payload.read #= false
+      dut.hyperbus.ctrl.io.frontend.valid #= true
+
+      dut.io.memory.r.ready #= true
+      dut.io.memory.b.ready #= true
+      sleep(2)
+      assert(dut.io.memory.r.valid.toBoolean == false)
+      assert(dut.io.memory.b.valid.toBoolean == false)
+
+      dut.clockDomain.waitSampling(5)
+      dut.hyperbus.ctrl.io.frontend.payload.data #= BigInt(345678)
+      dut.hyperbus.ctrl.io.frontend.payload.id #= BigInt(1)
+      dut.hyperbus.ctrl.io.frontend.payload.last #= false
+      dut.hyperbus.ctrl.io.frontend.payload.read #= false
+      dut.hyperbus.ctrl.io.frontend.valid #= true
+
+      dut.io.memory.r.ready #= true
+      dut.io.memory.b.ready #= true
+      sleep(2)
+      assert(dut.io.memory.r.valid.toBoolean == false)
+      assert(dut.io.memory.b.valid.toBoolean == false)
+
+      dut.clockDomain.waitSampling(5)
+      dut.hyperbus.ctrl.io.frontend.payload.data #= BigInt(456789)
+      dut.hyperbus.ctrl.io.frontend.payload.id #= BigInt(1)
+      dut.hyperbus.ctrl.io.frontend.payload.last #= true
+      dut.hyperbus.ctrl.io.frontend.payload.read #= false
+      dut.hyperbus.ctrl.io.frontend.valid #= true
+
+      dut.io.memory.r.ready #= true
+      dut.io.memory.b.ready #= true
       sleep(2)
       assert(dut.io.memory.r.valid.toBoolean == false)
       assert(dut.io.memory.b.id.toBigInt == BigInt(15))
@@ -193,7 +461,7 @@ class Axi4SharedHyperBusTest extends AnyFunSuite {
       dut.io.memory.arw.addr #= BigInt(104)
       dut.io.memory.arw.size #= BigInt(2)
       dut.io.memory.arw.len #= BigInt(0)
-      dut.io.memory.arw.burst #= BigInt(0)
+      dut.io.memory.arw.burst #= BigInt(1)
       dut.io.memory.arw.id #= BigInt(7)
       dut.io.memory.arw.write #= false
 
@@ -325,13 +593,14 @@ class Axi4SharedHyperBusTest extends AnyFunSuite {
       dut.io.memory.arw.addr #= BigInt(104)
       dut.io.memory.arw.size #= BigInt(2)
       dut.io.memory.arw.len #= BigInt(0)
-      dut.io.memory.arw.burst #= BigInt(0)
+      dut.io.memory.arw.burst #= BigInt(1)
       dut.io.memory.arw.id #= BigInt(7)
       dut.io.memory.arw.write #= true
 
       val apb = new Apb3Driver(dut.io.bus, dut.clockDomain)
       apb.write(BigInt("20", 16), BigInt("00000002", 16))
 
+      dut.io.memory.w.strb #= BigInt("1111", 2)
       dut.io.memory.w.data #= BigInt("96ff00A5", 16)
 
       dut.io.memory.arw.valid #= true

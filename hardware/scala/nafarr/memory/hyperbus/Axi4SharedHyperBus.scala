@@ -41,20 +41,16 @@ object Axi4SharedHyperBus {
         val count = Reg(UInt(8 bits))
         val size = Reg(UInt(3 bits))
         val burstType = Reg(Bits(2 bits))
+        val shift = Reg(UInt(2 bits))
       }
 
-      io.memory.arw.ready := False
-      io.memory.w.ready := False
-
-      hyperbus.io.controller.valid := False
-      hyperbus.io.controller.payload.id := id
-      hyperbus.io.controller.payload.read := False
-      hyperbus.io.controller.payload.unaligned := False
-      hyperbus.io.controller.payload.memory := True
-      hyperbus.io.controller.payload.addr := 0
-      hyperbus.io.controller.payload.data := 0
-      hyperbus.io.controller.payload.strobe := (default -> false)
-      hyperbus.io.controller.payload.last := False
+      val address = Axi4.incr(
+        burst.address,
+        burst.burstType,
+        burst.count,
+        burst.size,
+        axi4Config.bytePerWord
+      )
 
       def getStrobe(size: UInt): Bits = size.mux(
         0 -> B"0001",
@@ -62,6 +58,19 @@ object Axi4SharedHyperBus {
         2 -> B"1111",
         default -> B"0000"
       )
+
+      io.memory.arw.ready := False
+      io.memory.w.ready := False
+
+      hyperbus.io.controller.valid := False
+      hyperbus.io.controller.payload.id := id
+      hyperbus.io.controller.payload.read := False
+      hyperbus.io.controller.payload.unaligned := burst.address(0)
+      hyperbus.io.controller.payload.memory := True
+      hyperbus.io.controller.payload.addr := (B"0" ## burst.address(31 downto 1)).asUInt
+      hyperbus.io.controller.payload.data := 0
+      hyperbus.io.controller.payload.strobe := getStrobe(burst.size)
+      hyperbus.io.controller.payload.last := False
 
       axiDataStorage.io.push.valid := False
       axiDataStorage.io.push.payload.id := io.memory.arw.id
@@ -74,6 +83,7 @@ object Axi4SharedHyperBus {
             burst.count := io.memory.arw.len
             burst.size := io.memory.arw.size
             burst.burstType := io.memory.arw.burst
+            burst.shift := io.memory.arw.addr(1 downto 0)
 
             when(axiDataStorage.io.push.ready) {
               io.memory.arw.ready := True
@@ -90,11 +100,8 @@ object Axi4SharedHyperBus {
 
       val stateWrite: State = new State {
         whenIsActive {
-
-          hyperbus.io.controller.payload.unaligned := burst.address(0)
-          hyperbus.io.controller.payload.addr := (B"0" ## burst.address(31 downto 1)).asUInt
           hyperbus.io.controller.payload.data := io.memory.w.data
-          hyperbus.io.controller.payload.strobe := getStrobe(burst.size)
+          hyperbus.io.controller.payload.strobe := io.memory.w.strb.rotateRight(burst.shift)
 
           when(io.memory.w.valid) {
             hyperbus.io.controller.valid := True
@@ -104,37 +111,8 @@ object Axi4SharedHyperBus {
                 hyperbus.io.controller.payload.last := True
                 goto(stateEntry)
               } otherwise {
-                goto(stateWriteBurst)
-              }
-            }
-          }
-        }
-      }
-
-      val stateWriteBurst: State = new State {
-        whenIsActive {
-          val address = Axi4.incr(
-            burst.address,
-            burst.burstType,
-            burst.count,
-            burst.size,
-            axi4Config.bytePerWord
-          )
-
-          hyperbus.io.controller.payload.unaligned := burst.address(0)
-          hyperbus.io.controller.payload.addr := (B"0" ## burst.address(31 downto 1)).asUInt
-          hyperbus.io.controller.payload.data := io.memory.w.data
-          hyperbus.io.controller.payload.strobe := getStrobe(burst.size)
-
-          when(io.memory.w.valid) {
-            hyperbus.io.controller.valid := True
-            io.memory.w.ready := hyperbus.io.controller.ready
-            when(hyperbus.io.controller.ready) {
-              burst.address := address
-              burst.count := burst.count - 1
-              when(burst.count === 0) {
-                hyperbus.io.controller.payload.last := True
-                goto(stateEntry)
+                burst.address := address
+                burst.count := burst.count - 1
               }
             }
           }
@@ -144,9 +122,6 @@ object Axi4SharedHyperBus {
       val stateRead: State = new State {
         whenIsActive {
           hyperbus.io.controller.payload.read := True
-          hyperbus.io.controller.payload.unaligned := burst.address(0)
-          hyperbus.io.controller.payload.addr := (B"0" ## burst.address(31 downto 1)).asUInt
-          hyperbus.io.controller.payload.strobe := getStrobe(burst.size)
 
           hyperbus.io.controller.valid := True
           when(hyperbus.io.controller.ready) {
@@ -154,34 +129,8 @@ object Axi4SharedHyperBus {
               hyperbus.io.controller.payload.last := True
               goto(stateEntry)
             } otherwise {
-              goto(stateReadBurst)
-            }
-          }
-        }
-      }
-
-      val stateReadBurst: State = new State {
-        whenIsActive {
-          val address = Axi4.incr(
-            burst.address,
-            burst.burstType,
-            burst.count,
-            burst.size,
-            axi4Config.bytePerWord
-          )
-
-          hyperbus.io.controller.payload.read := True
-          hyperbus.io.controller.payload.unaligned := burst.address(0)
-          hyperbus.io.controller.payload.addr := (B"0" ## burst.address(31 downto 1)).asUInt
-          hyperbus.io.controller.payload.strobe := getStrobe(burst.size)
-
-          hyperbus.io.controller.valid := True
-          when(hyperbus.io.controller.ready) {
-            burst.address := address
-            burst.count := burst.count - 1
-            when(burst.count === 0) {
-              hyperbus.io.controller.payload.last := True
-              goto(stateEntry)
+              burst.address := address
+              burst.count := burst.count - 1
             }
           }
         }
@@ -201,7 +150,8 @@ object Axi4SharedHyperBus {
 
       io.memory.b.id := axiDataStorage.io.pop.payload.id
       io.memory.b.resp := Axi4.resp.OKAY
-      io.memory.b.valid := !hyperbus.io.frontend.payload.read && hyperbus.io.frontend.valid
+      io.memory.b.valid := !hyperbus.io.frontend.payload.read && hyperbus.io.frontend.valid &&
+        hyperbus.io.frontend.payload.last
 
       hyperbus.io.frontend.ready := io.memory.r.ready | io.memory.b.ready
       axiDataStorage.io.pop.ready := io.memory.r.ready | io.memory.b.ready

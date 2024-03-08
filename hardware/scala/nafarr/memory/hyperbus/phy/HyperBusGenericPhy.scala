@@ -123,7 +123,11 @@ object HyperBusGenericPhy {
           when(cmdFifo.io.pop.valid && cmdFifo.io.pop.isCs && !reset.isReset) {
             cmdFifo.io.pop.ready := True
             counter.reset
-            chipSelects(cmdFifo.io.pop.argsCs.index) := False
+            if (p.hyperbus.supportedDevices == 1) {
+              chipSelects(0) := False
+            } else {
+              chipSelects(cmdFifo.io.pop.argsCs.index) := False
+            }
             readTransaction := cmdFifo.io.pop.argsCs.read
             latencyCycles := cmdFifo.io.pop.argsCs.latencyCycles.resized
             bitCount := 0

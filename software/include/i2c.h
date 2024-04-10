@@ -1,5 +1,5 @@
-#ifndef BOOTROM_I2C
-#define BOOTROM_I2C
+#ifndef ELEMNETS_I2C
+#define ELEMNETS_I2C
 
 #define I2C_SPEED_STANDARD	100000U // 100 kHz
 #define I2C_SPEED_FAST		400000U // 400 kHz

@@ -1,5 +1,5 @@
-#ifndef BOOTROM_GPIO
-#define BOOTROM_GPIO
+#ifndef ELEMNETS_GPIO
+#define ELEMNETS_GPIO
 
 struct gpio_regs {
 	int data_in;

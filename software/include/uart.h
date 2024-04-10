@@ -1,5 +1,5 @@
-#ifndef BOOTROM_UART
-#define BOOTROM_UART
+#ifndef ELEMNETS_UART
+#define ELEMNETS_UART
 
 struct uart_regs {
 	unsigned int read_write;

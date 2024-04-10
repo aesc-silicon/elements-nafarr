@@ -1,5 +1,5 @@
-#ifndef BOOTROM_MTIMER
-#define BOOTROM_MTIMER
+#ifndef ELEMNETS_MTIMER
+#define ELEMNETS_MTIMER
 
 #define TIMER_MS(freq, cycles) ((freq / 1000) * cycles)
 

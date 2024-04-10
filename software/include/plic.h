@@ -1,5 +1,5 @@
-#ifndef BOOTROM_PLIC
-#define BOOTROM_PLIC
+#ifndef ELEMNETS_PLIC
+#define ELEMNETS_PLIC
 
 struct plic_driver {
 	unsigned int *gateway_priority;

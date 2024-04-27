@@ -43,6 +43,26 @@ object IhpCmosIo {
       that.pad := this.PAD
       cell = "sg13g2_IOPadInOut30mA"
     }
+    def <>(that: IOPadAnalog.sg13g2_IOPadAnalog) = {
+      that.pad := this.PAD
+      cell = "sg13g2_IOPadAnalog"
+    }
+    def <>(that: IOPadIOVss.sg13g2_IOPadIOVss) = {
+      that.pad := this.PAD
+      cell = "sg13g2_IOPadIOVss"
+    }
+    def <>(that: IOPadIOVdd.sg13g2_IOPadIOVdd) = {
+      that.pad := this.PAD
+      cell = "sg13g2_IOPadIOVdd"
+    }
+    def <>(that: IOPadVss.sg13g2_IOPadVss) = {
+      that.pad := this.PAD
+      cell = "sg13g2_IOPadVss"
+    }
+    def <>(that: IOPadVdd.sg13g2_IOPadVdd) = {
+      that.pad := this.PAD
+      cell = "sg13g2_IOPadVdd"
+    }
   }
 }
 
@@ -215,5 +235,58 @@ object IOPadInOut30mA {
       pin.read := this.p2c
       this
     }
+  }
+}
+
+object IOPadAnalog {
+  def apply() = sg13g2_IOPadAnalog()
+
+  case class sg13g2_IOPadAnalog() extends BlackBox {
+    val pad = inout(Analog(Bool()))
+    val padres = inout(Analog(Bool()))
+
+    addRTLPath(System.getenv("NAFARR_BASE") + "/hardware/scala/nafarr/blackboxes/ihp/sg13g2/IO.v")
+
+    padres <> pad
+  }
+}
+
+object IOPadIOVss {
+  def apply() = sg13g2_IOPadIOVss()
+
+  case class sg13g2_IOPadIOVss() extends BlackBox {
+    val pad = inout(Analog(Bool()))
+
+    addRTLPath(System.getenv("NAFARR_BASE") + "/hardware/scala/nafarr/blackboxes/ihp/sg13g2/IO.v")
+  }
+}
+
+object IOPadIOVdd {
+  def apply() = sg13g2_IOPadIOVdd()
+
+  case class sg13g2_IOPadIOVdd() extends BlackBox {
+    val pad = inout(Analog(Bool()))
+
+    addRTLPath(System.getenv("NAFARR_BASE") + "/hardware/scala/nafarr/blackboxes/ihp/sg13g2/IO.v")
+  }
+}
+
+object IOPadVss {
+  def apply() = sg13g2_IOPadVss()
+
+  case class sg13g2_IOPadVss() extends BlackBox {
+    val pad = inout(Analog(Bool()))
+
+    addRTLPath(System.getenv("NAFARR_BASE") + "/hardware/scala/nafarr/blackboxes/ihp/sg13g2/IO.v")
+  }
+}
+
+object IOPadVdd {
+  def apply() = sg13g2_IOPadVdd()
+
+  case class sg13g2_IOPadVdd() extends BlackBox {
+    val pad = inout(Analog(Bool()))
+
+    addRTLPath(System.getenv("NAFARR_BASE") + "/hardware/scala/nafarr/blackboxes/ihp/sg13g2/IO.v")
   }
 }

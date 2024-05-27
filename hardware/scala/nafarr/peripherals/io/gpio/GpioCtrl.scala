@@ -36,6 +36,8 @@ object GpioCtrl {
   object Parameter {
     def default(width: Int = 32, invertWriteEnable: Boolean = false) =
       Parameter(Gpio.Parameter(width), 1, null, null, null, invertWriteEnable)
+    def full(width: Int = 32, invertWriteEnable: Boolean = false) =
+      Parameter(Gpio.Parameter(width), 1, null, null, null, invertWriteEnable)
     def noInterrupt(width: Int = 32, invertWriteEnable: Boolean = false) =
       Parameter(Gpio.Parameter(width), 1, null, null, Seq[Int](), invertWriteEnable)
     def onlyOutput(width: Int = 32, invertWriteEnable: Boolean = false) =

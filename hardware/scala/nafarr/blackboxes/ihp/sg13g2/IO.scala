@@ -6,46 +6,71 @@ import spinal.lib.History
 
 object IhpCmosIo {
   def apply(edge: String, number: Int) = new IhpCmosIo(edge, number)
+  def apply(edge: String, number: Int, clockGroup: String) = new IhpCmosIo(edge, number, clockGroup)
 
-  class IhpCmosIo(edge: String, number: Int) extends Bundle {
+  class IhpCmosIo(val edge: String, val number: Int, val clockGroup: String = "") extends Bundle {
     val PAD = inout(Analog(Bool()))
 
     var cell = ""
-    val edge_ = edge
-    val number_ = number
+    var cellName = ""
+    var clockPort = ""
+    def clockInput = clockPort.contains("in")
+    def clockOutput = clockPort.contains("out")
 
     def <>(that: IOPadIn.sg13g2_IOPadIn) = {
       that.pad := this.PAD
       cell = "sg13g2_IOPadIn"
-
+      cellName = s"sg13g2_IOPad_${this.getName()}"
+      clockPort = "input_ports"
+      that.setName(this.cellName)
     }
     def <>(that: IOPadOut4mA.sg13g2_IOPadOut4mA) = {
       that.pad := this.PAD
       cell = "sg13g2_IOPadOut4mA"
+      cellName = s"sg13g2_IOPad_${this.getName()}"
+      clockPort = "output_4mA_ports"
+      that.setName(this.cellName)
     }
     def <>(that: IOPadOut16mA.sg13g2_IOPadOut16mA) = {
       that.pad := this.PAD
       cell = "sg13g2_IOPadOut16mA"
+      cellName = s"sg13g2_IOPad_${this.getName()}"
+      clockPort = "output_16mA_ports"
+      that.setName(this.cellName)
     }
     def <>(that: IOPadOut30mA.sg13g2_IOPadOut30mA) = {
       that.pad := this.PAD
       cell = "sg13g2_IOPadOut30mA"
+      cellName = s"sg13g2_IOPad_${this.getName()}"
+      clockPort = "output_30mA_ports"
+      that.setName(this.cellName)
     }
     def <>(that: IOPadInOut4mA.sg13g2_IOPadInOut4mA) = {
       that.pad := this.PAD
       cell = "sg13g2_IOPadInOut4mA"
+      cellName = s"sg13g2_IOPad_${this.getName()}"
+      clockPort = "inout_4mA_ports"
+      that.setName(this.cellName)
     }
     def <>(that: IOPadInOut16mA.sg13g2_IOPadInOut16mA) = {
       that.pad := this.PAD
       cell = "sg13g2_IOPadInOut16mA"
+      cellName = s"sg13g2_IOPad_${this.getName()}"
+      clockPort = "inout_16mA_ports"
+      that.setName(this.cellName)
     }
     def <>(that: IOPadInOut30mA.sg13g2_IOPadInOut30mA) = {
       that.pad := this.PAD
       cell = "sg13g2_IOPadInOut30mA"
+      cellName = s"sg13g2_IOPad_${this.getName()}"
+      clockPort = "inout_30mA_ports"
+      that.setName(this.cellName)
     }
     def <>(that: IOPadAnalog.sg13g2_IOPadAnalog) = {
       that.pad := this.PAD
       cell = "sg13g2_IOPadAnalog"
+      cellName = s"sg13g2_IOPad_${this.getName()}"
+      that.setName(this.cellName)
     }
     def <>(that: IOPadIOVss.sg13g2_IOPadIOVss) = {
       cell = "sg13g2_IOPadIOVss"

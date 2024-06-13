@@ -166,7 +166,7 @@ object IOPadOut30mA {
 object IOPadInOut4mA {
   def apply() = sg13g2_IOPadInOut4mA()
   def apply(pin: TriState[Bool]) = sg13g2_IOPadInOut4mA().withTriState(pin)
-  def apply(pin: ReadableOpenDrain[Bool]) = sg13g2_IOPadInOut4mA().withReadableOpenDrain(pin)
+  def apply(pin: ReadableOpenDrain[Bool]) = sg13g2_IOPadInOut4mA().withOpenDrain(pin)
 
   case class sg13g2_IOPadInOut4mA() extends BlackBox {
     val c2p = in(Bool())
@@ -199,7 +199,7 @@ object IOPadInOut4mA {
 object IOPadInOut16mA {
   def apply() = sg13g2_IOPadInOut16mA()
   def apply(pin: TriState[Bool]) = sg13g2_IOPadInOut16mA().withTriState(pin)
-  def apply(pin: ReadableOpenDrain[Bool]) = sg13g2_IOPadInOut16mA().withReadableOpenDrain(pin)
+  def apply(pin: ReadableOpenDrain[Bool]) = sg13g2_IOPadInOut16mA().withOpenDrain(pin)
 
   case class sg13g2_IOPadInOut16mA() extends BlackBox {
     val c2p = in(Bool())
@@ -232,7 +232,7 @@ object IOPadInOut16mA {
 object IOPadInOut30mA {
   def apply() = sg13g2_IOPadInOut30mA()
   def apply(pin: TriState[Bool]) = sg13g2_IOPadInOut30mA().withTriState(pin)
-  def apply(pin: ReadableOpenDrain[Bool]) = sg13g2_IOPadInOut30mA().withReadableOpenDrain(pin)
+  def apply(pin: ReadableOpenDrain[Bool]) = sg13g2_IOPadInOut30mA().withOpenDrain(pin)
 
   case class sg13g2_IOPadInOut30mA() extends BlackBox {
     val c2p = in(Bool())

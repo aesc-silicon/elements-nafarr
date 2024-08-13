@@ -1,4 +1,5 @@
 verbose.log
+export/
 project/project/*
 project/target/*
 target/*
@@ -14,3 +15,4 @@ tmp/
 .bsp/
 /*.v
 /*.vhd
+docs/build

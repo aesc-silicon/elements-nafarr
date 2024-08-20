@@ -1,0 +1,47 @@
+**IP Identification:**
+
+The register map starts with an IP Identification block to provide all information about the
+underlying IP core to software drivers. This allows to provide backwards compatible drivers.
+
+.. flat-table:: IP Identification Registers
+   :widths: 10 10 15 10 10 45
+   :header-rows: 1
+
+   * - Address
+     - Bit
+     - Field
+     - Default
+     - Permission
+     - Description
+   * - :rspan:`2` 0x000
+     - 31 - 24
+     - API
+     - 0x0
+     - Rx
+     - API version of the implemented IP Identification.
+   * - 23 - 16
+     - Length
+     - 0x8
+     - Rx
+     - Length of the IP Identification block in Bytes.
+   * - 15 - 0
+     - ID
+     - |ip-identification-id-value|
+     - Rx
+     - IP value of this IP core.
+   * - :rspan:`2` 0x004
+     - 31 - 24
+     - Major Version
+     - |ip-identification-major-version|
+     - Rx
+     - Major number if this IP core. Version schema is major.minor.patch.
+   * - 23 - 16
+     - Minor Version
+     - |ip-identification-minor-version|
+     - Rx
+     - Minor number if this IP core. Version schema is major.minor.patch.
+   * - 15 - 0
+     - Patch Version
+     - |ip-identification-patch-version|
+     - Rx
+     - Patch number if this IP core. Version schema is major.minor.patch.

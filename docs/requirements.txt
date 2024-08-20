@@ -4,14 +4,17 @@ beautifulsoup4==4.12.3
 certifi==2024.7.4
 charset-normalizer==3.3.2
 docutils==0.21.2
+fspath==20230629
 furo==2024.8.6
 idna==3.7
 imagesize==1.4.1
 Jinja2==3.1.4
+linuxdoc==20240509
 MarkupSafe==2.1.5
 packaging==24.1
 Pygments==2.18.0
 requests==2.32.3
+six==1.16.0
 snowballstemmer==2.2.0
 soupsieve==2.6
 Sphinx==8.0.2

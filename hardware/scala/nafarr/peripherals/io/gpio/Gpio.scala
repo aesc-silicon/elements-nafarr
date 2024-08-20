@@ -11,7 +11,7 @@ import nafarr.peripherals.PeripheralsComponent
 
 object Gpio {
   case class Parameter(width: Int) {
-    require(width < 33, "Only up to 32 GPIOs are allowed.")
+    require(width > 0, "At least one pin is required.")
   }
 
   case class Io(p: Parameter) extends Bundle {

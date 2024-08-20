@@ -5,19 +5,11 @@ import spinal.lib._
 import spinal.lib.bus.misc.BusSlaveFactory
 import spinal.lib.misc.InterruptCtrl
 import spinal.lib.io.{TriStateArray, TriState}
+import nafarr.IpIdentification
 
 object GpioCtrl {
   def apply(p: Parameter = Parameter.default()) = GpioCtrl(p)
 
-  /** Parameters for GPIO controller.
-    *
-    *  @param io Gpio.Parameter class with IO parameters
-    *  @param readBufferDepth register depth for reading values. Disabled when 0. Defaults to 0.
-    *  @param output list of pin numbers which can drive an output signal. Defaults to null.
-    *  @param input list of pin numbers which can read ana input signal. Defaults to null
-    *  @param interrupt list of pin numbers which are interrupt capable. Defaults to null.
-    *  @param invertWriteEnable change the write enable pin to active low. Defaults to false.
-    */
   case class Parameter(
       io: Gpio.Parameter,
       readBufferDepth: Int = 0,
@@ -36,13 +28,12 @@ object GpioCtrl {
   object Parameter {
     def default(width: Int = 32, invertWriteEnable: Boolean = false) =
       Parameter(Gpio.Parameter(width), 1, null, null, null, invertWriteEnable)
-    def full(width: Int = 32, invertWriteEnable: Boolean = false) =
-      Parameter(Gpio.Parameter(width), 1, null, null, null, invertWriteEnable)
     def noInterrupt(width: Int = 32, invertWriteEnable: Boolean = false) =
       Parameter(Gpio.Parameter(width), 1, null, null, Seq[Int](), invertWriteEnable)
     def onlyOutput(width: Int = 32, invertWriteEnable: Boolean = false) =
       Parameter(Gpio.Parameter(width), 0, null, Seq[Int](), Seq[Int](), invertWriteEnable)
-    def onlyInput(width: Int = 32) = Parameter(Gpio.Parameter(width), 0, Seq[Int](), null, null)
+    def onlyInput(width: Int = 32) =
+      Parameter(Gpio.Parameter(width), 0, Seq[Int](), null, null)
   }
 
   case class Config(p: Parameter) extends Bundle {
@@ -68,10 +59,13 @@ object GpioCtrl {
   case class GpioCtrl(p: Parameter) extends Component {
     val io = Io(p)
 
+    val synchronized = Bits(io.gpio.pins.read.getWidth bits)
     if (p.readBufferDepth > 0) {
       io.value := BufferCC(io.gpio.pins.read, bufferDepth = Some(p.readBufferDepth))
+      synchronized := io.value
     } else {
       io.value := io.gpio.pins.read
+      synchronized := BufferCC(io.gpio.pins.read)
     }
     io.gpio.pins.write := io.config.write
     if (p.invertWriteEnable) {
@@ -80,7 +74,6 @@ object GpioCtrl {
       io.gpio.pins.writeEnable := io.config.direction
     }
 
-    val synchronized = BufferCC(io.gpio.pins.read)
     val last = RegNext(synchronized)
 
     io.irqHigh.valid := synchronized
@@ -92,82 +85,70 @@ object GpioCtrl {
       io.irqRise.pending | io.irqFall.pending).orR
   }
 
-  /** Register mapping
-    *
-    * 0x0000|Rx: Input level of each pin. 0 when no input pin added.
-    * 0x0004|RW: Output level of each pin. Always returns 0 when no output pin added.
-    * 0x0008|RW: Direction of each pin. High means output, low input. Always return 0 when n
-    *            output pin added.
-    * 0x0010|RW: Input high interrupt pending.
-    *            Returns pending interrupts for each pin during read.
-    *            Clears interrupts during write.
-    * 0x0014|RW: Input high interrupt mask.
-    * 0x0018|RW: Input low interrupt pending.
-    *            Returns pending interrupts for each pin during read.
-    *            Clears interrupts during write.
-    * 0x001C|RW: Input low interrupt mask.
-    * 0x0020|RW: Input rising edge interrupt pending.
-    *            Returns pending interrupts for each pin during read.
-    *            Clears interrupts during write.
-    * 0x0024|RW: Input rising edge interrupt mask.
-    * 0x0028|RW: Input falling edge interrupt pending.
-    *            Returns pending interrupts for each pin during read.
-    *            Clears interrupts during write.
-    * 0x002C|RW: Input falling edge interrupt mask.
-    */
   case class Mapper(
       busCtrl: BusSlaveFactory,
       ctrl: Io,
       p: Parameter
   ) extends Area {
+    val idCtrl = IpIdentification(IpIdentification.Ids.Gpio, 1, 0, 0)
+    idCtrl.driveFrom(busCtrl)
+    val offset = idCtrl.length
 
-    for (i <- 0 until p.io.width) {
-      if (p.input.contains(i))
-        busCtrl.read(ctrl.value(i), 0x00, i)
-      if (p.output.contains(i)) {
-        busCtrl.driveAndRead(ctrl.config.write(i), 0x04, i).init(False)
-      } else {
-        busCtrl.read(False, 0x04, i)
-        ctrl.config.write(i) := False
-      }
-      if (p.output.contains(i) && p.input.contains(i)) {
-        busCtrl.driveAndRead(ctrl.config.direction(i), 0x08, i).init(False)
-      } else {
-        val direction = RegInit(Bool(p.output.contains(i)))
-        direction.allowUnsetRegToAvoidLatch
-        busCtrl.read(direction, 0x08, i)
-        ctrl.config.direction(i) := direction
-      }
-    }
+    val banks = (p.io.width / 32.0).ceil.toInt
+    busCtrl.read(B(banks, 16 bits) ## B(p.io.width, 16 bits), offset)
 
-    val interrupt = new Area {
-      val irqHighCtrl = new InterruptCtrl(p.io.width)
-      irqHighCtrl.driveFrom(busCtrl, 0x10)
-      val irqLowCtrl = new InterruptCtrl(p.io.width)
-      irqLowCtrl.driveFrom(busCtrl, 0x18)
-      val irqRiseCtrl = new InterruptCtrl(p.io.width)
-      irqRiseCtrl.driveFrom(busCtrl, 0x20)
-      val irqFallCtrl = new InterruptCtrl(p.io.width)
-      irqFallCtrl.driveFrom(busCtrl, 0x28)
+    for (bank <- 0 until banks) {
+      val pins = if (bank < banks - 1) 32 else if (p.io.width % 32 == 0) 32 else p.io.width % 32
+      val baseAddr = offset + 4 + bank * 44
+      val inputAddr = baseAddr
+      val outputAddr = baseAddr + 4
+      val directionAddr = baseAddr + 8
 
-      for (i <- 0 until p.io.width) {
-        if (p.interrupt.contains(i)) {
-          irqHighCtrl.io.inputs(i) := ctrl.irqHigh.valid(i)
-          irqLowCtrl.io.inputs(i) := ctrl.irqLow.valid(i)
-          irqRiseCtrl.io.inputs(i) := ctrl.irqRise.valid(i)
-          irqFallCtrl.io.inputs(i) := ctrl.irqFall.valid(i)
+      val irqHighCtrl = new InterruptCtrl(pins)
+      irqHighCtrl.driveFrom(busCtrl, baseAddr + 12)
+      val irqLowCtrl = new InterruptCtrl(pins)
+      irqLowCtrl.driveFrom(busCtrl, baseAddr + 20)
+      val irqRiseCtrl = new InterruptCtrl(pins)
+      irqRiseCtrl.driveFrom(busCtrl, baseAddr + 28)
+      val irqFallCtrl = new InterruptCtrl(pins)
+      irqFallCtrl.driveFrom(busCtrl, baseAddr + 36)
+
+      for (i <- 0 until pins) {
+        val pin = bank * 32 + i
+        // IO registers
+        if (p.input.contains(pin))
+          busCtrl.read(ctrl.value(pin), inputAddr, i)
+        if (p.output.contains(pin)) {
+          busCtrl.driveAndRead(ctrl.config.write(pin), outputAddr, i).init(False)
+        } else {
+          busCtrl.read(False, outputAddr, i)
+          ctrl.config.write(pin) := False
+        }
+        if (p.output.contains(pin) && p.input.contains(in)) {
+          busCtrl.driveAndRead(ctrl.config.direction(pin), directionAddr, i).init(False)
+        } else {
+          val direction = RegInit(Bool(p.output.contains(pin)))
+          direction.allowUnsetRegToAvoidLatch
+          busCtrl.read(direction, directionAddr, i)
+          ctrl.config.direction(pin) := direction
+        }
+        // Interrupt controller
+        if (p.interrupt.contains(pin)) {
+          irqHighCtrl.io.inputs(i) := ctrl.irqHigh.valid(pin)
+          irqLowCtrl.io.inputs(i) := ctrl.irqLow.valid(pin)
+          irqRiseCtrl.io.inputs(i) := ctrl.irqRise.valid(pin)
+          irqFallCtrl.io.inputs(i) := ctrl.irqFall.valid(pin)
         } else {
           irqHighCtrl.io.inputs(i) := False
           irqLowCtrl.io.inputs(i) := False
           irqRiseCtrl.io.inputs(i) := False
           irqFallCtrl.io.inputs(i) := False
         }
+        ctrl.irqHigh.pending(pin) := irqHighCtrl.io.pendings(i)
+        ctrl.irqLow.pending(pin) := irqLowCtrl.io.pendings(i)
+        ctrl.irqRise.pending(pin) := irqRiseCtrl.io.pendings(i)
+        ctrl.irqFall.pending(pin) := irqFallCtrl.io.pendings(i)
       }
-
-      ctrl.irqHigh.pending := irqHighCtrl.io.pendings
-      ctrl.irqLow.pending := irqLowCtrl.io.pendings
-      ctrl.irqRise.pending := irqRiseCtrl.io.pendings
-      ctrl.irqFall.pending := irqFallCtrl.io.pendings
     }
   }
 }

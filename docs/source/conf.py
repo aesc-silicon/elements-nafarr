@@ -18,6 +18,7 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.doctest',
     'sphinx.ext.intersphinx',
+    'linuxdoc.rstFlatTable',
 ]
 
 templates_path = ['_templates']

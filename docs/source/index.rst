@@ -8,5 +8,8 @@ Nafarr documentation
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
 
+   about/index.rst
+   getting-started/index.rst
+   export/index.rst
+   hardware/index.rst

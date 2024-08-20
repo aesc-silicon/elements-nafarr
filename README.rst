@@ -21,14 +21,14 @@ Get started today and unlock the full potential of your hardware designs with Na
 Documentation
 *************
 
-The official Documentation is available `here<https://aesc-silicon.github.io/elements-nafarr/>`_.
+The official Documentation is available `here <https://aesc-silicon.github.io/elements-nafarr/>`_.
 Additionally, there are mentionworth chapters:
 
-- Read more `about this project<https://aesc-silicon.github.io/elements-nafarr/about/>`_.
-- Start with the `Getting Started guide<https://aesc-silicon.github.io/elements-nafarr/getting-started/>`_.
-- Learn how to `export to Verilog or VHDL<https://aesc-silicon.github.io/elements-nafarr/export/>`_
+- Read more `about this project <https://aesc-silicon.github.io/elements-nafarr/about/>`_.
+- Start with the `Getting Started guide <https://aesc-silicon.github.io/elements-nafarr/getting-started/>`_.
+- Learn how to `export to Verilog or VHDL <https://aesc-silicon.github.io/elements-nafarr/export/>`_
 - See the documenation for all `IP
-  cores<https://aesc-silicon.github.io/elements-nafarr/hardware/>`_.
+  cores <https://aesc-silicon.github.io/elements-nafarr/hardware/>`_.
 
 License
 *******

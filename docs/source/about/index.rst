@@ -49,3 +49,11 @@ The following table lists all available IP cores and their status.
      - nafarr.peripherals.io
      - OK
      - :ref:`hardware-peripherals-gpio`
+   * - Pio
+     - nafarr.peripherals.io
+     - OK
+     - :ref:`hardware-peripherals-pio`
+   * - Pwm
+     - nafarr.peripherals.io
+     - OK
+     - :ref:`hardware-peripherals-pwm`

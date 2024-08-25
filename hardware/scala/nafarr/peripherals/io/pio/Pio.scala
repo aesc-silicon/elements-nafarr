@@ -9,7 +9,11 @@ import spinal.lib.bus.wishbone._
 import spinal.lib.io.{TriStateArray, TriState}
 
 object Pio {
-  case class Io(parameter: PioCtrl.Parameter) extends Bundle {
+  case class Parameter(width: Int) {
+    require(width > 0, "At least one pin is required.")
+  }
+
+  case class Io(parameter: Parameter) extends Bundle {
     val pins = master(TriStateArray(parameter.width bits))
   }
 
@@ -20,7 +24,7 @@ object Pio {
   ) extends Component {
     val io = new Bundle {
       val bus = slave(busType())
-      val pio = Io(parameter)
+      val pio = Io(parameter.io)
     }
 
     val ctrl = PioCtrl(parameter)

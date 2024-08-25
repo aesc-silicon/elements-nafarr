@@ -109,9 +109,9 @@ Register Mapping
 ****************
 
 .. |ip-identification-id-value| replace:: 0x0
-.. |ip-identification-major-version| replace:: 1
-.. |ip-identification-minor-version| replace:: 0
-.. |ip-identification-patch-version| replace:: 0
+.. |ip-identification-major-version| replace:: 0x1
+.. |ip-identification-minor-version| replace:: 0x0
+.. |ip-identification-patch-version| replace:: 0x0
 
 .. include:: ../ipidentification.rsti
 

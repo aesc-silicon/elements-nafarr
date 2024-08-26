@@ -6,47 +6,74 @@ import spinal.lib.fsm._
 import spinal.lib.bus.misc.BusSlaveFactory
 import spinal.lib.misc.InterruptCtrl
 import spinal.lib.io.{TriStateArray, TriState}
+import nafarr.IpIdentification
+import nafarr.library.ClockDivider
 
 object PioCtrl {
-  def apply(parameter: Parameter = Parameter(1)) = PioCtrl(parameter)
+  def apply(parameter: Parameter = Parameter.default()) = PioCtrl(parameter)
+
+  case class InitParameter(clockDivider: Int = 0, readDelay: Int = 0) {}
+  object InitParameter {
+    def disabled() = InitParameter(0, 0)
+  }
+
+  case class PermissionParameter(busCanWriteClockDividerConfig: Boolean) {}
+  object PermissionParameter {
+    def granted() = PermissionParameter(true)
+  }
 
   case class Parameter(
-      width: Int,
+      io: Pio.Parameter,
+      readBufferDepth: Int = 2,
+      init: InitParameter = InitParameter.disabled(),
+      permission: PermissionParameter = PermissionParameter.granted(),
       dataWidth: Int = 24,
       clockDividerWidth: Int = 20,
-      commandFifoDepth: Int = 32,
+      commandFifoDepth: Int = 16,
       readFifoDepth: Int = 8,
-      readBufferDepth: Int = 0
+      readDelayWidth: Int = 8
   ) {
-    require(width < 8, "Only up to 8 pins are supported")
+    val ioDataWidth = io.width + dataWidth
+    require(
+      ioDataWidth + 2 <= 32,
+      s"IO width and data width exceed with $ioDataWidth the 30 bit limit."
+    )
+
+    require(
+      (init != null && init.clockDivider > 0) ||
+        (permission != null && permission.busCanWriteClockDividerConfig),
+      "Clock divider value not set. Either configure a init or grant bus write access."
+    )
+
     val readWidth = 1
+  }
+  object Parameter {
+    def default(pins: Int = 1) = Parameter(Pio.Parameter(pins))
+    def light(pins: Int = 1) =
+      Parameter(Pio.Parameter(pins), dataWidth = 16, commandFifoDepth = 8, readFifoDepth = 4)
   }
 
   object CommandType extends SpinalEnum(binarySequential) {
-    val HIGH, LOW, WAIT, READ, A0, A1, A2, A3, A4 = newElement()
+    val HIGH, LOW, WAIT, READ = newElement()
   }
 
   case class CommandContainer(parameter: Parameter) extends Bundle {
     val command = CommandType()
-    val pin = UInt(4 bits)
+    val pin = UInt(log2Up(parameter.io.width) bits)
     val data = Bits(parameter.dataWidth bits)
-
-    def getWidth = parameter.dataWidth + 4
   }
 
   case class ReadContainer(parameter: Parameter) extends Bundle {
     val result = Bits(parameter.readWidth bits)
-
-    def getWidth = parameter.readWidth + 1
   }
 
   case class Config(parameter: Parameter) extends Bundle {
     val clockDivider = UInt(parameter.clockDividerWidth bits)
-    val readDelay = UInt(8 bits)
+    val readDelay = UInt(parameter.readDelayWidth bits)
   }
 
   case class Io(parameter: Parameter) extends Bundle {
-    val pio = Pio.Io(parameter)
+    val pio = Pio.Io(parameter.io)
     val config = in(Config(parameter))
     val commands = slave(Stream(CommandContainer(parameter)))
     val read = master(Stream(ReadContainer(parameter)))
@@ -56,31 +83,24 @@ object PioCtrl {
   case class PioCtrl(parameter: Parameter) extends Component {
     val io = Io(parameter)
 
-    val value = Bits(parameter.width bits)
+    val value = Bits(parameter.io.width bits)
     if (parameter.readBufferDepth > 0) {
       value := BufferCC(io.pio.pins.read, bufferDepth = Some(parameter.readBufferDepth))
     } else {
       value := io.pio.pins.read
     }
 
-    val clockDivider = new Area {
-      val counter = Reg(UInt(parameter.clockDividerWidth bits)).init(0)
-      val tick = counter === 0
-      def reset() = counter := io.config.clockDivider
-
-      counter := counter - 1
-      when(tick) {
-        this.reset()
-      }
-    }
+    val clockDivider = ClockDivider(parameter.clockDividerWidth)
+    clockDivider.io.value := io.config.clockDivider
+    clockDivider.io.reload := False
 
     val fsm = new StateMachine {
       val counter = Reg(UInt(parameter.dataWidth bits)).init(0)
-      val write = Reg(Bits(parameter.width bits)).init(0)
-      val direction = Reg(Bits(parameter.width bits)).init(0)
+      val write = Reg(Bits(parameter.io.width bits)).init(0)
+      val direction = Reg(Bits(parameter.io.width bits)).init(0)
       io.commands.ready := False
       io.read.valid := False
-      val pinNumber = io.commands.payload.pin.resize(log2Up(parameter.width))
+      val pinNumber = io.commands.payload.pin.resize(log2Up(parameter.io.width))
       val readContainer = ReadContainer(parameter)
       readContainer.result := value(pinNumber).asBits
       io.read.payload := readContainer
@@ -105,12 +125,6 @@ object PioCtrl {
           }
         }
       }
-      val stateAck = new State {
-        whenIsActive {
-          io.commands.ready := True
-          goto(stateIdle)
-        }
-      }
       val stateHigh = new State {
         whenIsActive {
           direction(pinNumber) := True
@@ -129,11 +143,11 @@ object PioCtrl {
       }
       val stateWait = new State {
         onEntry {
-          clockDivider.reset()
+          clockDivider.io.reload := True
           counter := 0
         }
         whenIsActive {
-          when(clockDivider.tick) {
+          when(clockDivider.io.tick) {
             counter := counter + 1
           }
           when(counter.asBits === io.commands.payload.data) {
@@ -143,7 +157,10 @@ object PioCtrl {
         onExit(io.commands.ready := True)
       }
       val stateRead = new State {
-        onEntry(counter := 0)
+        onEntry {
+          clockDivider.io.reload := True
+          counter := 0
+        }
         whenIsActive {
           direction(pinNumber) := False
           counter := counter + 1
@@ -165,21 +182,24 @@ object PioCtrl {
       ctrl: Io,
       parameter: Parameter
   ) extends Area {
+    val idCtrl = IpIdentification(IpIdentification.Ids.Pio, 1, 0, 0)
+    idCtrl.driveFrom(busCtrl)
+    val offset = idCtrl.length
+
+    busCtrl.read(
+      B(parameter.readBufferDepth, 8 bits) ## B(parameter.clockDividerWidth, 8 bits) ##
+        B(parameter.dataWidth, 8 bits) ## B(parameter.io.width, 8 bits),
+      offset
+    )
 
     val tx = new Area {
-      val streamUnbuffered = busCtrl
-        .createAndDriveFlow(
-          CommandContainer(parameter),
-          address = 0x00
-        )
-        .toStream
+      val cmdContainer = CommandContainer(parameter)
+      val streamUnbuffered =
+        busCtrl.createAndDriveFlow(cmdContainer, address = offset + 0x04).toStream
       val (stream, fifoOccupancy) =
         streamUnbuffered.queueWithOccupancy(parameter.commandFifoDepth)
-      busCtrl.read(
-        parameter.commandFifoDepth - fifoOccupancy,
-        address = 0x04,
-        bitOffset = 16
-      )
+      val fifoVacancy = parameter.commandFifoDepth - fifoOccupancy
+      busCtrl.read(fifoVacancy, address = offset + 0x08, bitOffset = 16)
       ctrl.commands << stream
       streamUnbuffered.ready.allowPruning()
     }
@@ -189,16 +209,25 @@ object PioCtrl {
       ctrl.readIsFull := fifoOccupancy >= parameter.readFifoDepth - 1
       busCtrl.readStreamNonBlocking(
         stream,
-        address = 0x0,
+        address = offset + 0x04,
         validBitOffset = 16,
         payloadBitOffset = 0
       )
-      busCtrl.read(fifoOccupancy, address = 0x04, bitOffset = 24)
+      busCtrl.read(fifoOccupancy, address = offset + 0x08, bitOffset = 24)
     }
 
-    busCtrl
-      .driveAndRead(ctrl.config.clockDivider, 0x08)
-      .init(U(100, parameter.clockDividerWidth bits))
-    busCtrl.driveAndRead(ctrl.config.readDelay, 0x0c).init(U(5, 8 bits))
+    val clockDivider = Reg(UInt(parameter.clockDividerWidth bits))
+    if (parameter.init != null && parameter.init.clockDivider != 0)
+      clockDivider.init(parameter.init.clockDivider)
+    if (parameter.permission != null && parameter.permission.busCanWriteClockDividerConfig)
+      busCtrl.write(clockDivider, offset + 0x0c)
+    busCtrl.read(clockDivider, offset + 0x0c)
+    ctrl.config.clockDivider := clockDivider
+
+    val readDelay = Reg(UInt(parameter.readDelayWidth bits))
+    if (parameter.init != null && parameter.init.readDelay != 0)
+      readDelay.init(parameter.init.readDelay)
+    busCtrl.readAndWrite(readDelay, offset + 0x10)
+    ctrl.config.readDelay := readDelay
   }
 }

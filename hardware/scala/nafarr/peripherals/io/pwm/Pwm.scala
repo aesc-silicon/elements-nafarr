@@ -8,7 +8,9 @@ import spinal.lib.bus.avalon._
 import spinal.lib.bus.wishbone._
 
 object Pwm {
-  case class Parameter(channels: Int) {}
+  case class Parameter(channels: Int) {
+    require(channels > 0, "At least one channel is required.")
+  }
 
   case class Io(p: Parameter) extends Bundle {
     val output = out(Bits(p.channels bits))

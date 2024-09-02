@@ -119,7 +119,7 @@ object PwmCtrl {
 
     val channelCfg = Reg(ctrl.channels)
     for (i <- 0 until p.io.channels) {
-      val channel = offset + 0x8 + i * 0x10
+      val channel = offset + 8 + i * 12
 
       channelCfg(i).enable.init(False)
       channelCfg(i).invert.init(False)

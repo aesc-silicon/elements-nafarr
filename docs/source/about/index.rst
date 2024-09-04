@@ -32,6 +32,10 @@ Software
 
 IP cores may require software to function correctly. This directory includes simple bare-metal drivers, hardware testing software, or firmware.
 
+Drivers for the Zephyr RTOS are available in `elements-zephyr-application`_.
+
+.. _elements-zephyr-application: https://github.com/aesc-silicon/elements-zephyr-application
+
 Status
 ******
 

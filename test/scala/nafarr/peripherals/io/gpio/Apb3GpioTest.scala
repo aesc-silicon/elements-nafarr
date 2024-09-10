@@ -45,7 +45,8 @@ class Apb3GpioTest extends AnyFunSuite {
       }
 
       val apb = new Apb3Driver(dut.io.bus, dut.clockDomain)
-      val regOffset = dut.mapper.offset
+      val staticOffset = dut.mapper.staticOffset
+      val regOffset = dut.mapper.regOffset
 
       /* Init */
       dut.io.gpio.pins.read #= 0
@@ -69,7 +70,7 @@ class Apb3GpioTest extends AnyFunSuite {
 
       /* Read bank and pin count */
       assert(
-        apb.read(BigInt(regOffset)) == BigInt("00010020", 16),
+        apb.read(BigInt(staticOffset)) == BigInt("00010020", 16),
         "Unable to read 00010020 from GPIO bank/pin declaration"
       )
 
@@ -87,27 +88,27 @@ class Apb3GpioTest extends AnyFunSuite {
       )
       /* Check if value is accessible by APB */
       assert(
-        apb.read(BigInt(regOffset + 4)) == BigInt("800000AF", 16),
+        apb.read(BigInt(regOffset)) == BigInt("800000AF", 16),
         "Unable to read 800000AF from GPIO read"
       )
 
       /* Check if GPIO write works */
       dut.clockDomain.waitFallingEdge()
-      apb.write(BigInt(regOffset + 8), BigInt("FFFFFFFF", 16))
+      apb.write(BigInt(regOffset + 4), BigInt("FFFFFFFF", 16))
       dut.clockDomain.waitFallingEdge(1)
       assert(dut.io.gpio.pins.write.toBigInt == BigInt("800000F9", 16))
       assert(
-        apb.read(BigInt(regOffset + 8)) == BigInt("800000F9", 16),
+        apb.read(BigInt(regOffset + 4)) == BigInt("800000F9", 16),
         "Unable to read 800000F9 from GPIO write"
       )
 
       /* Check if GPIO direction works */
       dut.clockDomain.waitFallingEdge()
-      apb.write(BigInt(regOffset + 12), BigInt("FFFFFFFF", 16))
+      apb.write(BigInt(regOffset + 8), BigInt("FFFFFFFF", 16))
       dut.clockDomain.waitFallingEdge(1)
       assert(dut.io.gpio.pins.writeEnable.toBigInt == BigInt("800000F9", 16))
       assert(
-        apb.read(BigInt(regOffset + 12)) == BigInt("800000F9", 16),
+        apb.read(BigInt(regOffset + 8)) == BigInt("800000F9", 16),
         "Unable to read 800000F9 from GPIO write"
       )
 
@@ -124,7 +125,7 @@ class Apb3GpioTest extends AnyFunSuite {
       }
 
       val apb = new Apb3Driver(dut.io.bus, dut.clockDomain)
-      val regOffset = dut.mapper.offset
+      val regOffset = dut.mapper.regOffset
 
       /* Init */
       dut.io.gpio.pins.read #= 0
@@ -137,8 +138,8 @@ class Apb3GpioTest extends AnyFunSuite {
       )
 
       /* Test interrupt on high signal */
+      apb.write(BigInt(regOffset + 12), BigInt("FFFFFFFF", 16))
       apb.write(BigInt(regOffset + 16), BigInt("FFFFFFFF", 16))
-      apb.write(BigInt(regOffset + 20), BigInt("FFFFFFFF", 16))
       dut.io.gpio.pins.read #= BigInt("FFFFFFFF", 16)
       for (_ <- 0 to dut.ctrl.p.readBufferDepth + 1) {
         assert(
@@ -151,7 +152,7 @@ class Apb3GpioTest extends AnyFunSuite {
         dut.io.interrupt.toBigInt == 1,
         f"Interrupt not pending (0x${dut.io.interrupt.toBigInt}%08x)"
       )
-      apb.write(BigInt(regOffset + 20), BigInt("00000000", 16))
+      apb.write(BigInt(regOffset + 16), BigInt("00000000", 16))
       dut.clockDomain.waitFallingEdge()
       assert(
         dut.io.interrupt.toBigInt == 0,
@@ -159,8 +160,8 @@ class Apb3GpioTest extends AnyFunSuite {
       )
 
       /* Test interrupt on low signal */
+      apb.write(BigInt(regOffset + 20), BigInt("FFFFFFFF", 16))
       apb.write(BigInt(regOffset + 24), BigInt("FFFFFFFF", 16))
-      apb.write(BigInt(regOffset + 28), BigInt("FFFFFFFF", 16))
       dut.io.gpio.pins.read #= BigInt("00000000", 16)
       for (_ <- 0 to dut.ctrl.p.readBufferDepth + 1) {
         assert(
@@ -173,7 +174,7 @@ class Apb3GpioTest extends AnyFunSuite {
         dut.io.interrupt.toBigInt == 1,
         f"Interrupt not pending (0x${dut.io.interrupt.toBigInt}%08x)"
       )
-      apb.write(BigInt(regOffset + 28), BigInt("00000000", 16))
+      apb.write(BigInt(regOffset + 24), BigInt("00000000", 16))
       dut.clockDomain.waitFallingEdge()
       assert(
         dut.io.interrupt.toBigInt == 0,
@@ -181,8 +182,8 @@ class Apb3GpioTest extends AnyFunSuite {
       )
 
       /* Test interrupt on rising signal */
+      apb.write(BigInt(regOffset + 28), BigInt("FFFFFFFF", 16))
       apb.write(BigInt(regOffset + 32), BigInt("FFFFFFFF", 16))
-      apb.write(BigInt(regOffset + 36), BigInt("FFFFFFFF", 16))
       dut.io.gpio.pins.read #= BigInt("00000000", 16)
       assert(
         dut.io.interrupt.toBigInt == 0,
@@ -201,7 +202,7 @@ class Apb3GpioTest extends AnyFunSuite {
         dut.io.interrupt.toBigInt == 1,
         f"Interrupt not pending (0x${dut.io.interrupt.toBigInt}%08x)"
       )
-      apb.write(BigInt(regOffset + 36), BigInt("00000000", 16))
+      apb.write(BigInt(regOffset + 32), BigInt("00000000", 16))
       dut.clockDomain.waitFallingEdge()
       assert(
         dut.io.interrupt.toBigInt == 0,
@@ -209,8 +210,8 @@ class Apb3GpioTest extends AnyFunSuite {
       )
 
       /* Test interrupt on falling signal */
+      apb.write(BigInt(regOffset + 36), BigInt("FFFFFFFF", 16))
       apb.write(BigInt(regOffset + 40), BigInt("FFFFFFFF", 16))
-      apb.write(BigInt(regOffset + 44), BigInt("FFFFFFFF", 16))
       dut.io.gpio.pins.read #= BigInt("FFFFFFFF", 16)
       assert(
         dut.io.interrupt.toBigInt == 0,
@@ -229,7 +230,7 @@ class Apb3GpioTest extends AnyFunSuite {
         dut.io.interrupt.toBigInt == 1,
         f"Interrupt not pending (0x${dut.io.interrupt.toBigInt}%08x)"
       )
-      apb.write(BigInt(regOffset + 44), BigInt("00000000", 16))
+      apb.write(BigInt(regOffset + 40), BigInt("00000000", 16))
       dut.clockDomain.waitFallingEdge()
       assert(
         dut.io.interrupt.toBigInt == 0,

@@ -92,14 +92,15 @@ object GpioCtrl {
   ) extends Area {
     val idCtrl = IpIdentification(IpIdentification.Ids.Gpio, 1, 0, 0)
     idCtrl.driveFrom(busCtrl)
-    val offset = idCtrl.length
+    val staticOffset = idCtrl.length
 
     val banks = (p.io.width / 32.0).ceil.toInt
-    busCtrl.read(B(banks, 16 bits) ## B(p.io.width, 16 bits), offset)
+    busCtrl.read(B(banks, 16 bits) ## B(p.io.width, 16 bits), staticOffset)
+    val regOffset = idCtrl.length + 0x4
 
     for (bank <- 0 until banks) {
       val pins = if (bank < banks - 1) 32 else if (p.io.width % 32 == 0) 32 else p.io.width % 32
-      val baseAddr = offset + 4 + bank * 44
+      val baseAddr = regOffset + bank * 44
       val inputAddr = baseAddr
       val outputAddr = baseAddr + 4
       val directionAddr = baseAddr + 8

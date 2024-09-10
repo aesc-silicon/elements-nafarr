@@ -11,18 +11,18 @@ object PwmCtrl {
 
   case class InitParameter(clockDivider: Int) {}
   object InitParameter {
-    def disabled() = InitParameter(0)
+    def disabled = InitParameter(0)
   }
 
   case class PermissionParameter(busCanWriteClockDividerConfig: Boolean) {}
   object PermissionParameter {
-    def granted() = PermissionParameter(true)
+    def granted = PermissionParameter(true)
   }
 
   case class Parameter(
       io: Pwm.Parameter,
-      init: InitParameter = InitParameter.disabled(),
-      permission: PermissionParameter = PermissionParameter.granted(),
+      init: InitParameter = InitParameter.disabled,
+      permission: PermissionParameter = PermissionParameter.granted,
       clockDividerWidth: Int = 20,
       channelPeriodWidth: Int = 20,
       channelPulseWidth: Int = 20
@@ -92,13 +92,21 @@ object PwmCtrl {
   ) extends Area {
     val idCtrl = IpIdentification(IpIdentification.Ids.Pwm, 1, 0, 0)
     idCtrl.driveFrom(busCtrl)
-    val offset = idCtrl.length
+    val staticOffset = idCtrl.length
 
     busCtrl.read(
       B(p.channelPeriodWidth, 8 bits) ## B(p.channelPulseWidth, 8 bits) ##
         B(p.clockDividerWidth, 8 bits) ## B(p.io.channels, 8 bits),
-      offset
+      staticOffset
     )
+
+    if (p.permission != null) {
+      val permissionBits = Bool(p.permission.busCanWriteClockDividerConfig)
+      busCtrl.read(B(0, 32 - 1 bits) ## permissionBits, staticOffset + 0x4)
+    } else {
+      busCtrl.read(B(0), staticOffset + 0x4)
+    }
+    val regOffset = staticOffset + 0x8
 
     val config = new Area {
       val cfg = Reg(ctrl.config)
@@ -109,17 +117,17 @@ object PwmCtrl {
         cfg.clockDivider.init(0)
 
       if (p.permission != null && p.permission.busCanWriteClockDividerConfig)
-        busCtrl.write(cfg.clockDivider, address = offset + 0x04)
+        busCtrl.write(cfg.clockDivider, address = regOffset + 0x00)
       else
         cfg.allowUnsetRegToAvoidLatch
-      busCtrl.read(cfg.clockDivider, address = offset + 0x04)
+      busCtrl.read(cfg.clockDivider, address = regOffset + 0x00)
 
       ctrl.config <> cfg
     }
 
     val channelCfg = Reg(ctrl.channels)
     for (i <- 0 until p.io.channels) {
-      val channel = offset + 8 + i * 12
+      val channel = regOffset + 4 + i * 12
 
       channelCfg(i).enable.init(False)
       channelCfg(i).invert.init(False)

@@ -56,7 +56,8 @@ class Apb3PioTest extends AnyFunSuite {
       }
 
       val apb = new Apb3Driver(dut.io.bus, dut.clockDomain)
-      val regOffset = dut.mapper.offset
+      val staticOffset = dut.mapper.staticOffset
+      val regOffset = dut.mapper.regOffset
 
       /* Wait for reset and check initialized state */
       dut.clockDomain.waitSampling(2)
@@ -74,13 +75,25 @@ class Apb3PioTest extends AnyFunSuite {
 
       /* Read readBufferDepth, clockDividerWidth, dataWidth, io.Width */
       assert(
-        apb.read(BigInt(regOffset)) == BigInt("02141802", 16),
+        apb.read(BigInt(staticOffset)) == BigInt("02141802", 16),
         "Unable to read 02141401 from Pio config/IO width declaration"
+      )
+
+      /* Read readFifoDepth, commandFifoDepth */
+      assert(
+        apb.read(BigInt(staticOffset + 4)) == BigInt("00000810", 16),
+        "Unable to read 00000810 from Pio FIFO width declaration"
+      )
+
+      /* Read permissions */
+      assert(
+        apb.read(BigInt(staticOffset + 8)) == BigInt("00000001", 16),
+        "Unable to read 00000001 from Pio permission declaration"
       )
 
       /* Read FIFO status */
       assert(
-        apb.read(BigInt(regOffset + 0x8)) == BigInt("00100000", 16),
+        apb.read(BigInt(regOffset + 4)) == BigInt("00100000", 16),
         "Unable to read 00100000 from Pio FIFO status"
       )
     }
@@ -96,65 +109,65 @@ class Apb3PioTest extends AnyFunSuite {
       }
 
       val apb = new Apb3Driver(dut.io.bus, dut.clockDomain)
-      val regOffset = dut.mapper.offset
+      val regOffset = dut.mapper.regOffset
 
       /* Wait for reset and check initialized state */
       dut.clockDomain.waitSampling(2)
       dut.clockDomain.waitFallingEdge()
 
       dut.io.pio.pins.read #= BigInt("00", 2)
-      apb.write(BigInt(regOffset + 4), BigInt("011", 2))
+      apb.write(BigInt(regOffset), BigInt("011", 2))
       dut.clockDomain.waitSampling(10)
       assert(
-        apb.read(BigInt(regOffset + 4)) == BigInt("00010000", 16),
+        apb.read(BigInt(regOffset)) == BigInt("00010000", 16),
         "Unable to read value 0 from Pio pin 0"
       )
-      apb.write(BigInt(regOffset + 4), BigInt("111", 2))
+      apb.write(BigInt(regOffset), BigInt("111", 2))
       dut.clockDomain.waitSampling(10)
       assert(
-        apb.read(BigInt(regOffset + 4)) == BigInt("00010000", 16),
+        apb.read(BigInt(regOffset)) == BigInt("00010000", 16),
         "Unable to read value 0 from Pio pin 1"
       )
 
       dut.io.pio.pins.read #= BigInt("01", 2)
-      apb.write(BigInt(regOffset + 4), BigInt("011", 2))
+      apb.write(BigInt(regOffset), BigInt("011", 2))
       dut.clockDomain.waitSampling(10)
       assert(
-        apb.read(BigInt(regOffset + 4)) == BigInt("00010001", 16),
+        apb.read(BigInt(regOffset)) == BigInt("00010001", 16),
         "Unable to read value 1 from Pio pin 0"
       )
-      apb.write(BigInt(regOffset + 4), BigInt("111", 2))
+      apb.write(BigInt(regOffset), BigInt("111", 2))
       dut.clockDomain.waitSampling(10)
       assert(
-        apb.read(BigInt(regOffset + 4)) == BigInt("00010000", 16),
+        apb.read(BigInt(regOffset)) == BigInt("00010000", 16),
         "Unable to read value 0 from Pio pin 1"
       )
 
       dut.io.pio.pins.read #= BigInt("10", 2)
-      apb.write(BigInt(regOffset + 4), BigInt("011", 2))
+      apb.write(BigInt(regOffset), BigInt("011", 2))
       dut.clockDomain.waitSampling(10)
       assert(
-        apb.read(BigInt(regOffset + 4)) == BigInt("00010000", 16),
+        apb.read(BigInt(regOffset)) == BigInt("00010000", 16),
         "Unable to read value 0 from Pio pin 0"
       )
-      apb.write(BigInt(regOffset + 4), BigInt("111", 2))
+      apb.write(BigInt(regOffset), BigInt("111", 2))
       dut.clockDomain.waitSampling(10)
       assert(
-        apb.read(BigInt(regOffset + 4)) == BigInt("00010001", 16),
+        apb.read(BigInt(regOffset)) == BigInt("00010001", 16),
         "Unable to read value 1 from Pio pin 1"
       )
 
       dut.io.pio.pins.read #= BigInt("11", 2)
-      apb.write(BigInt(regOffset + 4), BigInt("011", 2))
+      apb.write(BigInt(regOffset), BigInt("011", 2))
       dut.clockDomain.waitSampling(10)
       assert(
-        apb.read(BigInt(regOffset + 4)) == BigInt("00010001", 16),
+        apb.read(BigInt(regOffset)) == BigInt("00010001", 16),
         "Unable to read value 1 from Pio pin 0"
       )
-      apb.write(BigInt(regOffset + 4), BigInt("111", 2))
+      apb.write(BigInt(regOffset), BigInt("111", 2))
       dut.clockDomain.waitSampling(10)
       assert(
-        apb.read(BigInt(regOffset + 4)) == BigInt("00010001", 16),
+        apb.read(BigInt(regOffset)) == BigInt("00010001", 16),
         "Unable to read value 1 from Pio pin 1"
       )
     }
@@ -170,7 +183,7 @@ class Apb3PioTest extends AnyFunSuite {
       }
 
       val apb = new Apb3Driver(dut.io.bus, dut.clockDomain)
-      val regOffset = dut.mapper.offset
+      val regOffset = dut.mapper.regOffset
 
       /* Wait for reset and check initialized state */
       dut.clockDomain.waitSampling(2)
@@ -181,14 +194,14 @@ class Apb3PioTest extends AnyFunSuite {
         dut.io.pio.pins.write.toBigInt == BigInt("00", 2),
         "Default PIO output value should be 00"
       )
-      apb.write(BigInt(regOffset + 4), BigInt("000", 2))
+      apb.write(BigInt(regOffset), BigInt("000", 2))
       dut.clockDomain.waitSampling(4)
       assert(
         dut.io.pio.pins.write.toBigInt == BigInt("01", 2),
         "PIO output value should be 01"
       )
       assert(dut.io.pio.pins.writeEnable.toBigInt == BigInt("01", 2))
-      apb.write(BigInt(regOffset + 4), BigInt("100", 2))
+      apb.write(BigInt(regOffset), BigInt("100", 2))
       dut.clockDomain.waitSampling(4)
       assert(
         dut.io.pio.pins.write.toBigInt == BigInt("11", 2),
@@ -197,8 +210,8 @@ class Apb3PioTest extends AnyFunSuite {
       assert(dut.io.pio.pins.writeEnable.toBigInt == BigInt("11", 2))
 
       /* Wait 2 clock cycles and set LOW */
-      apb.write(BigInt(regOffset + 4), BigInt("10010", 2))
-      apb.write(BigInt(regOffset + 4), BigInt("001", 2))
+      apb.write(BigInt(regOffset), BigInt("10010", 2))
+      apb.write(BigInt(regOffset), BigInt("001", 2))
 
       /* clock divider = 2 (3 cycles), 2 wait cycles result in 6 cycles + 4 cycles overhead */
       for (_ <- 0 until 10) {
@@ -218,8 +231,8 @@ class Apb3PioTest extends AnyFunSuite {
 
 
       /* Wait 6 clock cycles and set LOW */
-      apb.write(BigInt(regOffset + 4), BigInt("110010", 2))
-      apb.write(BigInt(regOffset + 4), BigInt("101", 2))
+      apb.write(BigInt(regOffset), BigInt("110010", 2))
+      apb.write(BigInt(regOffset), BigInt("101", 2))
 
       /* clock divider = 2 (3 cycles), 6 wait cycles result in 18 cycles + 4 cycles overhead */
       for (_ <- 0 until 22) {

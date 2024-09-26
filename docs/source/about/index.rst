@@ -57,3 +57,7 @@ The following table lists all available IP cores and their status.
      - nafarr.peripherals.io
      - OK
      - :ref:`hardware-peripherals-pwm`
+   * - Uart
+     - nafarr.peripherals.com
+     - OK
+     - :ref:`hardware-peripherals-uart`

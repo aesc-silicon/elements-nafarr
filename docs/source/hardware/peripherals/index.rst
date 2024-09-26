@@ -9,3 +9,4 @@ The following list offers an overview of all available peripheral IP cores.
    gpio.rst
    pio.rst
    pwm.rst
+   uart.rst

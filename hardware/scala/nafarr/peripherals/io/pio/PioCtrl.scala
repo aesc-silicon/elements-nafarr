@@ -14,23 +14,35 @@ object PioCtrl {
 
   case class InitParameter(clockDivider: Int = 0, readDelay: Int = 0) {}
   object InitParameter {
-    def disabled() = InitParameter(0, 0)
+    def disabled = InitParameter(0, 0)
   }
 
   case class PermissionParameter(busCanWriteClockDividerConfig: Boolean) {}
   object PermissionParameter {
-    def granted() = PermissionParameter(true)
+    def granted = PermissionParameter(true)
+  }
+
+  case class MemoryMappedParameter(
+      commandFifoDepth: Int = 16,
+      readFifoDepth: Int = 8
+  ) {
+    require(commandFifoDepth > 0 && commandFifoDepth < 256)
+    require(readFifoDepth > 0 && readFifoDepth < 256)
+  }
+  object MemoryMappedParameter {
+    def lightweight = MemoryMappedParameter(4, 2)
+    def default = MemoryMappedParameter(16, 8)
+    def full = MemoryMappedParameter(32, 16)
   }
 
   case class Parameter(
       io: Pio.Parameter,
       readBufferDepth: Int = 2,
-      init: InitParameter = InitParameter.disabled(),
-      permission: PermissionParameter = PermissionParameter.granted(),
+      init: InitParameter = InitParameter.disabled,
+      permission: PermissionParameter = PermissionParameter.granted,
+      memory: MemoryMappedParameter = MemoryMappedParameter.default,
       dataWidth: Int = 24,
       clockDividerWidth: Int = 20,
-      commandFifoDepth: Int = 16,
-      readFifoDepth: Int = 8,
       readDelayWidth: Int = 8
   ) {
     val ioDataWidth = io.width + dataWidth
@@ -42,7 +54,7 @@ object PioCtrl {
     require(
       (init != null && init.clockDivider > 0) ||
         (permission != null && permission.busCanWriteClockDividerConfig),
-      "Clock divider value not set. Either configure a init or grant bus write access."
+      "Clock divider value not set. Either configure an init or grant bus write access."
     )
 
     val readWidth = 1
@@ -50,7 +62,7 @@ object PioCtrl {
   object Parameter {
     def default(pins: Int = 1) = Parameter(Pio.Parameter(pins))
     def light(pins: Int = 1) =
-      Parameter(Pio.Parameter(pins), dataWidth = 16, commandFifoDepth = 8, readFifoDepth = 4)
+      Parameter(Pio.Parameter(pins), memory = MemoryMappedParameter.lightweight, dataWidth = 16)
   }
 
   object CommandType extends SpinalEnum(binarySequential) {
@@ -180,54 +192,67 @@ object PioCtrl {
   case class Mapper(
       busCtrl: BusSlaveFactory,
       ctrl: Io,
-      parameter: Parameter
+      p: Parameter
   ) extends Area {
     val idCtrl = IpIdentification(IpIdentification.Ids.Pio, 1, 0, 0)
     idCtrl.driveFrom(busCtrl)
-    val offset = idCtrl.length
+    val staticOffset = idCtrl.length
 
     busCtrl.read(
-      B(parameter.readBufferDepth, 8 bits) ## B(parameter.clockDividerWidth, 8 bits) ##
-        B(parameter.dataWidth, 8 bits) ## B(parameter.io.width, 8 bits),
-      offset
+      B(p.readBufferDepth, 8 bits) ## B(p.clockDividerWidth, 8 bits) ##
+        B(p.dataWidth, 8 bits) ## B(p.io.width, 8 bits),
+      staticOffset
     )
 
+    busCtrl.read(
+      B(0, 16 bits) ## B(p.memory.readFifoDepth, 8 bits) ## B(p.memory.commandFifoDepth, 8 bits),
+      staticOffset + 0x4
+    )
+
+    if (p.permission != null) {
+      val permissionBits = Bool(p.permission.busCanWriteClockDividerConfig)
+      busCtrl.read(B(0, 32 - 1 bits) ## permissionBits, staticOffset + 0x8)
+    } else {
+      busCtrl.read(B(0), staticOffset + 0x8)
+    }
+    val regOffset = staticOffset + 0xc
+
     val tx = new Area {
-      val cmdContainer = CommandContainer(parameter)
+      val cmdContainer = CommandContainer(p)
       val streamUnbuffered =
-        busCtrl.createAndDriveFlow(cmdContainer, address = offset + 0x04).toStream
+        busCtrl.createAndDriveFlow(cmdContainer, address = regOffset + 0x00).toStream
       val (stream, fifoOccupancy) =
-        streamUnbuffered.queueWithOccupancy(parameter.commandFifoDepth)
-      val fifoVacancy = parameter.commandFifoDepth - fifoOccupancy
-      busCtrl.read(fifoVacancy, address = offset + 0x08, bitOffset = 16)
+        streamUnbuffered.queueWithOccupancy(p.memory.commandFifoDepth)
+      val fifoVacancy = p.memory.commandFifoDepth - fifoOccupancy
+      busCtrl.read(fifoVacancy, address = regOffset + 0x04, bitOffset = 16)
       ctrl.commands << stream
       streamUnbuffered.ready.allowPruning()
     }
 
     val rx = new Area {
-      val (stream, fifoOccupancy) = ctrl.read.queueWithOccupancy(parameter.readFifoDepth)
-      ctrl.readIsFull := fifoOccupancy >= parameter.readFifoDepth - 1
+      val (stream, fifoOccupancy) = ctrl.read.queueWithOccupancy(p.memory.readFifoDepth)
+      ctrl.readIsFull := fifoOccupancy >= p.memory.readFifoDepth - 1
       busCtrl.readStreamNonBlocking(
         stream,
-        address = offset + 0x04,
+        address = regOffset + 0x00,
         validBitOffset = 16,
         payloadBitOffset = 0
       )
-      busCtrl.read(fifoOccupancy, address = offset + 0x08, bitOffset = 24)
+      busCtrl.read(fifoOccupancy, address = regOffset + 0x04, bitOffset = 24)
     }
 
-    val clockDivider = Reg(UInt(parameter.clockDividerWidth bits))
-    if (parameter.init != null && parameter.init.clockDivider != 0)
-      clockDivider.init(parameter.init.clockDivider)
-    if (parameter.permission != null && parameter.permission.busCanWriteClockDividerConfig)
-      busCtrl.write(clockDivider, offset + 0x0c)
-    busCtrl.read(clockDivider, offset + 0x0c)
+    val clockDivider = Reg(UInt(p.clockDividerWidth bits))
+    if (p.init != null && p.init.clockDivider != 0)
+      clockDivider.init(p.init.clockDivider)
+    if (p.permission != null && p.permission.busCanWriteClockDividerConfig)
+      busCtrl.write(clockDivider, regOffset + 0x08)
+    busCtrl.read(clockDivider, regOffset + 0x08)
     ctrl.config.clockDivider := clockDivider
 
-    val readDelay = Reg(UInt(parameter.readDelayWidth bits))
-    if (parameter.init != null && parameter.init.readDelay != 0)
-      readDelay.init(parameter.init.readDelay)
-    busCtrl.readAndWrite(readDelay, offset + 0x10)
+    val readDelay = Reg(UInt(p.readDelayWidth bits))
+    if (p.init != null && p.init.readDelay != 0)
+      readDelay.init(p.init.readDelay)
+    busCtrl.readAndWrite(readDelay, regOffset + 0x0c)
     ctrl.config.readDelay := readDelay
   }
 }

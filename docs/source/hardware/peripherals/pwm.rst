@@ -136,11 +136,11 @@ Parameter
    * - init
      - PwmCtrl.InitParameter
      - Class to parametrize the initialization values.
-     - InitParameter(0)
+     - InitParameter.disabled
    * - permission
      - PwmCtrl.PermissionParameter
      - Class to set bus access.
-     - PermissionParameter(true)
+     - PermissionParameter.granted
    * - clockDividerWidth
      - Int
      - Width of the clock divider counter.
@@ -207,6 +207,12 @@ This block discloses information about the IP core to software drivers to simpli
      -
      - Rx
      - Number of channels.
+   * - 0x00C
+     - 0
+     - busCanWriteClockDividerConfig
+     -
+     - Rx
+     - Flag whether the clock divider is writable.
 
 **Clock Divider:**
 
@@ -220,7 +226,7 @@ This block discloses information about the IP core to software drivers to simpli
      - Default
      - Permission
      - Description
-   * - 0x00C
+   * - 0x010
      - clockDividerWidth - 0
      - clockDividerValue
      - Depends on `PwmCtrl.InitParameter`
@@ -239,7 +245,7 @@ This block discloses information about the IP core to software drivers to simpli
      - Default
      - Permission
      - Description
-   * - :rspan:`1` 0x010
+   * - :rspan:`1` 0x014
      - 0
      - enable
      - 0
@@ -250,13 +256,13 @@ This block discloses information about the IP core to software drivers to simpli
      - 0
      - RW
      - Invert the output wave from active-high to active-low.
-   * - 0x014
+   * - 0x018
      - channelPeriodWidth - 0
      - periodWidth
      - 0
      - RW
      - Defines the number of cycles one wave period should be.
-   * - 0x018
+   * - 0x01C
      - channelPulseWidth - 0
      - channelWidth
      - 0

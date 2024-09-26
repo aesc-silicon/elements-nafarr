@@ -44,7 +44,8 @@ class Apb3PwmTest extends AnyFunSuite {
       }
 
       val apb = new Apb3Driver(dut.io.bus, dut.clockDomain)
-      val regOffset = dut.mapper.offset
+      val staticOffset = dut.mapper.staticOffset
+      val regOffset = dut.mapper.regOffset
 
       /* Wait for reset and check initialized state */
       dut.clockDomain.waitSampling(2)
@@ -62,8 +63,14 @@ class Apb3PwmTest extends AnyFunSuite {
 
       /* Read channelPulseWidth, channelPeriodWidth, clockDividerWidth, io.channels */
       assert(
-        apb.read(BigInt(regOffset)) == BigInt("14141401", 16),
+        apb.read(BigInt(staticOffset)) == BigInt("14141401", 16),
         "Unable to read 14141401 from PWM config/channel declaration"
+      )
+
+      /* Read permissions */
+      assert(
+        apb.read(BigInt(staticOffset + 4)) == BigInt("00000001", 16),
+        "Unable to read 00000001 from PWM permission declaration"
       )
     }
     compiled.doSim("channel1dutyCycle") { dut =>
@@ -78,21 +85,21 @@ class Apb3PwmTest extends AnyFunSuite {
       }
 
       val apb = new Apb3Driver(dut.io.bus, dut.clockDomain)
-      val regOffset = dut.mapper.offset
+      val regOffset = dut.mapper.regOffset
 
       /* Wait for reset and check initialized state */
       dut.clockDomain.waitSampling(2)
       dut.clockDomain.waitFallingEdge()
 
       /* Init - Set clock divider to 1 us */
-      apb.write(BigInt(regOffset + 4), BigInt("99", 10))
+      apb.write(BigInt(regOffset), BigInt("99", 10))
 
       /* Init channel 0 */
-      apb.write(BigInt(regOffset + 12), BigInt("9", 10))
-      apb.write(BigInt(regOffset + 16), BigInt("5", 10))
+      apb.write(BigInt(regOffset + 8), BigInt("9", 10))
+      apb.write(BigInt(regOffset + 12), BigInt("5", 10))
 
       assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
-      apb.write(BigInt(regOffset + 8), BigInt("1", 16))
+      apb.write(BigInt(regOffset + 4), BigInt("1", 16))
       dut.clockDomain.waitSampling(100)
 
       assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
@@ -115,21 +122,21 @@ class Apb3PwmTest extends AnyFunSuite {
       }
 
       val apb = new Apb3Driver(dut.io.bus, dut.clockDomain)
-      val regOffset = dut.mapper.offset
+      val regOffset = dut.mapper.regOffset
 
       /* Wait for reset and check initialized state */
       dut.clockDomain.waitSampling(2)
       dut.clockDomain.waitFallingEdge()
 
       /* Init - Set clock divider to 1 us */
-      apb.write(BigInt(regOffset + 4), BigInt("99", 10))
+      apb.write(BigInt(regOffset), BigInt("99", 10))
 
       /* Init channel 0 */
-      apb.write(BigInt(regOffset + 12), BigInt("9", 10))
-      apb.write(BigInt(regOffset + 16), BigInt("5", 10))
+      apb.write(BigInt(regOffset + 8), BigInt("9", 10))
+      apb.write(BigInt(regOffset + 12), BigInt("5", 10))
 
       assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
-      apb.write(BigInt(regOffset + 8), BigInt("1", 16))
+      apb.write(BigInt(regOffset + 4), BigInt("1", 16))
       dut.clockDomain.waitSampling(100)
 
       assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
@@ -138,12 +145,12 @@ class Apb3PwmTest extends AnyFunSuite {
       dut.clockDomain.waitSampling(5 * 100)
       assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
       dut.clockDomain.waitSampling(10)
-      apb.write(BigInt(regOffset + 8), BigInt("0", 16))
-      apb.write(BigInt(regOffset + 12), BigInt("9", 10))
-      apb.write(BigInt(regOffset + 16), BigInt("3", 10))
+      apb.write(BigInt(regOffset + 4), BigInt("0", 16))
+      apb.write(BigInt(regOffset + 8), BigInt("9", 10))
+      apb.write(BigInt(regOffset + 12), BigInt("3", 10))
 
       dut.clockDomain.waitSampling(90)
-      apb.write(BigInt(regOffset + 8), BigInt("1", 16))
+      apb.write(BigInt(regOffset + 4), BigInt("1", 16))
       dut.clockDomain.waitSampling(100)
 
       assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))

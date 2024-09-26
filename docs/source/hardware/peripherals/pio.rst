@@ -124,6 +124,25 @@ Parameter
    Parameter in InitParameter with a value "0" are equal to disabled. This allows to
    only set certain parameters.
 
+`PioCtrl.MemoryMappedParameter` defines the FIFO width.
+
+.. list-table:: PioCtrl.MemoryMappedParameter
+   :widths: 25 25 25 25
+   :header-rows: 1
+
+   * - Name
+     - Type
+     - Description
+     - Default
+   * - commandFifoDepth
+     - Int
+     - FIFO depth for incoming commands.
+     - 16
+   * - readFifoDepth
+     - Int
+     - FIFO depth for outgoing read results.
+     - 8
+
 `PioCtrl.PermissionParameter` defines the permission rules for bus access.
 
 .. list-table:: PioCtrl.PermissionParameter
@@ -160,11 +179,15 @@ Parameter
    * - init
      - PioCtrl.InitParameter
      - Class to parametrize the initialization values.
-     - InitParameter(0, 0)
+     - InitParameter.disabled
    * - permission
      - PioCtrl.PermissionParameter
      - Class to set bus access.
-     - PermissionParameter(true)
+     - PermissionParameter.granted
+   * - memory
+     - PioCtrl.MemoryMappedParameter
+     - Class to define FIFO depth.
+     - MemoryMappedParameter.default
    * - dataWidth
      - Int
      - Width of the data field used in the command FIFO to pass additional information to the
@@ -174,14 +197,6 @@ Parameter
      - Int
      - Width of the clock divider counter.
      - 20
-   * - commandFifoDepth
-     - Int
-     - Depth of the FIFO to send commands from the bus to the controller.
-     - 16
-   * - readFifoDepth
-     - Int
-     - Depth of the FIFO to read results from the controller.
-     - 8
    * - readDelayWidth
      - Int
      - Width of the read delay counter.
@@ -195,7 +210,7 @@ Parameter
      def default(pins: Int = 1) =
        Parameter(Pio.Parameter(pins))
      def light(pins: Int = 1) =
-       Parameter(Pio.Parameter(pins), dataWidth = 16, commandFifoDepth = 8, readFifoDepth = 4)
+       Parameter(Pio.Parameter(pins), memory = MemoryMappedParameter.lightweight, dataWidth = 16)
    }
 
 Register Mapping
@@ -244,10 +259,27 @@ This block discloses information about the IP core to software drivers to simpli
      -
      - Rx
      - Number of IO pins.
+   * - :rspan:`1` 0x00C
+     - 15 - 8
+     - readFifoDepth
+     -
+     - Rx
+     - Depth of the read FIFO.
+   * - 7 - 0
+     - commandFifoDepth
+     -
+     - Rx
+     - Depth of the command FIFO.
+   * - 0x010
+     - 0
+     - busCanWriteClockDividerConfig
+     -
+     - Rx
+     - Flag whether the clock divider is writable.
 
 **Command and Read FIFO:**
 
-.. flat-table:: Self Disclosure Registers
+.. flat-table:: Command and Read FIFO
    :widths: 10 10 15 10 10 45
    :header-rows: 1
 
@@ -257,7 +289,7 @@ This block discloses information about the IP core to software drivers to simpli
      - Default
      - Permission
      - Description
-   * - :rspan:`1` 0x00C
+   * - :rspan:`1` 0x014
      - 16
      - validBit
      -
@@ -268,7 +300,7 @@ This block discloses information about the IP core to software drivers to simpli
      -
      - Rx
      - Payload from the result FIFO.
-   * - 0x00C
+   * - 0x014
      - 31 - 0
      - commandFifo
      -
@@ -277,7 +309,7 @@ This block discloses information about the IP core to software drivers to simpli
          * Lower two bits define the command.
          * Decimal number of the pin.
          * Additional data.
-   * - :rspan:`2` 0x010
+   * - :rspan:`2` 0x018
      - 31 - 24
      - occupancy
      -
@@ -301,13 +333,13 @@ This block discloses information about the IP core to software drivers to simpli
      - Default
      - Permission
      - Description
-   * - 0x014
+   * - 0x01C
      - clockDividerWidth - 0
      - clockDividerValue
      - Depends on `PioCtrl.InitParameter`
      - RW or Rx
      - Value for the clock divider counter to divide down the input clock.
-   * - 0x018
+   * - 0x020
      - readDelayWidth - 0
      - ReadDelayValue
      - Depends on `PioCtrl.InitParameter`

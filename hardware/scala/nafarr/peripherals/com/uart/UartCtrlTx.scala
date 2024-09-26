@@ -4,7 +4,7 @@ import spinal.core._
 import spinal.lib._
 
 object UartCtrlTx {
-  def apply(p: UartCtrl.Parameter = UartCtrl.Parameter.default) = UartCtrlTx(p)
+  def apply(p: UartCtrl.Parameter = UartCtrl.Parameter.default()) = UartCtrlTx(p)
 
   object State extends SpinalEnum {
     val IDLE, START, DATA, PARITY, STOP = newElement()

@@ -259,7 +259,7 @@ This block discloses information about the IP core to software drivers to simpli
      -
      - Rx
      - Number of IO pins.
-   * - :rspan:`2` 0x00C
+   * - :rspan:`1` 0x00C
      - 15 - 8
      - readFifoDepth
      -

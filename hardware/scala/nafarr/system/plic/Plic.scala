@@ -40,26 +40,7 @@ object Plic {
       )
     )
     targets.foreach(_.threshold := 0)
-    /*
-    TODO: Check if 'PlicMapping.light' is equal to following configuration
-    val plicMapping = PlicMapping(
-        gatewayPriorityOffset = 0x0000,
-        gatewayPendingOffset = 0x1000,
-        targetEnableOffset = 0x2000,
-        targetThresholdOffset = 0xF000,
-        targetClaimOffset = 0xF004,
-        gatewayPriorityShift = 2,
-        gatewayPendingShift = 2,
-        targetThresholdShift = 12,
-        targetClaimShift = 12,
-        targetEnableShift = 7,
-        gatewayPriorityReadGen = true,
-        gatewayPendingReadGen = true,
-        targetThresholdReadGen = true,
-        targetEnableReadGen = true
-    )
-     */
-    val mapping = PlicMapper(factory(io.bus), PlicMapping.light)(
+    val mapping = PlicMapper(factory(io.bus), PlicMapping.sifive)(
       gateways = gateways,
       targets = targets
     )
@@ -70,7 +51,7 @@ object Plic {
 
 case class Apb3Plic(
     parameter: PlicCtrl.Parameter,
-    busConfig: Apb3Config = Apb3Config(16, 32)
+    busConfig: Apb3Config = Apb3Config(22, 32)
 ) extends Plic.Core[Apb3](
       parameter,
       Apb3(busConfig),
@@ -79,7 +60,7 @@ case class Apb3Plic(
 
 case class WishbonePlic(
     parameter: PlicCtrl.Parameter,
-    busConfig: WishboneConfig = WishboneConfig(16, 32)
+    busConfig: WishboneConfig = WishboneConfig(22, 32)
 ) extends Plic.Core[Wishbone](
       parameter,
       Wishbone(busConfig),
@@ -88,7 +69,7 @@ case class WishbonePlic(
 
 case class AvalonMMPlic(
     parameter: PlicCtrl.Parameter,
-    busConfig: AvalonMMConfig = AvalonMMConfig.fixed(16, 32, 1)
+    busConfig: AvalonMMConfig = AvalonMMConfig.fixed(22, 32, 1)
 ) extends Plic.Core[AvalonMM](
       parameter,
       AvalonMM(busConfig),

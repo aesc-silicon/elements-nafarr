@@ -30,7 +30,7 @@ Remember to update the path to the OSS CAD Suite and export it in every new bash
 
 .. code-block:: bash
 
-   # Add OSS CAD Suite pre-builds to the environment
+   # Add OSS CAD Suite pre-builts to the environment
    export PATH=$PWD/oss-cad-suite/bin/:$PATH
 
 .. _OSS CAD Suite: https://github.com/YosysHQ/oss-cad-suite-build/releases/tag/2024-01-01

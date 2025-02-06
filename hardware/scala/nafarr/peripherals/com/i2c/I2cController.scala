@@ -8,7 +8,7 @@ import spinal.lib.bus.avalon._
 import spinal.lib.bus.wishbone._
 
 object I2cController {
-  case class Cmd(p: I2cCtrl.Parameter) extends Bundle {
+  case class Cmd() extends Bundle {
     val data = Bits(8 bits)
     val read = Bool
     val start = Bool
@@ -16,13 +16,13 @@ object I2cController {
     val ack = Bool
   }
 
-  case class Rsp(p: I2cCtrl.Parameter) extends Bundle {
+  case class Rsp() extends Bundle {
     val data = Bits(8 bits)
     val error = Bool
   }
 
   class Core[T <: spinal.core.Data with IMasterSlave](
-      p: I2cCtrl.Parameter,
+      p: I2cControllerCtrl.Parameter,
       busType: HardType[T],
       factory: T => BusSlaveFactory
   ) extends Component {
@@ -70,7 +70,7 @@ object I2cController {
 }
 
 case class Apb3I2cController(
-    parameter: I2cCtrl.Parameter,
+    parameter: I2cControllerCtrl.Parameter,
     busConfig: Apb3Config = Apb3Config(12, 32)
 ) extends I2cController.Core[Apb3](
       parameter,
@@ -79,7 +79,7 @@ case class Apb3I2cController(
     ) { val dummy = 0 }
 
 case class WishboneI2cController(
-    parameter: I2cCtrl.Parameter,
+    parameter: I2cControllerCtrl.Parameter,
     busConfig: WishboneConfig = WishboneConfig(12, 32)
 ) extends I2cController.Core[Wishbone](
       parameter,
@@ -88,7 +88,7 @@ case class WishboneI2cController(
     ) { val dummy = 0 }
 
 case class AvalonMMI2cController(
-    parameter: I2cCtrl.Parameter,
+    parameter: I2cControllerCtrl.Parameter,
     busConfig: AvalonMMConfig = AvalonMMConfig.fixed(12, 32, 1)
 ) extends I2cController.Core[AvalonMM](
       parameter,

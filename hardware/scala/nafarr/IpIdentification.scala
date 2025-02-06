@@ -9,7 +9,7 @@ object IpIdentification {
     IpIdentificationCtrl(id, major, minor, patch)
 
   object Ids extends SpinalEnum {
-    val Gpio, Pio, Pwm, Uart = newElement()
+    val Gpio, Pio, Pwm, Uart, I2cController, I2cDevice = newElement()
   }
 
   case class IpIdentificationCtrl(

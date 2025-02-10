@@ -28,6 +28,7 @@ object SpiController {
     val args = Bits(Math.max(widthOf(CmdData(p)), widthOf(CmdCs(p))) bits)
 
     def isData = mode === CmdMode.DATA
+    def isCs = mode === CmdMode.CS
     def argsData = {
       val ret = CmdData(p)
       ret.assignFromBits(args)

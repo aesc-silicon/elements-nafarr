@@ -6,9 +6,11 @@ object SpiCtrl {
   case class InitParameter(
       cpol: Boolean = false,
       cpha: Boolean = false,
-      frequency: HertzNumber = 1 Hz
+      frequency: HertzNumber = 1 Hz,
+      busWidth: SpiControllerCtrl.SpiBusWidth.E = SpiControllerCtrl.SpiBusWidth.Single
   )
   object InitParameter {
+    def disabled = InitParameter(false, false, 0 Hz)
     def default = InitParameter(false, false, 100 kHz)
     def fast = InitParameter(false, false, 1 MHz)
   }
@@ -16,12 +18,9 @@ object SpiCtrl {
   case class PermissionParameter(
       busCanWriteModeConfig: Boolean,
       busCanWriteClockDividerConfig: Boolean
-  ) {
-    require(busCanWriteModeConfig)
-    require(busCanWriteClockDividerConfig)
-  }
+  ) {}
   object PermissionParameter {
-    def full = PermissionParameter(true, true)
+    def granted = PermissionParameter(true, true)
     def restricted = PermissionParameter(false, false)
   }
 
@@ -39,41 +38,38 @@ object SpiCtrl {
   }
 
   case class Parameter(
-      permission: PermissionParameter,
-      memory: MemoryMappedParameter,
-      init: InitParameter,
       io: Spi.Parameter,
-      timerWidth: Int = 16,
-      dataWidth: Int = 8
+      init: InitParameter = InitParameter.disabled,
+      permission: PermissionParameter = PermissionParameter.granted,
+      memory: MemoryMappedParameter = MemoryMappedParameter.default,
+      clockDividerWidth: Int = 16
   ) {
-    require(timerWidth > 1)
-    require(dataWidth > 0)
+    require(
+      (init != null && init.frequency.toLong > 0) ||
+        (permission != null && permission.busCanWriteClockDividerConfig),
+      "Frequency value not set. Either configure an init or grant bus write access."
+    )
+    require(clockDividerWidth > 1, "Clock Divider width needs to be at least 1 bit")
+
+    val dataWidth = 8
   }
 
   object Parameter {
-    def lightweight(csWidth: Int = 1) = Parameter(
-      permission = PermissionParameter.full,
-      memory = MemoryMappedParameter.lightweight,
-      init = InitParameter.default,
-      io = Spi.Parameter(csWidth)
+    def lightweight(csWidth: Int = 1, busWidth: Int = 1) = Parameter(
+      io = Spi.Parameter(csWidth, busWidth),
+      memory = MemoryMappedParameter.lightweight
     )
-    def default(csWidth: Int = 1) = Parameter(
-      permission = PermissionParameter.full,
-      memory = MemoryMappedParameter.default,
-      init = InitParameter.default,
-      io = Spi.Parameter(csWidth)
+    def default(csWidth: Int = 1, busWidth: Int = 1) = Parameter(
+      io = Spi.Parameter(csWidth, busWidth)
     )
-    def xip(csWidth: Int = 1) = Parameter(
-      permission = PermissionParameter.full,
-      memory = MemoryMappedParameter.default,
+    def xip(csWidth: Int = 1, busWidth: Int = 4) = Parameter(
+      io = Spi.Parameter(csWidth, busWidth),
+      init = InitParameter.fast
+    )
+    def full(csWidth: Int = 1, busWidth: Int = 1) = Parameter(
+      io = Spi.Parameter(csWidth, busWidth),
       init = InitParameter.fast,
-      io = Spi.Parameter(csWidth)
-    )
-    def full(csWidth: Int = 1) = Parameter(
-      permission = PermissionParameter.full,
-      memory = MemoryMappedParameter.full,
-      init = InitParameter.fast,
-      io = Spi.Parameter(csWidth)
+      memory = MemoryMappedParameter.full
     )
   }
 }

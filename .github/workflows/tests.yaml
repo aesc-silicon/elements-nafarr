@@ -19,6 +19,9 @@ jobs:
         with:
           path: nafarr
 
+      - name: Setup Scala
+        uses: olafurpg/setup-scala@v11
+
       - name: Add OSS CAD Suite
         uses: YosysHQ/setup-oss-cad-suite@v3
         with:

@@ -20,6 +20,9 @@ jobs:
         with:
           path: nafarr
 
+      - name: Setup Scala
+        uses: olafurpg/setup-scala@v11
+
       - name: Checkout SpinalCrypto
         uses: actions/checkout@v2
         with:

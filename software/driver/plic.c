@@ -15,21 +15,21 @@ int plic_init(struct plic_driver *driver, unsigned int base_address)
 
 int plic_irq_enable(struct plic_driver *driver, unsigned int number)
 {
-	*driver->target_enable |= 0x1 << number;
+	*driver->target_enable |= 0x1 << (number + 1);
 
 	return 1;
 }
 
 int plic_irq_disable(struct plic_driver *driver, unsigned int number)
 {
-	*driver->target_enable &= ~(0x1 << number);
+	*driver->target_enable &= ~(0x1 << (number + 1));
 
 	return 1;
 }
 
 int plic_irq_claim(struct plic_driver *driver, unsigned int number)
 {
-	*driver->claim |= 0x1 << (number - 1);
+	*driver->claim |= 0x1 << number;
 
 	return 1;
 }

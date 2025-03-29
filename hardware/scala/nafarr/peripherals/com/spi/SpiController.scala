@@ -13,21 +13,22 @@ object SpiController {
     val DATA, CS = newElement()
   }
 
-  case class CmdData(p: SpiCtrl.Parameter) extends Bundle {
+  case class CmdData(p: SpiControllerCtrl.Parameter) extends Bundle {
     val data = Bits(p.dataWidth bits)
     val read = Bool
   }
 
-  case class CmdCs(p: SpiCtrl.Parameter) extends Bundle {
+  case class CmdCs(p: SpiControllerCtrl.Parameter) extends Bundle {
     val enable = Bool
     val index = UInt(log2Up(p.io.csWidth) bits)
   }
 
-  case class Cmd(p: SpiCtrl.Parameter) extends Bundle {
+  case class Cmd(p: SpiControllerCtrl.Parameter) extends Bundle {
     val mode = CmdMode()
     val args = Bits(Math.max(widthOf(CmdData(p)), widthOf(CmdCs(p))) bits)
 
     def isData = mode === CmdMode.DATA
+    def isCs = mode === CmdMode.CS
     def argsData = {
       val ret = CmdData(p)
       ret.assignFromBits(args)
@@ -41,7 +42,7 @@ object SpiController {
   }
 
   class Core[T <: spinal.core.Data with IMasterSlave](
-      p: SpiCtrl.Parameter,
+      p: SpiControllerCtrl.Parameter,
       busType: HardType[T],
       factory: T => BusSlaveFactory
   ) extends PeripheralsComponent {
@@ -90,13 +91,15 @@ object SpiController {
       val baseAddress = "%08x".format(address.toInt)
       val regSize = "%04x".format(size.toInt)
       var dt = s"""#define ${name.toUpperCase}_BASE\t\t0x${baseAddress}\n"""
+      if (irqNumber.isDefined)
+        dt += s"""#define ${name.toUpperCase}_IRQ\t\t${irqNumber.get}\n"""
       dt
     }
   }
 }
 
 case class Apb3SpiController(
-    parameter: SpiCtrl.Parameter,
+    parameter: SpiControllerCtrl.Parameter,
     busConfig: Apb3Config = Apb3Config(12, 32)
 ) extends SpiController.Core[Apb3](
       parameter,
@@ -105,7 +108,7 @@ case class Apb3SpiController(
     ) { val dummy = 0 }
 
 case class WishboneSpiController(
-    parameter: SpiCtrl.Parameter,
+    parameter: SpiControllerCtrl.Parameter,
     busConfig: WishboneConfig = WishboneConfig(12, 32)
 ) extends SpiController.Core[Wishbone](
       parameter,
@@ -114,7 +117,7 @@ case class WishboneSpiController(
     ) { val dummy = 0 }
 
 case class AvalonMMSpiController(
-    parameter: SpiCtrl.Parameter,
+    parameter: SpiControllerCtrl.Parameter,
     busConfig: AvalonMMConfig = AvalonMMConfig.fixed(12, 32, 1)
 ) extends SpiController.Core[AvalonMM](
       parameter,

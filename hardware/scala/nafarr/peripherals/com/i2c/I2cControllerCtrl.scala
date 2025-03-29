@@ -4,9 +4,66 @@ import spinal.core._
 import spinal.lib._
 import spinal.lib.bus.misc.BusSlaveFactory
 import spinal.lib.misc.InterruptCtrl
+import nafarr.IpIdentification
+import nafarr.library.ClockDivider
 
 object I2cControllerCtrl {
-  def apply(p: I2cCtrl.Parameter = I2cCtrl.Parameter.default) = I2cControllerCtrl(p)
+  def apply(p: Parameter = Parameter.default()) = I2cControllerCtrl(p)
+
+  case class InitParameter(clockDivider: Int = 0) {}
+  object InitParameter {
+    def disabled = InitParameter(0)
+  }
+
+  case class PermissionParameter(
+      busCanWriteClockDividerConfig: Boolean
+  ) {}
+  object PermissionParameter {
+    def granted = PermissionParameter(true)
+    def restricted = PermissionParameter(false)
+  }
+
+  case class MemoryMappedParameter(
+      cmdFifoDepth: Int,
+      rspFifoDepth: Int
+  ) {
+    require(cmdFifoDepth > 0 && cmdFifoDepth < 256)
+    require(rspFifoDepth > 0 && rspFifoDepth < 256)
+  }
+  object MemoryMappedParameter {
+    def lightweight = MemoryMappedParameter(4, 4)
+    def default = MemoryMappedParameter(16, 16)
+    def full = MemoryMappedParameter(64, 64)
+  }
+
+  case class Parameter(
+      io: I2c.Parameter,
+      init: InitParameter = InitParameter.disabled,
+      permission: PermissionParameter = PermissionParameter.granted,
+      memory: MemoryMappedParameter = MemoryMappedParameter.default,
+      clockDividerWidth: Int = 16
+  ) {
+    require(
+      (init != null && init.clockDivider > 0) ||
+        (permission != null && permission.busCanWriteClockDividerConfig),
+      "Clock divider value not set. Either configure an init or grant bus write access."
+    )
+    require(clockDividerWidth > 1, "Clock Divider width needs to be at least 1 bit")
+  }
+
+  object Parameter {
+    def lightweight(interrupts: Int = 0) = Parameter(
+      io = I2c.Parameter(interrupts),
+      memory = MemoryMappedParameter.lightweight
+    )
+    def default(interrupts: Int = 0) = Parameter(
+      io = I2c.Parameter(interrupts)
+    )
+    def full(interrupts: Int = 0) = Parameter(
+      io = I2c.Parameter(interrupts),
+      memory = MemoryMappedParameter.full
+    )
+  }
 
   object State extends SpinalEnum {
     val IDLE, START, SENDDATA, SENDACK, RECVDATA, RECVACK, STOP = newElement()
@@ -15,40 +72,35 @@ object I2cControllerCtrl {
     val FIRST, SECOND, THIRD, FOURTH = newElement()
   }
 
-  case class Config(p: I2cCtrl.Parameter) extends Bundle {
+  case class Config(p: Parameter) extends Bundle {
     val config = Bits(31 bits)
-    val clockDivider = UInt(p.timerWidth bits)
+    val clockDivider = UInt(p.clockDividerWidth bits)
+    val clockDividerReload = Bool
   }
 
-  case class Io(p: I2cCtrl.Parameter) extends Bundle {
+  case class Io(p: Parameter) extends Bundle {
     val config = in(Config(p))
     val i2c = master(I2c.Io(p.io))
     val interrupt = out(Bool)
     val pendingInterrupts = in(Bits(2 + p.io.interrupts bits))
-    val cmd = slave(Stream(I2cController.Cmd(p)))
-    val rsp = master(Stream(I2cController.Rsp(p)))
+    val cmd = slave(Stream(I2cController.Cmd()))
+    val rsp = master(Stream(I2cController.Rsp()))
   }
 
-  case class I2cControllerCtrl(p: I2cCtrl.Parameter) extends Component {
+  case class I2cControllerCtrl(p: Parameter) extends Component {
     val io = Io(p)
     val ctrlEnable = RegInit(True)
 
     val ctrl = new ClockEnableArea(ctrlEnable) {
 
-      val clockDivider = new Area {
-        val counter = Reg(UInt(p.timerWidth bits)).init(2)
-        val tick = counter === 0
-
-        counter := counter - 1
-        when(tick) {
-          counter := io.config.clockDivider
-        }
-      }
+      val clockDivider = new ClockDivider(p.clockDividerWidth)
+      clockDivider.io.value := io.config.clockDivider
+      clockDivider.io.reload := io.config.clockDividerReload
 
       val tickCounter = new Area {
         val value = Reg(UInt(2 bits)).init(0)
         def reset() = value := 0
-        when(clockDivider.tick) {
+        when(clockDivider.io.tick) {
           value := value + 1
         }
       }
@@ -94,14 +146,14 @@ object I2cControllerCtrl {
         io.cmd.ready := False
         switch(state) {
           is(State.IDLE) {
-            when(io.cmd.valid && clockDivider.tick) {
+            when(io.cmd.valid && clockDivider.io.tick) {
               tickCounter.reset()
               dataCounter.reset()
               firstState(io.cmd.payload)
             }
           }
           is(State.START) {
-            when(clockDivider.tick) {
+            when(clockDivider.io.tick) {
               when(tickCounter.value === 1) {
                 sclWrite := False
               }
@@ -115,7 +167,7 @@ object I2cControllerCtrl {
             }
           }
           is(State.RECVDATA) {
-            when(clockDivider.tick) {
+            when(clockDivider.io.tick) {
               when(tickCounter.value === 0) {
                 sdaWrite := False
                 hasStop := io.cmd.payload.stop
@@ -138,7 +190,7 @@ object I2cControllerCtrl {
             }
           }
           is(State.RECVACK) {
-            when(clockDivider.tick) {
+            when(clockDivider.io.tick) {
               when(tickCounter.value === 0) {
                 /* Do not ack when FIFO is full */
                 sdaWrite := io.cmd.payload.ack & io.rsp.ready
@@ -158,7 +210,7 @@ object I2cControllerCtrl {
             }
           }
           is(State.SENDDATA) {
-            when(clockDivider.tick) {
+            when(clockDivider.io.tick) {
               when(tickCounter.value === 0) {
                 hasStop := io.cmd.payload.stop
                 sdaWrite := !io.cmd.payload.data(dataCounter.value)
@@ -177,7 +229,7 @@ object I2cControllerCtrl {
             }
           }
           is(State.SENDACK) {
-            when(clockDivider.tick) {
+            when(clockDivider.io.tick) {
               when(tickCounter.value === 0) {
                 sdaWrite := False
               }
@@ -200,7 +252,7 @@ object I2cControllerCtrl {
             }
           }
           is(State.STOP) {
-            when(clockDivider.tick) {
+            when(clockDivider.io.tick) {
               when(tickCounter.value === 0) {
                 sdaWrite := True
               }
@@ -237,52 +289,80 @@ object I2cControllerCtrl {
   case class Mapper(
       busCtrl: BusSlaveFactory,
       ctrl: Io,
-      p: I2cCtrl.Parameter
+      p: Parameter
   ) extends Area {
+    val idCtrl = IpIdentification(IpIdentification.Ids.I2cController, 1, 0, 0)
+    idCtrl.driveFrom(busCtrl)
+    val staticOffset = idCtrl.length
 
-    val config = new Area {
-      val cfg = Reg(ctrl.config)
+    busCtrl.read(
+      B(0, 24 bits) ## B(p.clockDividerWidth, 8 bits),
+      staticOffset
+    )
 
-      busCtrl.drive(cfg.config, address = 0x08)
+    busCtrl.read(
+      B(0, 16 bits) ## B(p.memory.cmdFifoDepth, 8 bits) ## B(p.memory.rspFifoDepth, 8 bits),
+      staticOffset + 0x4
+    )
 
-      if (p.permission.busCanWriteClockDividerConfig)
-        busCtrl.writeMultiWord(cfg.clockDivider, address = 0x0c)
-      else
-        cfg.allowUnsetRegToAvoidLatch
-
-      ctrl.config <> cfg
-    }
+    val permissionBits = Bool(p.permission.busCanWriteClockDividerConfig)
+    busCtrl.read(B(0, 32 - 1 bits) ## permissionBits, staticOffset + 0x8)
+    val regOffset = staticOffset + 0xc
 
     val cmdLogic = new Area {
-      val streamUnbuffered = Stream(I2cController.Cmd(p))
-      streamUnbuffered.valid := busCtrl.isWriting(address = 0x00)
+      val streamUnbuffered = Stream(I2cController.Cmd())
+      streamUnbuffered.valid := busCtrl.isWriting(address = regOffset + 0x00)
       busCtrl.nonStopWrite(streamUnbuffered.data, bitOffset = 0)
       busCtrl.nonStopWrite(streamUnbuffered.start, bitOffset = 8)
       busCtrl.nonStopWrite(streamUnbuffered.stop, bitOffset = 9)
       busCtrl.nonStopWrite(streamUnbuffered.read, bitOffset = 10)
       busCtrl.nonStopWrite(streamUnbuffered.ack, bitOffset = 11)
 
-      // busCtrl.createAndDriveFlow(I2cController.Cmd(p), address = 0x00).toStream
-      val (stream, fifoAvailability) = streamUnbuffered.queueWithAvailability(p.memory.cmdFifoDepth)
+      val (stream, fifoOccupancy) = streamUnbuffered.queueWithOccupancy(p.memory.cmdFifoDepth)
+      val fifoVacancy = p.memory.cmdFifoDepth - fifoOccupancy
+      busCtrl.read(fifoVacancy, address = regOffset + 0x04, 16)
       ctrl.cmd << stream
-      busCtrl.read(fifoAvailability, address = 0x04, 16)
+      streamUnbuffered.ready.allowPruning()
     }
 
     val rspLogic = new Area {
       val (stream, fifoOccupancy) = ctrl.rsp.queueWithOccupancy(p.memory.rspFifoDepth)
       busCtrl.readStreamNonBlocking(
         stream,
-        address = 0x00,
+        address = regOffset + 0x00,
         validBitOffset = 31,
         payloadBitOffset = 0
       )
-      busCtrl.read(fifoOccupancy, address = 0x04, 0)
+      busCtrl.read(fifoOccupancy, address = regOffset + 0x04, 0)
+    }
+
+    val config = new Area {
+      val cfg = Reg(ctrl.config)
+
+      if (p.init != null && p.init.clockDivider != 0)
+        cfg.clockDivider.init(p.init.clockDivider)
+      if (p.permission != null && p.permission.busCanWriteClockDividerConfig)
+        busCtrl.write(cfg.clockDivider, address = regOffset + 0x08)
+      busCtrl.read(cfg.clockDivider, regOffset + 0x08)
+
+      cfg.clockDividerReload := False
+      busCtrl.onWrite(regOffset + 0x08) {
+        cfg.clockDividerReload := True
+      }
+
+      ctrl.config <> cfg
     }
 
     val interruptCtrl = new Area {
+      val cmdOccupancyTrigger = Reg(cloneOf(cmdLogic.fifoOccupancy))
+      val cmdPreviousOccupancy = RegNext(cmdLogic.fifoOccupancy)
+      busCtrl.readAndWrite(cmdOccupancyTrigger, regOffset + 0x10)
+      val cmdTrigger =
+        cmdLogic.fifoOccupancy === cmdOccupancyTrigger && cmdPreviousOccupancy === (cmdOccupancyTrigger + 1)
+
       val irqCtrl = new InterruptCtrl(2 + p.io.interrupts)
-      irqCtrl.driveFrom(busCtrl, 0x10)
-      irqCtrl.io.inputs(0) := !cmdLogic.stream.valid
+      irqCtrl.driveFrom(busCtrl, regOffset + 0x14)
+      irqCtrl.io.inputs(0) := cmdTrigger
       irqCtrl.io.inputs(1) := rspLogic.stream.valid
       for (i <- 0 until p.io.interrupts) {
         irqCtrl.io.inputs(2 + i) := ctrl.i2c.interrupts(i)

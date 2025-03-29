@@ -4,51 +4,74 @@ import spinal.core._
 import spinal.lib._
 import spinal.lib.bus.misc.BusSlaveFactory
 import spinal.lib.misc.InterruptCtrl
+import nafarr.library.ClockDivider
 
 object I2cDeviceCtrl {
-  def apply(p: I2cCtrl.Parameter = I2cCtrl.Parameter.default) = I2cDeviceCtrl(p)
+  def apply(p: Parameter = Parameter.default()) = I2cDeviceCtrl(p)
+
+  case class Parameter(
+      io: I2c.Parameter,
+      clockDividerWidth: Int = 16,
+      timeoutWidth: Int = 16,
+      samplerWidth: Int = 3,
+      addressWidth: Int = 7
+  ) {
+    require(clockDividerWidth > 0, "Clock divider width needs to be at least 1 bit")
+    require(timeoutWidth > 0, "Timeout width needs to be at least 1 bit")
+    require(samplerWidth > 2, "Sample window size should be at least 3")
+    require(addressWidth == 7, "Address width can only be 7") // 10 bit not supported yet
+  }
+
+  object Parameter {
+    def default(interrupts: Int = 0) = Parameter(io = I2c.Parameter(interrupts))
+  }
 
   object State extends SpinalEnum {
     val IDLE, REQ, RSP = newElement()
   }
 
-  case class Config(p: I2cCtrl.Parameter) extends Bundle {
-    val clockDivider = UInt(p.timerWidth bits)
+  case class Config(p: Parameter) extends Bundle {
+    val clockDivider = UInt(p.clockDividerWidth bits)
+    val clockDividerReload = Bool
     val timeout = UInt(p.timeoutWidth bits)
     val deviceAddr = Bits(p.addressWidth bits)
   }
 
-  case class Io(p: I2cCtrl.Parameter) extends Bundle {
+  case class Io(p: Parameter) extends Bundle {
     val config = in(Config(p))
     val i2c = slave(I2c.Io(p.io))
     val interrupts = in(Bits(p.io.interrupts bits))
-    val cmd = master(Stream(I2cDevice.Cmd(p)))
-    val rsp = slave(Stream(I2cDevice.Rsp(p)))
+    val cmd = master(Stream(I2cDevice.Cmd()))
+    val rsp = slave(Stream(I2cDevice.Rsp()))
   }
 
-  case class IoFilter(i2c: I2c.Io, clockDivider: UInt, p: I2cCtrl.Parameter) extends Area {
-    val timer = new Area {
-      val counter = Reg(UInt(p.timerWidth bits)) init (0)
-      val tick = counter === 0
-
-      counter := counter - 1
-      when(tick) {
-        counter := clockDivider
-      }
-    }
+  case class IoFilter(i2c: I2c.Io, config: Config, p: Parameter) extends Area {
+    val clockDivider = new ClockDivider(p.clockDividerWidth)
+    clockDivider.io.value := config.clockDivider
+    clockDivider.io.reload := config.clockDividerReload
 
     val sampler = new Area {
       val sclSync = BufferCC(i2c.scl.read, True)
       val sdaSync = BufferCC(i2c.sda.read, True)
 
       val sclSamples =
-        History(that = sclSync, range = 0 until p.samplerWidth, when = timer.tick, init = True)
+        History(
+          that = sclSync,
+          range = 0 until p.samplerWidth,
+          when = clockDivider.io.tick,
+          init = True
+        )
       val sdaSamples =
-        History(that = sdaSync, range = 0 until p.samplerWidth, when = timer.tick, init = True)
+        History(
+          that = sdaSync,
+          range = 0 until p.samplerWidth,
+          when = clockDivider.io.tick,
+          init = True
+        )
     }
 
     val sda, scl = RegInit(True)
-    when(timer.tick) {
+    when(clockDivider.io.tick) {
       when(sampler.sdaSamples.map(_ =/= sda).andR) {
         sda := sampler.sdaSamples.last
       }
@@ -58,10 +81,10 @@ object I2cDeviceCtrl {
     }
   }
 
-  case class I2cDeviceCtrl(p: I2cCtrl.Parameter) extends Component {
+  case class I2cDeviceCtrl(p: Parameter) extends Component {
     val io = Io(p)
 
-    val filter = new IoFilter(io.i2c, io.config.clockDivider, p)
+    val filter = new IoFilter(io.i2c, io.config, p)
 
     val sclEdge = filter.scl.edges(True)
     val sdaEdge = filter.sda.edges(True)
@@ -86,7 +109,7 @@ object I2cDeviceCtrl {
       when(detector.start || sclEdge.rise || sclEdge.fall) {
         value := 0
       }
-      when(filter.timer.tick && transmission) {
+      when(filter.clockDivider.io.tick && transmission) {
         value := value + 1
       }
     }

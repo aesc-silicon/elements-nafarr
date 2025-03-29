@@ -1,4 +1,4 @@
-package nafarr.peripherals.io.pwm
+package nafarr.peripherals.pinmux
 
 import spinal.core._
 import spinal.lib._
@@ -6,30 +6,34 @@ import spinal.lib.bus.misc._
 import spinal.lib.bus.amba3.apb._
 import spinal.lib.bus.avalon._
 import spinal.lib.bus.wishbone._
+import spinal.lib.io.{TriStateArray, TriState}
 
-object Pwm {
-  case class Parameter(channels: Int) {
-    require(channels > 0, "At least one channel is required.")
+import scala.collection.mutable.ArrayBuffer
+
+object Pinmux {
+  case class Parameter(width: Int) {
+    require(width > 0, "At least one pin is required.")
   }
 
   case class Io(p: Parameter) extends Bundle {
-    val output = out(Bits(p.channels bits))
+    val pins = master(TriStateArray(p.width bits))
   }
 
   class Core[T <: spinal.core.Data with IMasterSlave](
-      p: PwmCtrl.Parameter,
+      p: PinmuxCtrl.Parameter,
+      mapping: ArrayBuffer[(Int, List[Int])],
       busType: HardType[T],
       factory: T => BusSlaveFactory
   ) extends Component {
     val io = new Bundle {
       val bus = slave(busType())
-      val pwm = Io(p.io)
+      val pins = Io(p.io)
+      val inputs = slave(TriStateArray(p.inputs bits))
     }
-
-    val ctrl = PwmCtrl(p)
-    ctrl.io.pwm <> io.pwm
-
-    val mapper = PwmCtrl.Mapper(factory(io.bus), ctrl.io, p)
+    val ctrl = PinmuxCtrl(p, mapping)
+    ctrl.io.pins <> io.pins.pins
+    ctrl.io.inputs <> io.inputs
+    val mapper = PinmuxCtrl.Mapper(factory(io.bus), ctrl.io, p)
 
     def headerBareMetal(
         name: String,
@@ -45,29 +49,35 @@ object Pwm {
   }
 }
 
-case class Apb3Pwm(
-    parameter: PwmCtrl.Parameter,
+case class Apb3Pinmux(
+    parameter: PinmuxCtrl.Parameter,
+    mapping: ArrayBuffer[(Int, List[Int])],
     busConfig: Apb3Config = Apb3Config(12, 32)
-) extends Pwm.Core[Apb3](
+) extends Pinmux.Core[Apb3](
       parameter,
+      mapping,
       Apb3(busConfig),
       Apb3SlaveFactory(_)
     ) { val dummy = 0 }
 
-case class WishbonePwm(
-    parameter: PwmCtrl.Parameter,
+case class WishbonePinmux(
+    parameter: PinmuxCtrl.Parameter,
+    mapping: ArrayBuffer[(Int, List[Int])],
     busConfig: WishboneConfig = WishboneConfig(12, 32)
-) extends Pwm.Core[Wishbone](
+) extends Pinmux.Core[Wishbone](
       parameter,
+      mapping,
       Wishbone(busConfig),
       WishboneSlaveFactory(_)
     ) { val dummy = 0 }
 
-case class AvalonMMPwm(
-    parameter: PwmCtrl.Parameter,
+case class AvalonMMPinmux(
+    parameter: PinmuxCtrl.Parameter,
+    mapping: ArrayBuffer[(Int, List[Int])],
     busConfig: AvalonMMConfig = AvalonMMConfig.fixed(12, 32, 1)
-) extends Pwm.Core[AvalonMM](
+) extends Pinmux.Core[AvalonMM](
       parameter,
+      mapping,
       AvalonMM(busConfig),
       AvalonMMSlaveFactory(_)
     ) { val dummy = 0 }

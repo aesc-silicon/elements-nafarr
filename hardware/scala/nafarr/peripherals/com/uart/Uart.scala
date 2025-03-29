@@ -55,7 +55,12 @@ object Uart {
     val mapper = UartCtrl.Mapper(factory(io.bus), ctrl.io, p)
 
     val clockSpeed = ClockDomain.current.frequency.getValue.toInt
-    def deviceTreeZephyr(name: String, address: BigInt, size: BigInt, irqNumber: Int = -1) = {
+    def deviceTreeZephyr(
+        name: String,
+        address: BigInt,
+        size: BigInt,
+        irqNumber: Option[Int] = null
+    ) = {
       val baseAddress = "%x".format(address.toInt)
       val regSize = "%04x".format(size.toInt)
       val baudrate = this.p.init.baudrate
@@ -64,10 +69,10 @@ object Uart {
 \t\t\tcompatible = "elements,uart";
 \t\t\treg = <0x$baseAddress 0x$regSize>;
 \t\t\tstatus = "okay";"""
-      if (irqNumber > 0) {
+      if (irqNumber.isDefined) {
         dt += s"""
 \t\t\tinterrupt-parent = <&plic>;
-\t\t\tinterrupts = <$irqNumber 1>;"""
+\t\t\tinterrupts = <${irqNumber.get} 1>;"""
       }
       dt += s"""
 \t\t\tclock-frequency = <$clockSpeed>;
@@ -75,13 +80,20 @@ object Uart {
 \t\t};"""
       dt
     }
-    def headerBareMetal(name: String, address: BigInt, size: BigInt, irqNumber: Int = -1) = {
+    def headerBareMetal(
+        name: String,
+        address: BigInt,
+        size: BigInt,
+        irqNumber: Option[Int] = null
+    ) = {
       val baseAddress = "%08x".format(address.toInt)
       val regSize = "%04x".format(size.toInt)
       var dt = s"""#define ${name.toUpperCase}_BASE\t\t0x${baseAddress}
 #define ${name.toUpperCase}_FREQ\t\t${clockSpeed}
 #define ${name.toUpperCase}_BAUD\t\t${this.p.init.baudrate}
 """
+      if (irqNumber.isDefined)
+        dt += s"""#define ${name.toUpperCase}_IRQ\t\t${irqNumber.get}\n"""
       dt
     }
   }

@@ -2,10 +2,17 @@
 #define ELEMNETS_UART
 
 struct uart_regs {
+	unsigned int ip_api;
+	unsigned int ip_version;
+	unsigned int ip_widths;
+	unsigned int ip_sampling_sizes;
+	unsigned int ip_fifo_depths;
+	unsigned int ip_permission;
 	unsigned int read_write;
 	unsigned int status;
 	unsigned int clock_div;
 	unsigned int frame_cfg;
+	unsigned int irq_transmit_trigger;
 	unsigned int ip;
 	unsigned int ie;
 };

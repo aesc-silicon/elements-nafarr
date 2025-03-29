@@ -31,6 +31,18 @@ object Pio {
     ctrl.io.pio <> io.pio
 
     val mapper = PioCtrl.Mapper(factory(io.bus), ctrl.io, parameter)
+
+    def headerBareMetal(
+        name: String,
+        address: BigInt,
+        size: BigInt,
+        irqNumber: Option[Int] = null
+    ) = {
+      val baseAddress = "%08x".format(address.toInt)
+      val regSize = "%04x".format(size.toInt)
+      var dt = s"""#define ${name.toUpperCase}_BASE\t\t0x${baseAddress}\n"""
+      dt
+    }
   }
 }
 

@@ -46,6 +46,18 @@ object Plic {
     )
 
     io.interrupt := targets(0).iep
+
+    def headerBareMetal(
+        name: String,
+        address: BigInt,
+        size: BigInt,
+        irqNumber: Option[Int] = null
+    ) = {
+      val baseAddress = "%08x".format(address.toInt)
+      val regSize = "%04x".format(size.toInt)
+      var dt = s"""#define ${name.toUpperCase}_BASE\t\t0x${baseAddress}\n"""
+      dt
+    }
   }
 }
 

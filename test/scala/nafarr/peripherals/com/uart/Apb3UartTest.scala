@@ -11,23 +11,28 @@ import spinal.lib.bus.amba3.apb.sim.Apb3Driver
 
 class Apb3UartTest extends AnyFunSuite {
   def genCore(parameter: UartCtrl.Parameter) = {
-      val cd = ClockDomain.current.copy(frequency = FixedFrequency(100 MHz))
-      val area = new ClockingArea(cd) {
-        val dut = Apb3Uart(parameter)
-      }
-      area.dut
+    val cd = ClockDomain.current.copy(frequency = FixedFrequency(100 MHz))
+    val area = new ClockingArea(cd) {
+      val dut = Apb3Uart(parameter)
+    }
+    area.dut
   }
 
   test("parameters") {
     generationShouldPass(genCore(UartCtrl.Parameter.lightweight))
-    generationShouldPass(genCore(UartCtrl.Parameter.default()))
-    generationShouldPass(genCore(UartCtrl.Parameter.default(9600)))
-    generationShouldPass(genCore(UartCtrl.Parameter.default(115200)))
+    generationShouldPass(genCore(UartCtrl.Parameter.default))
     generationShouldPass(genCore(UartCtrl.Parameter.full()))
     generationShouldPass(genCore(UartCtrl.Parameter.full(9600)))
     generationShouldPass(genCore(UartCtrl.Parameter.full(115200)))
     generationShouldPass(genCore(UartCtrl.Parameter(interrupt = false)))
     generationShouldPass(genCore(UartCtrl.Parameter(flowControl = false)))
+    generationShouldPass {
+      val parameter = UartCtrl.Parameter(
+        init = UartCtrl.InitParameter.default(115200),
+        permission = UartCtrl.PermissionParameter.restricted
+      )
+      genCore(parameter)
+    }
 
     generationShouldFail {
       val parameter = UartCtrl.Parameter(
@@ -38,13 +43,7 @@ class Apb3UartTest extends AnyFunSuite {
     }
   }
   test("basic") {
-    val compiled = SimConfig.withWave.compile {
-      val cd = ClockDomain.current.copy(frequency = FixedFrequency(100 MHz))
-      val area = new ClockingArea(cd) {
-        val dut = Apb3Uart(UartCtrl.Parameter.default())
-      }
-      area.dut
-    }
+    val compiled = SimConfig.withWave.compile(genCore(UartCtrl.Parameter.default))
 
     compiled.doSim("basicRegisters") { dut =>
       dut.clockDomain.forkStimulus(10)
@@ -102,7 +101,7 @@ class Apb3UartTest extends AnyFunSuite {
       /* Read FIFO status */
       assert(
         apb.read(BigInt(regOffset + 4)) == BigInt("00100000", 16),
-        "Unable to read 00100000 from Pio FIFO status"
+        "Unable to read 00100000 from UART FIFO status"
       )
     }
 

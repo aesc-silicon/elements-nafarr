@@ -2,6 +2,9 @@
 #define ELEMNETS_GPIO
 
 struct gpio_regs {
+	int ip_api;
+	int ip_version;
+	int ip_info;
 	int data_in;
 	int data_out;
 	int dir_en;

@@ -8,7 +8,7 @@ import nafarr.IpIdentification
 import nafarr.library.ClockDivider
 
 object UartCtrl {
-  def apply(p: Parameter = Parameter.default()) = UartCtrl(p)
+  def apply(p: Parameter = Parameter.default) = UartCtrl(p)
 
   case class InitParameter(
       baudrate: Int = 0,
@@ -29,10 +29,7 @@ object UartCtrl {
   case class PermissionParameter(
       busCanWriteClockDividerConfig: Boolean,
       busCanWriteFrameConfig: Boolean
-  ) {
-    require(busCanWriteClockDividerConfig)
-    require(busCanWriteFrameConfig)
-  }
+  ) {}
   object PermissionParameter {
     def granted = PermissionParameter(true, true)
     def restricted = PermissionParameter(false, false)
@@ -92,12 +89,12 @@ object UartCtrl {
     }
   }
   object Parameter {
-    def lightweight = Parameter(
+    def lightweight() = Parameter(
       init = InitParameter.disabled,
       permission = PermissionParameter.granted,
       memory = MemoryMappedParameter.lightweight
     )
-    def default(baudrate: Int = 115200) = Parameter(
+    def default = Parameter(
       init = InitParameter.disabled,
       permission = PermissionParameter.granted,
       memory = MemoryMappedParameter.default

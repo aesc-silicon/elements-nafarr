@@ -10,7 +10,7 @@ import spinal.lib.bus.wishbone._
 
 object SpiXipController {
   class Core[T <: spinal.core.Data with IMasterSlave](
-      p: SpiCtrl.Parameter,
+      p: SpiControllerCtrl.Parameter,
       dataBusConfig: Axi4Config,
       busType: HardType[T],
       factory: T => BusSlaveFactory
@@ -37,7 +37,7 @@ object SpiXipController {
 }
 
 case class Axi4ReadOnlySpiXipController(
-    parameter: SpiCtrl.Parameter,
+    parameter: SpiControllerCtrl.Parameter,
     dataBusConfig: Axi4Config = Axi4Config(20, 32, 4),
     busConfig: Apb3Config = Apb3Config(12, 32)
 ) extends SpiXipController.Core[Apb3](

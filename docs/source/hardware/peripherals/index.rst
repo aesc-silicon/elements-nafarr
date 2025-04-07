@@ -10,3 +10,5 @@ The following list offers an overview of all available peripheral IP cores.
    pio.rst
    pwm.rst
    uart.rst
+   i2c-device.rst
+   i2c-controller.rst

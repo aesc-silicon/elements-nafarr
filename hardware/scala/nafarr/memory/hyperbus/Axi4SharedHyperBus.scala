@@ -153,8 +153,8 @@ object Axi4SharedHyperBus {
       io.memory.b.valid := !hyperbus.io.frontend.payload.read && hyperbus.io.frontend.valid &&
         hyperbus.io.frontend.payload.last
 
-      hyperbus.io.frontend.ready := io.memory.r.ready | io.memory.b.ready
-      axiDataStorage.io.pop.ready := io.memory.r.ready | io.memory.b.ready
+      hyperbus.io.frontend.ready := io.memory.r.fire | io.memory.b.fire
+      axiDataStorage.io.pop.ready := io.memory.r.fire | io.memory.b.fire
     }
   }
 }

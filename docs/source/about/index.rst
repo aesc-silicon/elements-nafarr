@@ -50,18 +50,26 @@ The following table lists all available IP cores and their status.
      - Status
      - Link
    * - Gpio
-     - nafarr.peripherals.io
+     - nafarr.peripherals.io.gpio
      - OK
      - :ref:`hardware-peripherals-gpio`
    * - Pio
-     - nafarr.peripherals.io
+     - nafarr.peripherals.io.pio
      - OK
      - :ref:`hardware-peripherals-pio`
    * - Pwm
-     - nafarr.peripherals.io
+     - nafarr.peripherals.io.pwm
      - OK
      - :ref:`hardware-peripherals-pwm`
    * - Uart
-     - nafarr.peripherals.com
+     - nafarr.peripherals.com.uart
      - OK
      - :ref:`hardware-peripherals-uart`
+   * - I2cDevice
+     - nafarr.peripherals.com.i2c
+     - OK
+     - :ref:`hardware-peripherals-i2c-device`
+   * - I2cController
+     - nafarr.peripherals.com.i2c
+     - OK
+     - :ref:`hardware-peripherals-i2c-controller`

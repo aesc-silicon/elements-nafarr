@@ -1,5 +1,6 @@
 #include "uart.h"
 
+#define DEV_UART_IRQ_TX_EN		(1 << 0)
 #define DEV_UART_IRQ_RX_EN		(1 << 1)
 
 int uart_init(struct uart_driver *driver, unsigned int base_address,

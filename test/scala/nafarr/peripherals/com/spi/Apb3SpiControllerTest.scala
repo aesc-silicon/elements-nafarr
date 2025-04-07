@@ -13,28 +13,28 @@ class Apb3SpiControllerTest extends AnyFunSuite {
     generationShouldPass {
       val cd = ClockDomain.current.copy(frequency = FixedFrequency(100 MHz))
       val area = new ClockingArea(cd) {
-        val dut = Apb3SpiController(SpiCtrl.Parameter.lightweight())
+        val dut = Apb3SpiController(SpiControllerCtrl.Parameter.lightweight())
       }
       area.dut
     }
     generationShouldPass {
       val cd = ClockDomain.current.copy(frequency = FixedFrequency(100 MHz))
       val area = new ClockingArea(cd) {
-        val dut = Apb3SpiController(SpiCtrl.Parameter.default())
+        val dut = Apb3SpiController(SpiControllerCtrl.Parameter.default())
       }
       area.dut
     }
     generationShouldPass {
       val cd = ClockDomain.current.copy(frequency = FixedFrequency(100 MHz))
       val area = new ClockingArea(cd) {
-        val dut = Apb3SpiController(SpiCtrl.Parameter.xip())
+        val dut = Apb3SpiController(SpiControllerCtrl.Parameter.xip())
       }
       area.dut
     }
     generationShouldPass {
       val cd = ClockDomain.current.copy(frequency = FixedFrequency(100 MHz))
       val area = new ClockingArea(cd) {
-        val dut = Apb3SpiController(SpiCtrl.Parameter.full())
+        val dut = Apb3SpiController(SpiControllerCtrl.Parameter.full())
       }
       area.dut
     }
@@ -43,7 +43,7 @@ class Apb3SpiControllerTest extends AnyFunSuite {
     val compiled = SimConfig.withWave.compile {
       val cd = ClockDomain.current.copy(frequency = FixedFrequency(100 MHz))
       val area = new ClockingArea(cd) {
-        val dut = Apb3SpiController(SpiCtrl.Parameter.default())
+        val dut = Apb3SpiController(SpiControllerCtrl.Parameter.default())
       }
       area.dut
     }

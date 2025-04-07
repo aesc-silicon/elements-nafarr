@@ -12,8 +12,8 @@ object HyperBusCtrl {
   def apply(p: Parameter) = HyperBusCtrl(p)
 
   case class InitParameter(
-      resetPulse: Int = 20,
-      resetHalt: Int = 20,
+      resetPulse: Int = 15,
+      resetHalt: Int = 15,
       latencyCycles: Int = 7
   ) {
     require(latencyCycles > 2 && latencyCycles < 8, "Select latency cycles between 3 and 7.")

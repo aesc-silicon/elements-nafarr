@@ -13,7 +13,7 @@ class SpiXipControllerTest extends AnyFunSuite {
     val compiled = SimConfig.withWave.compile {
       val cd = ClockDomain.current.copy(frequency = FixedFrequency(100 MHz))
       val area = new ClockingArea(cd) {
-        val dut = Axi4ReadOnlySpiXipController(SpiCtrl.Parameter.xip())
+        val dut = Axi4ReadOnlySpiXipController(SpiControllerCtrl.Parameter.xip())
       }
       area.dut
     }
@@ -31,6 +31,15 @@ class SpiXipControllerTest extends AnyFunSuite {
     }
     compiled.doSim("single read") { dut =>
       dut.clockDomain.forkStimulus(10)
+      fork {
+        dut.clockDomain.fallingEdge()
+        sleep(10)
+        while (true) {
+          dut.clockDomain.clockToggle()
+          sleep(5)
+        }
+      }
+
       dut.io.bus.PENABLE #= false
       dut.io.dataBus.ar.valid #= false
       dut.io.dataBus.r.ready #= false
@@ -48,7 +57,7 @@ class SpiXipControllerTest extends AnyFunSuite {
       dut.clockDomain.waitSampling(1)
       dut.io.dataBus.ar.valid #= false
       assert(dut.io.spi.cs.toBigInt == BigInt("1", 2))
-      dut.clockDomain.waitSampling(1)
+      dut.clockDomain.waitSampling(3)
       for (_ <- 0 to 6) {
         sleep(2)
         assert(dut.io.spi.cs.toBigInt == BigInt("0", 2))
@@ -68,6 +77,15 @@ class SpiXipControllerTest extends AnyFunSuite {
     }
     compiled.doSim("burst read") { dut =>
       dut.clockDomain.forkStimulus(10)
+      fork {
+        dut.clockDomain.fallingEdge()
+        sleep(10)
+        while (true) {
+          dut.clockDomain.clockToggle()
+          sleep(5)
+        }
+      }
+
       dut.io.bus.PENABLE #= false
       dut.io.dataBus.ar.valid #= false
       dut.io.dataBus.r.ready #= false
@@ -85,7 +103,7 @@ class SpiXipControllerTest extends AnyFunSuite {
       dut.clockDomain.waitSampling(1)
       dut.io.dataBus.ar.valid #= false
       assert(dut.io.spi.cs.toBigInt == BigInt("1", 2))
-      dut.clockDomain.waitSampling(1)
+      dut.clockDomain.waitSampling(3)
       for (_ <- 0 to 9) {
         sleep(2)
         assert(dut.io.spi.cs.toBigInt == BigInt("0", 2))
@@ -116,6 +134,5 @@ class SpiXipControllerTest extends AnyFunSuite {
 
       dut.clockDomain.waitSampling(20)
     }
-
   }
 }

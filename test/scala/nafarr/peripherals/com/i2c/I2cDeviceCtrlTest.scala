@@ -9,11 +9,30 @@ import nafarr.CheckTester._
 
 
 class I2cDeviceCtrlTest extends AnyFunSuite {
+  def genCore(parameter: I2cDeviceCtrl.Parameter) = {
+      val cd = ClockDomain.current.copy(frequency = FixedFrequency(100 MHz))
+      val area = new ClockingArea(cd) {
+        val dut = I2cDeviceCtrl(parameter)
+      }
+      area.dut
+  }
+
+  test("parameters") {
+    generationShouldPass(genCore(I2cDeviceCtrl.Parameter.default()))
+    generationShouldPass(genCore(I2cDeviceCtrl.Parameter.default(1)))
+    generationShouldPass(genCore(I2cDeviceCtrl.Parameter.default(2)))
+
+    generationShouldFail(genCore(I2cDeviceCtrl.Parameter(I2c.Parameter(0), clockDividerWidth = 0)))
+    generationShouldFail(genCore(I2cDeviceCtrl.Parameter(I2c.Parameter(0), timeoutWidth = 0)))
+    generationShouldFail(genCore(I2cDeviceCtrl.Parameter(I2c.Parameter(0), samplerWidth = 2)))
+    generationShouldFail(genCore(I2cDeviceCtrl.Parameter(I2c.Parameter(0), addressWidth = 5)))
+  }
+
   test("basic") {
     val compiled = SimConfig.withWave.compile {
       val cd = ClockDomain.current.copy(frequency = FixedFrequency(50 MHz))
       val area = new ClockingArea(cd) {
-        val dut = I2cDeviceCtrl(I2cCtrl.Parameter.default)
+        val dut = I2cDeviceCtrl(I2cDeviceCtrl.Parameter.default())
       }
       area.dut
     }
@@ -107,6 +126,7 @@ class I2cDeviceCtrlTest extends AnyFunSuite {
       val tickPeriod = baudrate / 4
 
       dut.io.config.clockDivider #= 1
+      dut.io.config.clockDividerReload #= false
       dut.io.config.timeout #= tickPeriod
       dut.io.config.deviceAddr #= BigInt("0110000", 2)
       dut.io.i2c.sda.read #= true
@@ -183,6 +203,7 @@ class I2cDeviceCtrlTest extends AnyFunSuite {
       val tickPeriod = baudrate / 4
 
       dut.io.config.clockDivider #= 10
+      dut.io.config.clockDividerReload #= false
       dut.io.config.timeout #= tickPeriod
       dut.io.config.deviceAddr #= BigInt("0110000", 2)
       dut.io.i2c.sda.read #= true
@@ -231,7 +252,6 @@ class I2cDeviceCtrlTest extends AnyFunSuite {
         s"Expected ${BigInt("01101010", 2)} but received ${dut.io.cmd.payload.data.toBigInt}")
       assert(dut.io.cmd.payload.read.toBoolean == false, "Payload should be WRITE, but is READ")
       assert(dut.io.cmd.payload.reg.toBoolean == false, "Payload should be data, but is register")
-
 
       val stop = I2cControllerSim.stop(dut.io.i2c.sda, dut.io.i2c.scl, tickPeriod)
       stop.join()

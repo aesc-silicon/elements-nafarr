@@ -5,19 +5,21 @@ import spinal.lib._
 import spinal.lib.bus.amba4.axi._
 
 object SpiXipControllerCtrl {
-  def apply(p: SpiCtrl.Parameter, dataBusConfig: Axi4Config) = SpiControllerCtrl(p, dataBusConfig)
+  def apply(p: SpiControllerCtrl.Parameter, dataBusConfig: Axi4Config) =
+    SpiXipControllerCtrl(p, dataBusConfig)
 
   object State extends SpinalEnum {
     val IDLE, ENABLESPI, COMMAND, ADDRESS, DATA, DISABLESPI = newElement()
   }
 
-  case class Io(p: SpiCtrl.Parameter, dataBusConfig: Axi4Config) extends Bundle {
+  case class Io(p: SpiControllerCtrl.Parameter, dataBusConfig: Axi4Config) extends Bundle {
     val bus = slave(Axi4ReadOnly(dataBusConfig))
     val cmd = master(Stream(SpiController.Cmd(p)))
     val rsp = slave(Flow(Bits(p.dataWidth bits)))
   }
 
-  case class SpiControllerCtrl(p: SpiCtrl.Parameter, dataBusConfig: Axi4Config) extends Component {
+  case class SpiXipControllerCtrl(p: SpiControllerCtrl.Parameter, dataBusConfig: Axi4Config)
+      extends Component {
     val io = Io(p, dataBusConfig)
 
     val cmdStream = Stream(SpiController.Cmd(p))

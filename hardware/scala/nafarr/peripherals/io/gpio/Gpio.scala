@@ -68,6 +68,8 @@ object Gpio {
       val baseAddress = "%08x".format(address.toInt)
       val regSize = "%04x".format(size.toInt)
       var dt = s"""#define ${name.toUpperCase}_BASE\t\t0x${baseAddress}\n"""
+      if (irqNumber.isDefined)
+        dt += s"""#define ${name.toUpperCase}_IRQ\t\t${irqNumber.get}\n"""
       dt
     }
   }

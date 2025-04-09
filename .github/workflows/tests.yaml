@@ -42,4 +42,4 @@ jobs:
       - name: Run tests
         run: |
           cd nafarr
-          sbt test
+          NAFARR_BASE=$PWD sbt test

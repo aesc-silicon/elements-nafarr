@@ -21,6 +21,8 @@ jobs:
 
       - name: Setup Scala
         uses: olafurpg/setup-scala@v11
+        with:
+          java-version: openjdk@1.11
 
       - name: Add OSS CAD Suite
         uses: YosysHQ/setup-oss-cad-suite@v3

@@ -8,7 +8,6 @@ struct gpio_regs {
 	int data_in;
 	int data_out;
 	int dir_en;
-	int reserved;
 	int irq_high_pending;
 	int irq_high_mask;
 	int irq_low_pending;

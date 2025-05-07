@@ -7,6 +7,8 @@ import spinal.lib.bus.amba3.apb._
 import spinal.lib.bus.avalon._
 import spinal.lib.bus.wishbone._
 
+import nafarr.IpIdentification
+
 case class ResetParameter(name: String, delay: Int)
 
 object ResetController {
@@ -26,8 +28,17 @@ object ResetController {
       trigger := 0
     }
 
-    busCtrl.driveAndRead(io.config.enable, 0x0).init(U((0 until p.domains.length) -> true))
-    busCtrl.readAndWrite(trigger, 0x4)
+    val idCtrl = IpIdentification(IpIdentification.Ids.Reset, 1, 0, 0)
+    idCtrl.driveFrom(busCtrl)
+    val staticOffset = idCtrl.length
+
+    busCtrl.read(B(p.domains.length, 8 bits), staticOffset)
+    val regOffset = idCtrl.length + 0x4
+
+    busCtrl
+      .driveAndRead(io.config.enable, regOffset + 0x0)
+      .init(U((0 until p.domains.length) -> true))
+    busCtrl.readAndWrite(trigger, regOffset + 0x4)
     busCtrl.onWrite(0x8)(acknowledge := True)
 
     io.config.trigger := trigger

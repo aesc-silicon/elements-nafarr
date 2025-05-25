@@ -7,11 +7,15 @@ import scala.collection.mutable.Map
 
 import nafarr.blackboxes.xilinx.a7.XilinxPLL
 import nafarr.blackboxes.lattice.ecp5.LatticePLL
-import nafarr.system.reset.ResetControllerCtrl.ResetControllerCtrl
+import nafarr.system.reset.ResetControllerCtrl
 
 object ClockControllerCtrl {
-  def apply(parameter: Parameter, resetCtrl: ResetControllerCtrl) =
-    ClockControllerCtrl(parameter, resetCtrl)
+  def apply(
+      parameter: Parameter,
+      resetParameter: ResetControllerCtrl.Parameter,
+      resetCtrl: ResetControllerCtrl.ResetControllerCtrl
+  ) =
+    ClockControllerCtrl(parameter, resetParameter, resetCtrl)
 
   case class Parameter(domains: List[ClockParameter]) {
     // TODO check synchronousWith is before
@@ -22,8 +26,10 @@ object ClockControllerCtrl {
     }
   }
 
-  case class Io(parameter: Parameter) extends Bundle {
-    val clocks = in UInt (parameter.domains.length bits)
+  case class Io(parameter: Parameter, resetParameter: ResetControllerCtrl.Parameter)
+      extends Bundle {
+    val clocks = in(UInt(parameter.domains.length bits))
+    val resets = in(UInt(resetParameter.domains.length bits))
   }
 
   case class Config(parameter: Parameter) extends Bundle {
@@ -32,11 +38,12 @@ object ClockControllerCtrl {
 
   case class ClockControllerCtrl(
       parameter: Parameter,
-      resetCtrl: ResetControllerCtrl
+      resetParameter: ResetControllerCtrl.Parameter,
+      resetCtrl: ResetControllerCtrl.ResetControllerCtrl
   ) extends Component {
     val io = new Bundle {
-      val clocks = out UInt (parameter.domains.length bits)
-      val buildConnection = Io(parameter)
+      val clocks = out(UInt(parameter.domains.length bits))
+      val buildConnection = Io(parameter, resetParameter)
       val config = in(Config(parameter))
     }
     io.clocks := io.buildConnection.clocks
@@ -45,12 +52,15 @@ object ClockControllerCtrl {
     var clockDict = Map[String, ClockDomain]()
     for ((domain, index) <- parameter.domains.zipWithIndex) {
       clockDict += domain.name -> {
-        val cd = ClockDomain(
-          clock = io.buildConnection.clocks(index),
-          reset = if (!domain.reset.isEmpty) resetCtrl.getResetByName(domain.reset) else null,
+        val cd = ClockDomain.internal(
+          name = domain.name,
           frequency = FixedFrequency(domain.frequency),
           config = domain.resetConfig
         )
+        cd.clock := io.buildConnection.clocks(index)
+        if (!domain.reset.isEmpty) {
+          cd.reset := io.buildConnection.resets(resetCtrl.getResetByName(domain.reset)._2)
+        }
         if (!domain.synchronousWith.isEmpty()) {
           cd.setSynchronousWith(getClockDomainByName(domain.synchronousWith))
         }
@@ -61,6 +71,7 @@ object ClockControllerCtrl {
 
     def buildXilinxPll(
         clock: Bool,
+        resetCtrl: ResetControllerCtrl.ResetControllerCtrl,
         clockFrequency: HertzNumber,
         clocks: List[String],
         multiply: Int
@@ -99,10 +110,12 @@ object ClockControllerCtrl {
         io.buildConnection.clocks(domainIndex) := addClock(index, domain.frequency)
         generatedClocks = generatedClocks :+ getClockPin(index)
       }
+      io.buildConnection.resets <> resetCtrl.io.resets
     }
 
     def buildLatticeECP5Pll(
         clock: Bool,
+        resetCtrl: ResetControllerCtrl.ResetControllerCtrl,
         clockFrequency: HertzNumber,
         clocks: List[String],
         CLKI_DIV: Int = 1,
@@ -137,13 +150,15 @@ object ClockControllerCtrl {
         io.buildConnection.clocks(domainIndex) := addClock(index, domain.frequency)
         generatedClocks = generatedClocks :+ getClockPin(index)
       }
+      io.buildConnection.resets <> resetCtrl.io.resets
       clockCtrl.pll.calculate(CLKI_DIV, CLKFB_DIV, CLKOP_DIV)
     }
 
-    def buildDummy(clock: Bool) {
+    def buildDummy(clock: Bool, resetCtrl: ResetControllerCtrl.ResetControllerCtrl) {
       for (((domain), index) <- parameter.domains.zipWithIndex) {
         io.buildConnection.clocks(index) := clock
       }
+      io.buildConnection.resets <> resetCtrl.io.resets
     }
   }
 }

@@ -42,13 +42,13 @@ object ResetControllerCtrl {
     }
     io.buildConnection.trigger := io.config.enable & (io.trigger | ctrlTrigger)
 
-    var resetDict = Map[String, Bool]()
+    var resetDict = Map[String, (Bool, Int)]()
     var triggerDict = Map[String, Bool]()
     for ((domain, index) <- parameter.domains.zipWithIndex) {
-      resetDict += domain.name -> io.resets(index)
+      resetDict += domain.name -> (io.resets(index), index)
       triggerDict += domain.name -> io.trigger(index)
     }
-    def getResetByName(name: String): Bool = resetDict.get(name).get
+    def getResetByName(name: String): (Bool, Int) = resetDict.get(name).get
     def triggerByNameWithCond(name: String, cond: Bool) {
       triggerDict.get(name).get.setWhen(cond)
     }

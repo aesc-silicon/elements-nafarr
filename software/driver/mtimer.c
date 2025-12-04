@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2025 aesc silicon
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include "mtimer.h"
 
 int mtimer_init(struct mtimer_driver *driver, unsigned int base_address)

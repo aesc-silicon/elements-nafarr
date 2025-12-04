@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2025 aesc silicon
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #ifndef ELEMENTS_RELOCATE
 #define ELEMENTS_RELOCATE
 

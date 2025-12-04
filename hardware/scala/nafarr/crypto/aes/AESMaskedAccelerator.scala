@@ -44,10 +44,10 @@ case class Apb3AesMaskedAccelerator(
 
 case class WishboneAesMaskedAccelerator(
     parameter: AesMaskedAcceleratorCtrl.Parameter,
-    busConfig: WishboneConfig = WishboneConfig(12, 32)
+    busConfig: WishboneConfig = WishboneConfig(10, 32)
 ) extends AesMaskedAccelerator.Core[Wishbone](
       parameter,
-      Wishbone(busConfig),
+      Wishbone(busConfig.copy(addressWidth = 10)),
       WishboneSlaveFactory(_)
     ) { val dummy = 0 }
 

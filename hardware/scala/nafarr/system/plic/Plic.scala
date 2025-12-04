@@ -72,10 +72,10 @@ case class Apb3Plic(
 
 case class WishbonePlic(
     parameter: PlicCtrl.Parameter,
-    busConfig: WishboneConfig = WishboneConfig(22, 32)
+    busConfig: WishboneConfig = WishboneConfig(20, 32)
 ) extends Plic.Core[Wishbone](
       parameter,
-      Wishbone(busConfig),
+      Wishbone(busConfig.copy(addressWidth = 20)),
       WishboneSlaveFactory(_)
     ) { val dummy = 0 }
 

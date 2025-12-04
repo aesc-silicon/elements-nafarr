@@ -41,11 +41,11 @@ case class Apb3SlowFramebuffer(
 case class WishboneSlowFramebuffer(
     config: MultimediaConfig,
     scale: Int = 1,
-    busConfig: WishboneConfig = WishboneConfig(12, 32)
+    busConfig: WishboneConfig = WishboneConfig(10, 32)
 ) extends SlowFramebuffer.Core[Wishbone](
       config,
       scale,
-      Wishbone(busConfig),
+      Wishbone(busConfig.copy(addressWidth = 10)),
       WishboneSlaveFactory(_)
     ) { val dummy = 0 }
 

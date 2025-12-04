@@ -109,10 +109,10 @@ case class Apb3SpiController(
 
 case class WishboneSpiController(
     parameter: SpiControllerCtrl.Parameter,
-    busConfig: WishboneConfig = WishboneConfig(12, 32)
+    busConfig: WishboneConfig = WishboneConfig(10, 32)
 ) extends SpiController.Core[Wishbone](
       parameter,
-      Wishbone(busConfig),
+      Wishbone(busConfig.copy(addressWidth = 10)),
       WishboneSlaveFactory(_)
     ) { val dummy = 0 }
 

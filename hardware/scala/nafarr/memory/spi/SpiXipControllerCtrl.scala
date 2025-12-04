@@ -1,26 +1,29 @@
-package nafarr.peripherals.com.spi
+package nafarr.memory.spi
 
 import spinal.core._
 import spinal.lib._
 import spinal.lib.bus.amba4.axi._
 
+import nafarr.peripherals.com.spi.{Spi, SpiController, SpiControllerCtrl}
+
 object SpiXipControllerCtrl {
-  def apply(p: SpiControllerCtrl.Parameter, dataBusConfig: Axi4Config) =
-    SpiXipControllerCtrl(p, dataBusConfig)
+  def apply(p: SpiControllerCtrl.Parameter, dataWidth: Int) =
+    SpiXipControllerCtrl(p, dataWidth)
 
   object State extends SpinalEnum {
     val IDLE, ENABLESPI, COMMAND, ADDRESS, DATA, DISABLESPI = newElement()
   }
 
-  case class Io(p: SpiControllerCtrl.Parameter, dataBusConfig: Axi4Config) extends Bundle {
-    val bus = slave(Axi4ReadOnly(dataBusConfig))
+  case class Io(p: SpiControllerCtrl.Parameter) extends Bundle {
+    val busCmd = slave(Stream(SpiXipController.GenericInterface.Cmd()))
+    val busRsp = master(Stream(SpiXipController.GenericInterface.Rsp()))
     val cmd = master(Stream(SpiController.Cmd(p)))
     val rsp = slave(Flow(Bits(p.dataWidth bits)))
   }
 
-  case class SpiXipControllerCtrl(p: SpiControllerCtrl.Parameter, dataBusConfig: Axi4Config)
+  case class SpiXipControllerCtrl(p: SpiControllerCtrl.Parameter, dataWidth: Int)
       extends Component {
-    val io = Io(p, dataBusConfig)
+    val io = Io(p)
 
     val cmdStream = Stream(SpiController.Cmd(p))
     cmdStream.valid := False
@@ -36,19 +39,13 @@ object SpiXipControllerCtrl {
     val burst = new Area {
       val address = Reg(UInt(24 bits))
       val count = Reg(UInt(8 bits))
-      val countResponse = Reg(UInt(8 bits))
       val size = Reg(UInt(3 bits))
-      val burstType = Reg(Bits(2 bits))
-      val id = Reg(cloneOf(io.bus.ar.id))
     }
 
-    io.bus.readRsp.valid := False
-    io.bus.readRsp.setOKAY()
-    io.bus.readRsp.last := False
-    io.bus.readRsp.id := burst.id
+    io.busRsp.valid := False
     val rspHandler = new Area {
-      val data = Reg(Bits(dataBusConfig.dataWidth bits))
-      val counter = Reg(UInt(log2Up(dataBusConfig.dataWidth / 8) bits)).init(0)
+      val data = Reg(Bits(dataWidth bits))
+      val counter = Reg(UInt(log2Up(dataWidth / 8) bits)).init(0)
       val push = RegInit(False)
 
       rspFifo.io.pop.ready := False
@@ -61,38 +58,31 @@ object SpiXipControllerCtrl {
         }
       }
       when(push) {
-        io.bus.readRsp.valid := True
-        when(burst.countResponse === 0) {
-          io.bus.readRsp.last := True
-        }
-        when(io.bus.readRsp.fire) {
-          burst.countResponse := burst.countResponse - 1
+        io.busRsp.valid := True
+        when(io.busRsp.fire) {
           push := False
         }
       }
     }
-    io.bus.readRsp.data := rspHandler.data
+    io.busRsp.data := rspHandler.data
 
     val stateMachine = new Area {
       val state = RegInit(State.IDLE)
       val counter = new Area {
-        val value = Reg(UInt(log2Up(dataBusConfig.dataWidth / 8) bits))
+        val value = Reg(UInt(log2Up(dataWidth / 8) bits))
         def resetAddr = value := 3 - 1
-        def resetData = value := (dataBusConfig.dataWidth / 8) - 1
+        def resetData = value := (dataWidth / 8) - 1
         def nextValue = value := value - 1
       }
 
-      io.bus.ar.ready := False
+      io.busCmd.ready := False
       switch(state) {
         is(State.IDLE) {
-          when(io.bus.ar.valid) {
-            io.bus.ar.ready := True
-            burst.address := io.bus.ar.addr.resize(24)
-            burst.count := io.bus.ar.len
-            burst.countResponse := io.bus.ar.len
-            burst.size := io.bus.ar.size
-            burst.burstType := io.bus.ar.burst
-            burst.id := io.bus.ar.id
+          when(io.busCmd.valid) {
+            io.busCmd.ready := True
+            burst.address := io.busCmd.addr
+            burst.count := 0
+            burst.size := 0
             state := State.ENABLESPI
           }
         }

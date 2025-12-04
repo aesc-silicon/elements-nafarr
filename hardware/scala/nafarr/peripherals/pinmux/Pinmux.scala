@@ -63,11 +63,11 @@ case class Apb3Pinmux(
 case class WishbonePinmux(
     parameter: PinmuxCtrl.Parameter,
     mapping: ArrayBuffer[(Int, List[Int])],
-    busConfig: WishboneConfig = WishboneConfig(12, 32)
+    busConfig: WishboneConfig = WishboneConfig(10, 32)
 ) extends Pinmux.Core[Wishbone](
       parameter,
       mapping,
-      Wishbone(busConfig),
+      Wishbone(busConfig.copy(addressWidth = 10)),
       WishboneSlaveFactory(_)
     ) { val dummy = 0 }
 

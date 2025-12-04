@@ -41,10 +41,10 @@ case class Apb3SevenSegment(
 
 case class WishboneSevenSegment(
     parameter: SevenSegmentCtrl.Parameter,
-    busConfig: WishboneConfig = WishboneConfig(12, 32)
+    busConfig: WishboneConfig = WishboneConfig(10, 32)
 ) extends SevenSegment.Core[Wishbone](
       parameter,
-      Wishbone(busConfig),
+      Wishbone(busConfig.copy(addressWidth = 10)),
       WishboneSlaveFactory(_)
     ) { val dummy = 0 }
 

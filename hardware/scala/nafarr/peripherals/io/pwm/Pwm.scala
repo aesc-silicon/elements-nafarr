@@ -56,10 +56,10 @@ case class Apb3Pwm(
 
 case class WishbonePwm(
     parameter: PwmCtrl.Parameter,
-    busConfig: WishboneConfig = WishboneConfig(12, 32)
+    busConfig: WishboneConfig = WishboneConfig(10, 32)
 ) extends Pwm.Core[Wishbone](
       parameter,
-      Wishbone(busConfig),
+      Wishbone(busConfig.copy(addressWidth = 10)),
       WishboneSlaveFactory(_)
     ) { val dummy = 0 }
 

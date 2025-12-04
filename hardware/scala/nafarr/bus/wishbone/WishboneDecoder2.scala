@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2025 aesc silicon
+//
+// SPDX-License-Identifier: CERN-OHL-W-2.0
+
 /** @todo: change <> with the corrispective >> and << */
 package nafarr.bus.wishbone
 

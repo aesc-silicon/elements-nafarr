@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2025 aesc silicon
+//
+// SPDX-License-Identifier: Apache-2.0
+
 // File downloaded from https://github.com/HEP-Alliance/VE-HEP-HW-SW/blob/5d3ebbb0c911d33d69085b2125e9e4d1148cc7d8/src/main/resources/AES_Masked.v
 
 // Generator : SpinalHDL v1.6.2    git head : 685405804ac0fa51f884fe0ee6813ba6f1f31e4e

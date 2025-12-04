@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2025 aesc silicon
+//
+// SPDX-License-Identifier: CERN-OHL-W-2.0
+
 package nafarr.peripherals.misc.sevensegment
 
 import spinal.core._

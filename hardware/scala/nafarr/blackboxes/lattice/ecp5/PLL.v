@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2025 aesc silicon
+//
+// SPDX-License-Identifier: CERN-OHL-W-2.0
+
 module EHXPLLL (
         input CLKI, CLKFB,
         input PHASESEL1, PHASESEL0, PHASEDIR, PHASESTEP, PHASELOADREG,

@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2025 aesc silicon
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include "gpio.h"
 
 int gpio_init(struct gpio_driver *driver, unsigned int base_address)

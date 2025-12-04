@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2025 aesc silicon
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include "uart.h"
 
 #define DEV_UART_IRQ_TX_EN		(1 << 0)

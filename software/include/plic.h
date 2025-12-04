@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2025 aesc silicon
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #ifndef ELEMNETS_PLIC
 #define ELEMNETS_PLIC
 

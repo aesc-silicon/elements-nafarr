@@ -37,6 +37,7 @@ Additionally, there are mentionworth chapters:
 License
 *******
 
-Copyright (c) 2024 aesc silicon. Released under the `MIT license`_.
+Copyright (c) 2025 aesc silicon. Released under the `CERN-OHL-W-2.0`_ and `Apache-2.0`_ license.
 
-.. _MIT license: COPYING.MIT
+.. _CERN-OHL-W-2.0: LICENSES/CERN-OHL-W-2.0.txt
+.. _Apache-2.0: LICENSES/Apache-2.0.txt

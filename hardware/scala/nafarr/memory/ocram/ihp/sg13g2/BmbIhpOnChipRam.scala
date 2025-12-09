@@ -76,29 +76,77 @@ object BmbIhpOnChipRam {
       val bus = slave(Bmb(p))
     }
 
+    def convertAddr(addr: UInt) = (addr >> p.access.wordRangeLength).resize(ram.addrWidth)
+
     val ram = Memory(32, size)
     ram.connectDefaults()
 
-    io.bus.cmd.ready := !io.bus.rsp.isStall
-    io.bus.rsp.valid := RegNextWhen(io.bus.cmd.valid, io.bus.cmd.ready) init (False)
-    io.bus.rsp.source := RegNextWhen(io.bus.cmd.source, io.bus.cmd.ready)
-    io.bus.rsp.context := RegNextWhen(io.bus.cmd.context, io.bus.cmd.ready)
+    io.bus.cmd.ready := False
+    val valid = RegInit(False)
+    val source = Reg(io.bus.cmd.source)
+    val context = Reg(io.bus.cmd.context)
+    val last = True
+    io.bus.rsp.valid := valid
+    io.bus.rsp.source := source
+    io.bus.rsp.context := context
     io.bus.rsp.data := ram.A_DOUT
+    io.bus.rsp.last := last
 
-    val addr = CombInit((io.bus.cmd.address >> p.access.wordRangeLength).resize(ram.addrWidth))
+    val addr = CombInit(convertAddr(io.bus.cmd.address))
     val data = CombInit(io.bus.cmd.data)
-    val enable = CombInit(io.bus.cmd.fire)
+    val memEnable = False
     val write = CombInit(io.bus.cmd.isWrite)
     val mask = CombInit(io.bus.cmd.mask)
 
     ram.A_ADDR := addr.asBits
     ram.A_DIN := data
-    ram.A_MEN := io.bus.cmd.fire
+    ram.A_MEN := memEnable
     ram.A_WEN := write
     ram.A_REN := !write
     ram.A_BM := Cat(mask.asBools.map(_ #* 8))
 
     io.bus.rsp.setSuccess()
-    io.bus.rsp.last := True
+
+    val fsm = new StateMachine {
+      val counter = Reg(UInt(p.access.lengthWidth bits)).init(4)
+
+      val idle: State = new State with EntryPoint {
+        whenIsActive {
+          when(io.bus.cmd.valid) {
+            valid := io.bus.rsp.isFree
+            memEnable := io.bus.rsp.isFree
+            source := io.bus.cmd.source
+            context := io.bus.cmd.context
+            when(io.bus.cmd.length > U(p.access.byteCount - 1)) {
+              counter := 4
+              goto(burst)
+            } otherwise {
+              io.bus.cmd.ready := io.bus.rsp.isFree
+            }
+          } otherwise {
+            valid := False
+          }
+        }
+      }
+
+      val burst: State = new State {
+        whenIsActive {
+          when(io.bus.rsp.isFree) {
+            valid := True
+            memEnable := True
+            last := False
+            addr := convertAddr(Bmb.addToAddress(io.bus.cmd.address, counter, p))
+            counter := counter + p.access.byteCount
+            when(counter === (io.bus.cmd.length + 1)) {
+              last := True
+              io.bus.cmd.ready := True
+              goto(idle)
+            }
+          } otherwise {
+            valid := False
+          }
+        }
+      }
+    }
   }
 }

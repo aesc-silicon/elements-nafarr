@@ -9,7 +9,9 @@ import spinal.core._
 object Memory {
   def apply(width: Int, size: Int): IHPSG13Memory = (width, size) match {
     case (8, 1024) => RM_IHPSG13_1P_1024x8_c2_bm_bist()
+    case (32, 2048) => RM_IHPSG13_1P_256x32_c2_bm_bist()
     case (32, 4096) => RM_IHPSG13_1P_512x32_c2_bm_bist()
+    case (32, 8192) => RM_IHPSG13_1P_1024x32_c2_bm_bist()
     case _ => throw new IllegalArgumentException(s"Unsupported width and size: $width x $size")
   }
 
@@ -49,6 +51,20 @@ object Memory {
     mapCurrentClockDomain(A_BIST_CLK)
   }
 
+  case class RM_IHPSG13_1P_256x32_c2_bm_bist()
+      extends IHPSG13Memory(addrWidth = 8, dataWidth = 32) {
+    addRTLPath(
+      System.getenv(
+        "NAFARR_BASE"
+      ) + "/hardware/scala/nafarr/blackboxes/ihp/sg13g2/RM_IHPSG13_1P_core_behavioral_bm_bist.v"
+    )
+    addRTLPath(
+      System.getenv(
+        "NAFARR_BASE"
+      ) + "/hardware/scala/nafarr/blackboxes/ihp/sg13g2/RM_IHPSG13_1P_256x32_c2_bm_bist.v"
+    )
+  }
+
   case class RM_IHPSG13_1P_512x32_c2_bm_bist()
       extends IHPSG13Memory(addrWidth = 9, dataWidth = 32) {
     addRTLPath(
@@ -74,6 +90,20 @@ object Memory {
       System.getenv(
         "NAFARR_BASE"
       ) + "/hardware/scala/nafarr/blackboxes/ihp/sg13g2/RM_IHPSG13_1P_1024x8_c2_bm_bist.v"
+    )
+  }
+
+  case class RM_IHPSG13_1P_1024x32_c2_bm_bist()
+      extends IHPSG13Memory(addrWidth = 10, dataWidth = 32) {
+    addRTLPath(
+      System.getenv(
+        "NAFARR_BASE"
+      ) + "/hardware/scala/nafarr/blackboxes/ihp/sg13g2/RM_IHPSG13_1P_core_behavioral_bm_bist.v"
+    )
+    addRTLPath(
+      System.getenv(
+        "NAFARR_BASE"
+      ) + "/hardware/scala/nafarr/blackboxes/ihp/sg13g2/RM_IHPSG13_1P_1024x32_c2_bm_bist.v"
     )
   }
 }

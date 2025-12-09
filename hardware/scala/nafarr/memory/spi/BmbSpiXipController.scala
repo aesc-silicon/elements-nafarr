@@ -39,14 +39,19 @@ case class BmbSpiXipController(
 
   val spiCmd = SpiXipController.GenericInterface.Cmd()
   spiCmd.addr := RegNextWhen(io.dataBus.cmd.address.resize(24), io.dataBus.cmd.ready)
+  spiCmd.count := RegNextWhen(
+    ((io.dataBus.cmd.length - 3) >> log2Up(dataBusConfig.access.byteCount))
+      .resize(widthOf(spiCmd.count)),
+    io.dataBus.cmd.ready
+  )
   spiXipControllerCtrl.io.busCmd.payload := spiCmd
   spiXipControllerCtrl.io.busCmd.valid := False
 
   io.dataBus.rsp.valid := False
   io.dataBus.cmd.ready := False
   io.dataBus.rsp.setError()
-  io.dataBus.rsp.data := 0
-  io.dataBus.rsp.last := True
+  io.dataBus.rsp.data := spiXipControllerCtrl.io.busRsp.payload.data
+  io.dataBus.rsp.last := spiXipControllerCtrl.io.busRsp.payload.last
   io.dataBus.rsp.source := RegNextWhen(io.dataBus.cmd.source, io.dataBus.cmd.ready)
   io.dataBus.rsp.context := RegNextWhen(io.dataBus.cmd.context, io.dataBus.cmd.ready)
 
@@ -79,11 +84,12 @@ case class BmbSpiXipController(
       is(RspState.RESPONSE) {
         when(spiXipControllerCtrl.io.busRsp.valid) {
           io.dataBus.rsp.setSuccess()
-          io.dataBus.rsp.data := spiXipControllerCtrl.io.busRsp.payload.data
           io.dataBus.rsp.valid := True
           when(io.dataBus.rsp.fire) {
             spiXipControllerCtrl.io.busRsp.ready := True
-            state := RspState.IDLE
+            when(spiXipControllerCtrl.io.busRsp.payload.last) {
+              state := RspState.IDLE
+            }
           }
         }
       }

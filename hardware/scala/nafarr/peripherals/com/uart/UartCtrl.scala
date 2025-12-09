@@ -72,7 +72,7 @@ object UartCtrl {
     require(postSamplingSize > 0)
     if ((samplingSize % 2) == 0)
       SpinalWarning(
-        s"Majority vode requires an uneven sampling size at ${ScalaLocated.short}."
+        s"Majority vote requires an uneven sampling size at ${ScalaLocated.short}."
       )
 
     require(

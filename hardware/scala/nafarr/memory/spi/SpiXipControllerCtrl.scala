@@ -43,10 +43,12 @@ object SpiXipControllerCtrl {
     val burst = new Area {
       val address = Reg(UInt(24 bits))
       val count = Reg(UInt(8 bits))
+      val countResponse = Reg(UInt(8 bits))
       val size = Reg(UInt(3 bits))
     }
 
     io.busRsp.valid := False
+    io.busRsp.last := False
     val rspHandler = new Area {
       val data = Reg(Bits(dataWidth bits))
       val counter = Reg(UInt(log2Up(dataWidth / 8) bits)).init(0)
@@ -63,7 +65,16 @@ object SpiXipControllerCtrl {
       }
       when(push) {
         io.busRsp.valid := True
+        /*
         when(io.busRsp.fire) {
+          push := False
+        }
+         */
+        when(burst.countResponse === 0) {
+          io.busRsp.last := True
+        }
+        when(io.busRsp.fire) {
+          burst.countResponse := burst.countResponse - 1
           push := False
         }
       }
@@ -85,7 +96,8 @@ object SpiXipControllerCtrl {
           when(io.busCmd.valid) {
             io.busCmd.ready := True
             burst.address := io.busCmd.addr
-            burst.count := 0
+            burst.count := io.busCmd.count
+            burst.countResponse := io.busCmd.count
             burst.size := 0
             state := State.ENABLESPI
           }

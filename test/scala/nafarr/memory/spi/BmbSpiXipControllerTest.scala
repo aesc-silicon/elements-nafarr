@@ -62,5 +62,20 @@ class BmbSpiXipControllerTest extends AnyFunSuite {
 
       dut.clockDomain.waitSampling(100)
     }
+    compiled.doSim("burst read") { dut =>
+      dut.clockDomain.forkStimulus(10)
+
+      dut.io.dataBus.cmd.valid #= false
+      dut.io.dataBus.cmd.ready #= true
+
+      dut.io.dataBus.cmd.valid #= true
+      dut.io.dataBus.cmd.address #= 0x00000000
+      dut.io.dataBus.cmd.length #= (4 * 4) - 1
+      dut.io.dataBus.cmd.opcode #= Bmb.Cmd.Opcode.READ
+
+      dut.io.dataBus.rsp.ready #= true
+
+      dut.clockDomain.waitSampling(50000)
+    }
   }
 }

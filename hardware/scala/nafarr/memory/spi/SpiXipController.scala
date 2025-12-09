@@ -12,10 +12,12 @@ object SpiXipController {
   object GenericInterface {
     case class Cmd() extends Bundle {
       val addr = UInt(24 bits)
+      val count = UInt(8 bits)
     }
 
     case class Rsp() extends Bundle {
       val data = Bits(32 bits)
+      val last = Bool()
     }
   }
 }

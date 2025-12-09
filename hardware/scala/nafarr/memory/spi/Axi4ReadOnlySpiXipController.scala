@@ -39,6 +39,7 @@ case class Axi4ReadOnlySpiXipController(
 
   val spiCmd = SpiXipController.GenericInterface.Cmd()
   spiCmd.addr := RegNextWhen(io.dataBus.ar.addr.resize(24), io.dataBus.ar.ready)
+  spiCmd.count := U(0)
   spiXipControllerCtrl.io.busCmd.payload := spiCmd
   spiXipControllerCtrl.io.busCmd.valid := False
 

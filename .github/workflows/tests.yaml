@@ -16,7 +16,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -25,8 +25,11 @@ jobs:
 
       - name: Setup Scala
         uses: olafurpg/setup-scala@v11
-        with:
-          java-version: openjdk@1.11
+
+      - name: Clear Scala Cache
+        run: |
+          rm -rf ~/.sbt/
+          rm -rf ~/.ivy2/
 
       - name: Add OSS CAD Suite
         uses: YosysHQ/setup-oss-cad-suite@v3

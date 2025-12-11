@@ -14,11 +14,12 @@ import nafarr.peripherals.PeripheralsComponent
 
 object SpiController {
   object CmdMode extends SpinalEnum(binarySequential) {
-    val DATA, CS = newElement()
+    val DATA, CS, DUMMYCYCLES = newElement()
   }
 
   case class CmdData(p: SpiControllerCtrl.Parameter) extends Bundle {
     val data = Bits(p.dataWidth bits)
+    val mode = Bits(p.modeWidth bits)
     val read = Bool
   }
 
@@ -27,12 +28,17 @@ object SpiController {
     val index = UInt(log2Up(p.io.csWidth) bits)
   }
 
+  case class CmdDummyCycles(p: SpiControllerCtrl.Parameter) extends Bundle {
+    val cycles = UInt(log2Up(p.maxDummyCycles * 2) bits)
+  }
+
   case class Cmd(p: SpiControllerCtrl.Parameter) extends Bundle {
     val mode = CmdMode()
     val args = Bits(Math.max(widthOf(CmdData(p)), widthOf(CmdCs(p))) bits)
 
     def isData = mode === CmdMode.DATA
     def isCs = mode === CmdMode.CS
+    def isDummyCycles = mode === CmdMode.DUMMYCYCLES
     def argsData = {
       val ret = CmdData(p)
       ret.assignFromBits(args)
@@ -40,6 +46,11 @@ object SpiController {
     }
     def argsCs = {
       val ret = CmdCs(p)
+      ret.assignFromBits(args)
+      ret
+    }
+    def argsDummyCycles = {
+      val ret = CmdDummyCycles(p)
       ret.assignFromBits(args)
       ret
     }

@@ -18,7 +18,8 @@ case class Axi4ReadOnlySpiXipController(
     cfgBusConfig: Apb3Config = Apb3Config(12, 32)
 ) extends Component {
   val io = new Bundle {
-    val cfgBus = slave(Apb3(cfgBusConfig))
+    val cfgSpiBus = slave(Apb3(cfgBusConfig))
+    val cfgXipBus = slave(Apb3(cfgBusConfig))
     val dataBus = slave(Axi4ReadOnly(dataBusConfig))
     val spi = master(Spi.Io(parameter.io))
     val interrupt = out(Bool)
@@ -79,6 +80,9 @@ case class Axi4ReadOnlySpiXipController(
     }
   }
 
-  val busFactory = Apb3SlaveFactory(io.cfgBus)
-  SpiControllerCtrl.Mapper(busFactory, spiControllerCtrl.io, parameter)
+  val busSpiFactory = Apb3SlaveFactory(io.cfgSpiBus)
+  SpiControllerCtrl.Mapper(busSpiFactory, spiControllerCtrl.io, parameter)
+
+  val busXipFactory = Apb3SlaveFactory(io.cfgXipBus)
+  SpiXipControllerCtrl.Mapper(busXipFactory, spiXipControllerCtrl.io.config, parameter)
 }

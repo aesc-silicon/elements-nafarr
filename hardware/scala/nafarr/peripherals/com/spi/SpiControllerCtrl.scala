@@ -53,7 +53,9 @@ object SpiControllerCtrl {
       init: InitParameter = InitParameter.disabled,
       permission: PermissionParameter = PermissionParameter.granted,
       memory: MemoryMappedParameter = MemoryMappedParameter.default,
-      clockDividerWidth: Int = 16
+      clockDividerWidth: Int = 16,
+      maxDummyCycles: Int = 10,
+      modeWidth: Int = 4
   ) {
     require(
       (init != null && init.frequency.toLong > 0) ||
@@ -85,7 +87,8 @@ object SpiControllerCtrl {
   }
 
   object State extends SpinalEnum {
-    val Idle, Cs, CsSetup, CsHold, CsDisable, DataSingle, DataQuad = newElement()
+    val Idle, Cs, CsSetup, CsHold, CsDisable, DummyCycles, DataSingle, DataDual, DataQuad =
+      newElement()
   }
 
   case class Config(p: Parameter) extends Bundle {
@@ -158,7 +161,22 @@ object SpiControllerCtrl {
               when(io.cmd.isData) {
                 clockDivider.io.value := io.config.clockDivider
                 dataCounter.reset()
-                state := State.DataSingle
+                switch(io.cmd.argsData.mode) {
+                  is(B(2, 4 bits)) {
+                    state := State.DataQuad
+                  }
+                  is(B(1, 4 bits)) {
+                    state := State.DataDual
+                  }
+                  default {
+                    state := State.DataSingle
+                  }
+                }
+              }
+              when(io.cmd.isDummyCycles) {
+                clockDivider.io.value := io.config.clockDivider
+                dataCounter.reset()
+                state := State.DummyCycles
               }
             }
           }
@@ -167,6 +185,15 @@ object SpiControllerCtrl {
             when(clockDivider.io.tick) {
               io.cmd.ready := True
               state := State.Idle
+            }
+          }
+          is(State.DummyCycles) {
+            when(clockDivider.io.tick) {
+              dataCounter.increment()
+              when(dataCounter.value === io.cmd.argsDummyCycles.cycles) {
+                io.cmd.ready := True
+                state := State.Idle
+              }
             }
           }
           is(State.DataSingle) {
@@ -181,6 +208,34 @@ object SpiControllerCtrl {
               }
             }
           }
+          is(State.DataDual) {
+            when(clockDivider.io.tick) {
+              dataCounter.increment()
+              when(dataCounter.value.lsb) {
+                buffer := (buffer ## io.spi.dq(1).read ## io.spi.dq(0).read).resized
+              }
+              when(dataCounter.isDualLast()) {
+                io.cmd.ready := True
+                state := State.Idle
+              }
+            }
+          }
+          is(State.DataQuad) {
+            when(clockDivider.io.tick) {
+              dataCounter.increment()
+              when(dataCounter.value.lsb) {
+                if (p.io.dataWidth > 2) {
+                  buffer := (buffer ## io.spi.dq(3).read ## io.spi.dq(2).read ##
+                    io.spi.dq(1).read ## io.spi.dq(0).read).resized
+                }
+              }
+              when(dataCounter.isQuadLast()) {
+                io.cmd.ready := True
+                state := State.Idle
+              }
+            }
+          }
+
           is(State.CsHold) {
             when(clockDivider.io.tick) {
               clockDivider.io.value := io.config.cs.disable
@@ -195,7 +250,6 @@ object SpiControllerCtrl {
               state := State.Idle
             }
           }
-
         }
       }
     }
@@ -215,22 +269,68 @@ object SpiControllerCtrl {
 
     io.spi.cs := ctrl.stateMachine.cs ^ io.config.cs.activeHigh
     io.spi.sclk := RegNext(
-      ((io.cmd.valid && io.cmd.isData) &&
+      ((io.cmd.valid && (io.cmd.isData || io.cmd.isDummyCycles)) &&
         (ctrl.dataCounter.value.lsb ^ io.modeConfig.cpha)) ^
         io.modeConfig.cpol
     )
-    io.spi.dq(0).write := RegNext(
-      io.cmd.argsData.data(p.dataWidth - 1 - (ctrl.dataCounter.value >> 1))
-    )
-    io.spi.dq(0).writeEnable := True
-    io.spi.dq(1).write := False
-    io.spi.dq(1).writeEnable := False
-    if (p.io.dataWidth > 2) {
-      io.spi.dq(2).write := False
-      io.spi.dq(2).writeEnable := False
-      io.spi.dq(3).write := False
-      io.spi.dq(3).writeEnable := False
+
+    for (index <- 0 until p.io.dataWidth) {
+      io.spi.dq(index).writeEnable := False
+      io.spi.dq(index).write := False
     }
+
+    when(ctrl.stateMachine.state === State.DummyCycles) {
+      for (index <- 0 until p.io.dataWidth) {
+        io.spi.dq(index).writeEnable := True
+        io.spi.dq(index).write := False
+      }
+    }
+    when(ctrl.stateMachine.state === State.DataSingle) {
+      io.spi.dq(0).writeEnable := True
+      io.spi.dq(0).write := RegNext(
+        io.cmd.argsData.data(p.dataWidth - 1 - (ctrl.dataCounter.value >> 1))
+      )
+    }
+
+    when(ctrl.stateMachine.state === State.DataDual) {
+      when(io.cmd.isData && !io.cmd.argsData.read) {
+        io.spi.dq(0).writeEnable := True
+        io.spi.dq(1).writeEnable := True
+      }
+
+      val index = p.dataWidth - 1 - ((ctrl.dataCounter.value >> 1) << 1).resize(log2Up(p.dataWidth))
+      io.spi.dq(0).write := RegNext(
+        io.cmd.argsData.data(index - 1)
+      )
+      io.spi.dq(1).write := RegNext(
+        io.cmd.argsData.data(index - 0)
+      )
+    }
+
+    when(ctrl.stateMachine.state === State.DataQuad) {
+      when(io.cmd.isData && !io.cmd.argsData.read) {
+        for (index <- 0 until p.io.dataWidth) {
+          io.spi.dq(index).writeEnable := True
+        }
+      }
+
+      val index = p.dataWidth - 1 - ((ctrl.dataCounter.value >> 1) << 2).resize(log2Up(p.dataWidth))
+      io.spi.dq(0).write := RegNext(
+        io.cmd.argsData.data(index - 3)
+      )
+      io.spi.dq(1).write := RegNext(
+        io.cmd.argsData.data(index - 2)
+      )
+      if (p.io.dataWidth > 2) {
+        io.spi.dq(2).write := RegNext(
+          io.cmd.argsData.data(index - 1)
+        )
+        io.spi.dq(3).write := RegNext(
+          io.cmd.argsData.data(index - 0)
+        )
+      }
+    }
+
     io.interrupt := io.pendingInterrupts.orR
   }
 
@@ -329,17 +429,23 @@ object SpiControllerCtrl {
       streamUnbuffered.valid := busCtrl.isWriting(address = regOffset)
       val dataCmd = SpiController.CmdData(p)
       busCtrl.nonStopWrite(dataCmd.data, bitOffset = 0)
+      busCtrl.nonStopWrite(dataCmd.mode, bitOffset = 16)
       busCtrl.nonStopWrite(dataCmd.read, bitOffset = 24)
       val csCmd = SpiController.CmdCs(p)
       busCtrl.nonStopWrite(csCmd.index, bitOffset = 0)
       busCtrl.nonStopWrite(csCmd.enable, bitOffset = 24)
       busCtrl.nonStopWrite(streamUnbuffered.mode, bitOffset = 28)
+      val dummyCyclesCmd = SpiController.CmdDummyCycles(p)
+      busCtrl.nonStopWrite(dummyCyclesCmd.cycles, bitOffset = 0)
       switch(streamUnbuffered.mode) {
         is(SpiController.CmdMode.DATA) {
           streamUnbuffered.args.assignFromBits(dataCmd.asBits)
         }
         is(SpiController.CmdMode.CS) {
           streamUnbuffered.args.assignFromBits(csCmd.asBits.resized)
+        }
+        is(SpiController.CmdMode.DUMMYCYCLES) {
+          streamUnbuffered.args.assignFromBits(dummyCyclesCmd.asBits.resized)
         }
       }
 

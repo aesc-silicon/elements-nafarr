@@ -19,7 +19,8 @@ case class BmbSpiXipController(
 ) extends Component {
   val io = new Bundle {
     val dataBus = slave(Bmb(dataBusConfig))
-    val cfgBus = slave(Wishbone(cfgBusConfig.copy(addressWidth = 10)))
+    val cfgSpiBus = slave(Wishbone(cfgBusConfig.copy(addressWidth = 10)))
+    val cfgXipBus = slave(Wishbone(cfgBusConfig.copy(addressWidth = 10)))
     val spi = master(Spi.Io(parameter.io))
     val interrupt = out(Bool)
   }
@@ -96,6 +97,9 @@ case class BmbSpiXipController(
     }
   }
 
-  val cfgBusFactory = WishboneSlaveFactory(io.cfgBus)
-  SpiControllerCtrl.Mapper(cfgBusFactory, spiControllerCtrl.io, parameter)
+  val cfgSpiBusFactory = WishboneSlaveFactory(io.cfgSpiBus)
+  SpiControllerCtrl.Mapper(cfgSpiBusFactory, spiControllerCtrl.io, parameter)
+
+  val cfgXipBusFactory = WishboneSlaveFactory(io.cfgXipBus)
+  SpiXipControllerCtrl.Mapper(cfgXipBusFactory, spiXipControllerCtrl.io.config, parameter)
 }

@@ -27,7 +27,8 @@ class Axi4ReadOnlySpiXipControllerTest extends AnyFunSuite {
     }
     compiled.doSim("default signals") { dut =>
       dut.clockDomain.forkStimulus(10)
-      dut.io.cfgBus.PENABLE #= false
+      dut.io.cfgSpiBus.PENABLE #= false
+      dut.io.cfgXipBus.PENABLE #= false
       dut.io.dataBus.ar.valid #= false
       dut.io.dataBus.r.ready #= false
       dut.clockDomain.waitSampling(5)
@@ -40,7 +41,8 @@ class Axi4ReadOnlySpiXipControllerTest extends AnyFunSuite {
     compiled.doSim("single read") { dut =>
       dut.clockDomain.forkStimulus(10)
 
-      dut.io.cfgBus.PENABLE #= false
+      dut.io.cfgSpiBus.PENABLE #= false
+      dut.io.cfgXipBus.PENABLE #= false
       dut.io.dataBus.ar.valid #= false
       dut.io.dataBus.r.ready #= false
       dut.io.spi.dq.read #= BigInt("10", 2)

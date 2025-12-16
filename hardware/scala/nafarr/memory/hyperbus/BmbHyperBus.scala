@@ -17,6 +17,7 @@ object BmbHyperBus {
   case class BmbData(p: BmbParameter) extends Bundle {
     val source = UInt(p.access.sourceWidth bits)
     val context = Bits(p.access.contextWidth bits)
+    val size = UInt(p.access.lengthWidth bits)
   }
 
   case class BmbHyperBus(
@@ -65,6 +66,7 @@ object BmbHyperBus {
       bmbDataStorage.io.push.valid := False
       bmbDataStorage.io.push.payload.source := io.dataBus.cmd.source
       bmbDataStorage.io.push.payload.context := io.dataBus.cmd.context
+      bmbDataStorage.io.push.payload.size := io.dataBus.cmd.length
 
       when(io.dataBus.cmd.valid && bmbDataStorage.io.push.ready) {
         hyperbus.io.controller.valid := True
@@ -79,7 +81,11 @@ object BmbHyperBus {
       io.dataBus.rsp.valid := hyperbus.io.frontend.valid
       io.dataBus.rsp.source := bmbDataStorage.io.pop.source
       io.dataBus.rsp.context := bmbDataStorage.io.pop.context
-      io.dataBus.rsp.data := hyperbus.io.frontend.payload.data
+      io.dataBus.rsp.data := bmbDataStorage.io.pop.payload.size.mux(
+        U(0) -> hyperbus.io.frontend.payload.data(7 downto 0) #* 4,
+        U(1) -> hyperbus.io.frontend.payload.data(15 downto 0) #* 2,
+        default -> hyperbus.io.frontend.payload.data
+      )
       io.dataBus.rsp.setSuccess()
       io.dataBus.rsp.last := hyperbus.io.frontend.payload.last
       hyperbus.io.frontend.ready := io.dataBus.rsp.fire

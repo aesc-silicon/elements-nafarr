@@ -83,19 +83,13 @@ object BmbIhpOnChipRam {
 
     io.bus.cmd.ready := False
     val valid = RegInit(False)
-    val source = Reg(cloneOf(io.bus.cmd.source))
-    val context = Reg(cloneOf(io.bus.cmd.context))
-    val addrOffset = Reg(UInt(2 bits))
+    val source = Reg(io.bus.cmd.source)
+    val context = Reg(io.bus.cmd.context)
     val last = True
     io.bus.rsp.valid := valid
     io.bus.rsp.source := source
     io.bus.rsp.context := context
-    io.bus.rsp.data := addrOffset.mux(
-      U(1) -> ram.A_DOUT(7 downto 0) ## ram.A_DOUT(31 downto 8),
-      U(2) -> ram.A_DOUT(15 downto 0) ## ram.A_DOUT(31 downto 16),
-      U(3) -> ram.A_DOUT(23 downto 0) ## ram.A_DOUT(31 downto 24),
-      default -> ram.A_DOUT
-    )
+    io.bus.rsp.data := ram.A_DOUT
     io.bus.rsp.last := last
 
     val addr = CombInit(convertAddr(io.bus.cmd.address))
@@ -105,14 +99,7 @@ object BmbIhpOnChipRam {
     val mask = CombInit(io.bus.cmd.mask)
 
     ram.A_ADDR := addr.asBits
-    ram.A_DIN := io.bus.cmd
-      .address(0, 2 bits)
-      .mux(
-        U(1) -> data(23 downto 0) ## data(31 downto 24),
-        U(2) -> data(15 downto 0) ## data(31 downto 16),
-        U(3) -> data(7 downto 0) ## data(31 downto 8),
-        default -> data
-      )
+    ram.A_DIN := data
     ram.A_MEN := memEnable
     ram.A_WEN := write
     ram.A_REN := !write
@@ -130,7 +117,6 @@ object BmbIhpOnChipRam {
             memEnable := io.bus.rsp.isFree
             source := io.bus.cmd.source
             context := io.bus.cmd.context
-            addrOffset := io.bus.cmd.address(0, 2 bits)
             when(io.bus.cmd.length > U(p.access.byteCount - 1)) {
               counter := 4
               goto(burst)

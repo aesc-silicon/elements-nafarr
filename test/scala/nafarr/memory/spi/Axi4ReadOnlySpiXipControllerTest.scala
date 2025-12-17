@@ -63,7 +63,7 @@ class Axi4ReadOnlySpiXipControllerTest extends AnyFunSuite {
       for (_ <- 0 to 5) {
         sleep(2)
         assert(dut.io.spi.cs.toBigInt == BigInt("0", 2))
-        dut.clockDomain.waitSampling(1000)
+        dut.clockDomain.waitSampling(200)
       }
       assert(dut.io.spi.cs.toBigInt == BigInt("0", 2))
       dut.clockDomain.waitSampling(700)

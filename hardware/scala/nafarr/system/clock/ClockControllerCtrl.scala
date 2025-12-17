@@ -122,10 +122,15 @@ object ClockControllerCtrl {
         resetCtrl: ResetControllerCtrl.ResetControllerCtrl,
         clockFrequency: HertzNumber,
         clocks: List[String],
-        CLKI_DIV: Int = 1,
-        CLKFB_DIV: Int = 1,
-        CLKOP_DIV: Int = 1
+        clockVco: HertzNumber = 400 MHz
     ) {
+
+      val clockPair = (clockFrequency.toDouble / 1e6, clockVco.toDouble / 1e6)
+
+      val (clkIDiv, clkFbDiv, clkOpDiv) = clockPair match {
+        case (100, 400) => (2, 1, 8)
+      }
+
       val clockCtrlClockDomain = ClockDomain(
         clock = clock,
         frequency = FixedFrequency(clockFrequency),
@@ -155,7 +160,7 @@ object ClockControllerCtrl {
         generatedClocks = generatedClocks :+ getClockPin(index)
       }
       io.buildConnection.resets <> resetCtrl.io.resets
-      clockCtrl.pll.calculate(CLKI_DIV, CLKFB_DIV, CLKOP_DIV)
+      clockCtrl.pll.calculate(clkIDiv, clkFbDiv, clkOpDiv)
     }
 
     def buildDummy(clock: Bool, resetCtrl: ResetControllerCtrl.ResetControllerCtrl) {

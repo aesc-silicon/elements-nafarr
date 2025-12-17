@@ -23,7 +23,7 @@ object SpiControllerCtrl {
   object InitParameter {
     def disabled = InitParameter(false, false, 0 Hz)
     def default = InitParameter(false, false, 100 kHz)
-    def fast = InitParameter(false, false, 1 MHz)
+    def fast = InitParameter(false, false, 5 MHz)
   }
 
   case class PermissionParameter(

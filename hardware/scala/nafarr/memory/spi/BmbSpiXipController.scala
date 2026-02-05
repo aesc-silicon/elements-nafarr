@@ -11,6 +11,31 @@ import spinal.lib.bus.bmb._
 import spinal.lib.bus.wishbone._
 
 import nafarr.peripherals.com.spi.{Spi, SpiControllerCtrl}
+import nafarr.bus.bmb.BmbCache
+
+case class BmbCacheSpiXipController(
+    parameter: SpiControllerCtrl.Parameter,
+    dataBusConfig: BmbParameter,
+    cfgBusConfig: WishboneConfig,
+    words: Int = 4
+) extends Component {
+  val io = new Bundle {
+    val dataBus = slave(Bmb(dataBusConfig))
+    val cfgSpiBus = slave(Wishbone(cfgBusConfig.copy(addressWidth = 10)))
+    val cfgXipBus = slave(Wishbone(cfgBusConfig.copy(addressWidth = 10)))
+    val spi = master(Spi.Io(parameter.io))
+    val interrupt = out(Bool)
+  }
+
+  val ctrl = BmbSpiXipController(parameter, dataBusConfig, cfgBusConfig)
+  ctrl.io.spi <> io.spi
+  ctrl.io.cfgSpiBus <> io.cfgSpiBus
+  ctrl.io.cfgXipBus <> io.cfgXipBus
+
+  val cache = BmbCache(dataBusConfig, words)
+  ctrl.io.dataBus << cache.io.output
+  cache.io.input << io.dataBus
+}
 
 case class BmbSpiXipController(
     parameter: SpiControllerCtrl.Parameter,

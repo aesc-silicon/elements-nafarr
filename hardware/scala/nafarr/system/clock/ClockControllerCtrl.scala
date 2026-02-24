@@ -163,6 +163,65 @@ object ClockControllerCtrl {
       clockCtrl.pll.calculate(clkIDiv, clkFbDiv, clkOpDiv)
     }
 
+    def buildClockDivider(
+        clock: Bool,
+        resetCtrl: ResetControllerCtrl.ResetControllerCtrl,
+        inputClock: ClockParameter,
+        clocks: List[String]
+    ) {
+      val inputHz = inputClock.frequency.toDouble
+
+      val clockCtrlClockDomain = ClockDomain(
+        clock = clock,
+        reset = resetCtrl.getResetByName(inputClock.reset)._1,
+        frequency = FixedFrequency(inputClock.frequency),
+        config = inputClock.resetConfig
+      )
+
+      val clockCtrl = new ClockingArea(clockCtrlClockDomain) {
+        for (clockName <- clocks) {
+          val (domainIndex, domain) = parameter.getDomainByName(clockName)
+          val outputHz = domain.frequency.toDouble
+
+          require(
+            inputHz % outputHz == 0,
+            s"Clock '$clockName': output frequency ${outputHz.toLong} Hz does not divide input frequency ${inputHz.toLong} Hz evenly"
+          )
+          val divider = (inputHz / outputHz).toInt
+          require(
+            divider >= 1,
+            s"Clock '$clockName': divider $divider must be >= 1"
+          )
+
+          val clockOut = if (divider == 1) {
+            clock
+          } else {
+            require(
+              divider % 2 == 0,
+              s"Clock '$clockName': divider $divider must be even to generate a 50% duty cycle clock"
+            )
+            val halfPeriod = divider / 2
+            val divided = Reg(Bool()) init False
+            if (halfPeriod == 1) {
+              divided := !divided
+            } else {
+              val counter = Reg(UInt(log2Up(halfPeriod) bits)) init 0
+              when(counter === halfPeriod - 1) {
+                counter := 0
+                divided := !divided
+              } otherwise {
+                counter := counter + 1
+              }
+            }
+            divided
+          }
+          io.buildConnection.clocks(domainIndex) := clockOut
+          generatedClocks = generatedClocks :+ clockOut
+        }
+      }
+      io.buildConnection.resets <> resetCtrl.io.resets
+    }
+
     def buildDummy(clock: Bool, resetCtrl: ResetControllerCtrl.ResetControllerCtrl) {
       for (((domain), index) <- parameter.domains.zipWithIndex) {
         io.buildConnection.clocks(index) := clock

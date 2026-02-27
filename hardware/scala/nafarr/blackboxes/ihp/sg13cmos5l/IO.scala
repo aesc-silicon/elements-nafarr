@@ -6,13 +6,16 @@ package nafarr.blackboxes.ihp.sg13cmos5l
 
 import spinal.core._
 import spinal.lib.io.{TriState, ReadableOpenDrain}
-import spinal.lib.History
+
+import nafarr.blackboxes.ihp.common.Edge
 
 object IhpCmosIo {
-  def apply(edge: String, number: Int) = new IhpCmosIo(edge, number)
-  def apply(edge: String, number: Int, clockGroup: String) = new IhpCmosIo(edge, number, clockGroup)
+  def apply(edge: Edge.Value, number: Int) = new IhpCmosIo(edge, number)
+  def apply(edge: Edge.Value, number: Int, clockGroup: String) =
+    new IhpCmosIo(edge, number, clockGroup)
 
-  class IhpCmosIo(val edge: String, val number: Int, val clockGroup: String = "") extends Bundle {
+  class IhpCmosIo(val edge: Edge.Value, val number: Int, val clockGroup: String = "")
+      extends Bundle {
     val PAD = inout(Analog(Bool()))
 
     var cell = ""
@@ -75,18 +78,6 @@ object IhpCmosIo {
       cell = "sg13cmos5l_IOPadAnalog"
       cellName = s"sg13cmos5l_IOPad_${this.getName()}"
       that.setName(this.cellName)
-    }
-    def <>(that: IOPadIOVss.sg13cmos5l_IOPadIOVss) = {
-      cell = "sg13cmos5l_IOPadIOVss"
-    }
-    def <>(that: IOPadIOVdd.sg13cmos5l_IOPadIOVdd) = {
-      cell = "sg13cmos5l_IOPadIOVdd"
-    }
-    def <>(that: IOPadVss.sg13cmos5l_IOPadVss) = {
-      cell = "sg13cmos5l_IOPadVss"
-    }
-    def <>(that: IOPadVdd.sg13cmos5l_IOPadVdd) = {
-      cell = "sg13cmos5l_IOPadVdd"
     }
   }
 }
@@ -293,28 +284,4 @@ object IOPadAnalog {
 
     padres <> pad
   }
-}
-
-object IOPadIOVss {
-  def apply() = sg13cmos5l_IOPadIOVss()
-
-  case class sg13cmos5l_IOPadIOVss() extends BlackBox {}
-}
-
-object IOPadIOVdd {
-  def apply() = sg13cmos5l_IOPadIOVdd()
-
-  case class sg13cmos5l_IOPadIOVdd() extends BlackBox {}
-}
-
-object IOPadVss {
-  def apply() = sg13cmos5l_IOPadVss()
-
-  case class sg13cmos5l_IOPadVss() extends BlackBox {}
-}
-
-object IOPadVdd {
-  def apply() = sg13cmos5l_IOPadVdd()
-
-  case class sg13cmos5l_IOPadVdd() extends BlackBox {}
 }

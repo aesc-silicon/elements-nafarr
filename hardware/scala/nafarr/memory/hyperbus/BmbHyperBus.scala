@@ -51,14 +51,14 @@ object BmbHyperBus {
 
       io.dataBus.cmd.ready := False
 
+      val address = Reg(UInt(dataBusConfig.access.addressWidth bits))
+
       hyperbus.io.controller.valid := False
       hyperbus.io.controller.payload.id := id
       hyperbus.io.controller.payload.read := io.dataBus.cmd.isRead
       hyperbus.io.controller.payload.unaligned := io.dataBus.cmd.address(0)
       hyperbus.io.controller.payload.memory := True
-      hyperbus.io.controller.payload.addr := io.dataBus.cmd
-        .address(dataBusConfig.access.addressWidth - 1 downto 1)
-        .resized
+      hyperbus.io.controller.payload.addr := io.dataBus.cmd.address.resized
       hyperbus.io.controller.payload.data := io.dataBus.cmd.data
       hyperbus.io.controller.payload.strobe := getStrobe(io.dataBus.cmd.length)
       hyperbus.io.controller.payload.last := True
@@ -68,11 +68,46 @@ object BmbHyperBus {
       bmbDataStorage.io.push.payload.context := io.dataBus.cmd.context
       bmbDataStorage.io.push.payload.size := io.dataBus.cmd.length
 
-      when(io.dataBus.cmd.valid && bmbDataStorage.io.push.ready) {
-        hyperbus.io.controller.valid := True
-        when(hyperbus.io.controller.fire) {
-          bmbDataStorage.io.push.valid := True
-          io.dataBus.cmd.ready := True
+      val incomingScheduler = new StateMachine {
+        val counter = Reg(UInt(dataBusConfig.access.lengthWidth bits)).init(4)
+
+        val idle: State = new State with EntryPoint {
+          whenIsActive {
+            when(io.dataBus.cmd.valid && bmbDataStorage.io.push.ready) {
+              hyperbus.io.controller.valid := True
+              when(hyperbus.io.controller.fire) {
+                bmbDataStorage.io.push.valid := True
+                when(io.dataBus.cmd.length > U(dataBusConfig.access.byteCount - 1)) {
+                  counter := dataBusConfig.access.byteCount
+                  hyperbus.io.controller.payload.last := False
+                  address := Bmb.incr(io.dataBus.cmd.address, dataBusConfig)
+                  goto(burst)
+                } otherwise {
+                  io.dataBus.cmd.ready := True
+                }
+              }
+            }
+          }
+        }
+
+        val burst: State = new State {
+          whenIsActive {
+            when(io.dataBus.cmd.valid && bmbDataStorage.io.push.ready) {
+              hyperbus.io.controller.valid := True
+              hyperbus.io.controller.payload.addr := address.resized
+              when(hyperbus.io.controller.fire) {
+                bmbDataStorage.io.push.valid := True
+                counter := counter + dataBusConfig.access.byteCount
+                hyperbus.io.controller.payload.last := False
+                address := Bmb.incr(address, dataBusConfig)
+                when(counter === ((io.dataBus.cmd.length - dataBusConfig.access.byteCount) + 1)) {
+                  hyperbus.io.controller.payload.last := True
+                  io.dataBus.cmd.ready := True
+                  goto(idle)
+                }
+              }
+            }
+          }
         }
       }
     }

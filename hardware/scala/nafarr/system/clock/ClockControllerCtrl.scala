@@ -140,18 +140,25 @@ object ClockControllerCtrl {
       )
 
       val clockCtrl = new ClockingArea(clockCtrlClockDomain) {
-        val pll = LatticePLL.EHXPLLL().connect()
+        val pll0 = LatticePLL.EHXPLLL().connect()
+        val pll1 = LatticePLL.EHXPLLL().connect()
       }
 
       def addClock(index: Int, frequency: HertzNumber) = index match {
-        case 0 => clockCtrl.pll.addClock0(frequency)
-        case 1 => clockCtrl.pll.addClock1(frequency)
-        case 2 => clockCtrl.pll.addClock2(frequency)
+        case 0 => clockCtrl.pll0.addClock0(frequency)
+        case 1 => clockCtrl.pll0.addClock1(frequency)
+        case 2 => clockCtrl.pll0.addClock2(frequency)
+        case 3 => clockCtrl.pll1.addClock0(frequency)
+        case 4 => clockCtrl.pll1.addClock1(frequency)
+        case 5 => clockCtrl.pll1.addClock2(frequency)
       }
       def getClockPin(index: Int) = index match {
-        case 0 => clockCtrl.pll.CLKOS
-        case 1 => clockCtrl.pll.CLKOS2
-        case 2 => clockCtrl.pll.CLKOS3
+        case 0 => clockCtrl.pll0.CLKOS
+        case 1 => clockCtrl.pll0.CLKOS2
+        case 2 => clockCtrl.pll0.CLKOS3
+        case 3 => clockCtrl.pll1.CLKOS
+        case 4 => clockCtrl.pll1.CLKOS2
+        case 5 => clockCtrl.pll1.CLKOS3
       }
 
       for ((clock, index) <- clocks.zipWithIndex) {
@@ -160,7 +167,8 @@ object ClockControllerCtrl {
         generatedClocks = generatedClocks :+ getClockPin(index)
       }
       io.buildConnection.resets <> resetCtrl.io.resets
-      clockCtrl.pll.calculate(clkIDiv, clkFbDiv, clkOpDiv)
+      clockCtrl.pll0.calculate(clkIDiv, clkFbDiv, clkOpDiv)
+      clockCtrl.pll1.calculate(clkIDiv, clkFbDiv, clkOpDiv)
     }
 
     def buildClockDivider(

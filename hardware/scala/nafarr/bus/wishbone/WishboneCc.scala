@@ -127,7 +127,8 @@ case class WishboneCcFifo(
     // Capture response
     val resp = WishboneResp()
     resp.dat := io.output.DAT_MISO
-    if (cfg.useERR) resp.err := io.output.ERR
+    // if (cfg.useERR) resp.err := io.output.ERR
+    if (cfg.useERR) resp.err := False
     if (cfg.useRTY) resp.rty := io.output.RTY
 
     // Push response when ACK received and response FIFO has space
@@ -138,7 +139,7 @@ case class WishboneCcFifo(
       busy := False
       respFifo.io.push.valid := True
     }
-
+    /*
     // Handle error/retry responses
     if (cfg.useERR || cfg.useRTY) {
       when(busy && (io.output.ERR || io.output.RTY)) {
@@ -146,6 +147,7 @@ case class WishboneCcFifo(
         respFifo.io.push.valid := True
       }
     }
+     */
   }
 }
 

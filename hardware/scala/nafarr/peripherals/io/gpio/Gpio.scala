@@ -43,7 +43,7 @@ object Gpio {
         name: String,
         address: BigInt,
         size: BigInt,
-        irqNumber: Option[Int] = null
+        irqNumber: Option[Int] = None
     ) = {
       val baseAddress = "%x".format(address.toInt)
       val regSize = "%04x".format(size.toInt)
@@ -67,7 +67,7 @@ object Gpio {
         name: String,
         address: BigInt,
         size: BigInt,
-        irqNumber: Option[Int] = null
+        irqNumber: Option[Int] = None
     ) = {
       val baseAddress = "%08x".format(address.toInt)
       val regSize = "%04x".format(size.toInt)
@@ -86,8 +86,7 @@ case class Apb3Gpio(
       parameter,
       Apb3(busConfig),
       Apb3SlaveFactory(_)
-    ) { val dummy = 0 }
-
+    )
 case class WishboneGpio(
     parameter: GpioCtrl.Parameter,
     busConfig: WishboneConfig = WishboneConfig(10, 32)
@@ -95,8 +94,7 @@ case class WishboneGpio(
       parameter,
       Wishbone(busConfig.copy(addressWidth = 10)),
       WishboneSlaveFactory(_)
-    ) { val dummy = 0 }
-
+    )
 case class AvalonMMGpio(
     parameter: GpioCtrl.Parameter,
     busConfig: AvalonMMConfig = AvalonMMConfig.fixed(12, 32, 1)
@@ -104,4 +102,4 @@ case class AvalonMMGpio(
       parameter,
       AvalonMM(busConfig),
       AvalonMMSlaveFactory(_)
-    ) { val dummy = 0 }
+    )

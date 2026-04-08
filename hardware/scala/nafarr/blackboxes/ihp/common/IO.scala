@@ -28,14 +28,10 @@ object IhpPowerIoCell {
 }
 
 object Edge extends Enumeration {
-  val North, South, East, West = Value
-
-  override def toString: String = this match {
-    case North => "north"
-    case South => "south"
-    case East => "east"
-    case West => "west"
-  }
+  val North = Value("north")
+  val South = Value("south")
+  val East = Value("east")
+  val West = Value("west")
 }
 
 object IhpPowerIo {

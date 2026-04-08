@@ -29,9 +29,9 @@ class Apb3GpioTest extends AnyFunSuite {
       val dut = Apb3Gpio(GpioCtrl.Parameter(
           io = Gpio.Parameter(32),
           readBufferDepth = 1,
-          input = Seq[Int](0, 1, 2, 3, 5, 7, 31),
-          output = Seq[Int](0, 3, 4, 5, 6, 7, 31),
-          interrupt = Seq[Int](0, 3, 5, 7, 31)
+          input = Some(Seq(0, 1, 2, 3, 5, 7, 31)),
+          output = Some(Seq(0, 3, 4, 5, 6, 7, 31)),
+          interrupt = Some(Seq(0, 3, 5, 7, 31))
         )
       )
       dut.ctrl.io.value.simPublic()

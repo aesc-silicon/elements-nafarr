@@ -17,27 +17,31 @@ object GpioCtrl {
   case class Parameter(
       io: Gpio.Parameter,
       readBufferDepth: Int = 0,
-      var output: Seq[Int] = null,
-      var input: Seq[Int] = null,
-      var interrupt: Seq[Int] = null,
+      output: Option[Seq[Int]] = None,
+      input: Option[Seq[Int]] = None,
+      interrupt: Option[Seq[Int]] = None,
       invertWriteEnable: Boolean = false
-  ) {
-    if (output == null)
-      output = (0 until io.width)
-    if (input == null)
-      input = (0 until io.width)
-    if (interrupt == null)
-      interrupt = (0 until io.width)
-  }
+  )
   object Parameter {
     def default(width: Int = 32, invertWriteEnable: Boolean = false) =
-      Parameter(Gpio.Parameter(width), 1, null, null, null, invertWriteEnable)
+      Parameter(Gpio.Parameter(width), 1, invertWriteEnable = invertWriteEnable)
     def noInterrupt(width: Int = 32, invertWriteEnable: Boolean = false) =
-      Parameter(Gpio.Parameter(width), 1, null, null, Seq[Int](), invertWriteEnable)
+      Parameter(
+        Gpio.Parameter(width),
+        1,
+        interrupt = Some(Seq.empty),
+        invertWriteEnable = invertWriteEnable
+      )
     def onlyOutput(width: Int = 32, invertWriteEnable: Boolean = false) =
-      Parameter(Gpio.Parameter(width), 0, null, Seq[Int](), Seq[Int](), invertWriteEnable)
+      Parameter(
+        Gpio.Parameter(width),
+        0,
+        input = Some(Seq.empty),
+        interrupt = Some(Seq.empty),
+        invertWriteEnable = invertWriteEnable
+      )
     def onlyInput(width: Int = 32) =
-      Parameter(Gpio.Parameter(width), 0, Seq[Int](), null, null)
+      Parameter(Gpio.Parameter(width), 0, output = Some(Seq.empty))
   }
 
   case class Config(p: Parameter) extends Bundle {
@@ -121,24 +125,24 @@ object GpioCtrl {
       for (i <- 0 until pins) {
         val pin = bank * 32 + i
         // IO registers
-        if (p.input.contains(pin))
+        if (p.input.forall(_.contains(pin)))
           busCtrl.read(ctrl.value(pin), inputAddr, i)
-        if (p.output.contains(pin)) {
+        if (p.output.forall(_.contains(pin))) {
           busCtrl.driveAndRead(ctrl.config.write(pin), outputAddr, i).init(False)
         } else {
           busCtrl.read(False, outputAddr, i)
           ctrl.config.write(pin) := False
         }
-        if (p.output.contains(pin) && p.input.contains(in)) {
+        if (p.output.forall(_.contains(pin)) && p.input.forall(_.contains(pin))) {
           busCtrl.driveAndRead(ctrl.config.direction(pin), directionAddr, i).init(False)
         } else {
-          val direction = RegInit(Bool(p.output.contains(pin)))
+          val direction = RegInit(Bool(p.output.forall(_.contains(pin))))
           direction.allowUnsetRegToAvoidLatch
           busCtrl.read(direction, directionAddr, i)
           ctrl.config.direction(pin) := direction
         }
         // Interrupt controller
-        if (p.interrupt.contains(pin)) {
+        if (p.interrupt.forall(_.contains(pin))) {
           irqHighCtrl.io.inputs(i) := ctrl.irqHigh.valid(pin)
           irqLowCtrl.io.inputs(i) := ctrl.irqLow.valid(pin)
           irqRiseCtrl.io.inputs(i) := ctrl.irqRise.valid(pin)

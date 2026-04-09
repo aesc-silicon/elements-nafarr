@@ -7,7 +7,7 @@ package export.peripherals
 import spinal.core._
 import spinal.lib._
 
-import nafarr.peripherals.io.gpio.{Apb3Gpio, Gpio, GpioCtrl}
+import nafarr.peripherals.io.gpio.{Apb3Gpio, WishboneGpio, Gpio, GpioCtrl}
 
 object GpioExport {
   def main(args: Array[String]) {
@@ -18,8 +18,16 @@ object GpioExport {
       val controller = Apb3Gpio(parameter)
       controller
     }
+    config.generateVerilog {
+      val controller = WishboneGpio(parameter)
+      controller
+    }
     config.generateVhdl {
       val controller = Apb3Gpio(parameter)
+      controller
+    }
+    config.generateVhdl {
+      val controller = WishboneGpio(parameter)
       controller
     }
   }

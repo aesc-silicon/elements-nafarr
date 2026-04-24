@@ -19,7 +19,8 @@ lazy val root = (project in file("."))
       "com.github.spinalhdl" % "spinalhdl-lib_2.12" % spinalVersion,
       compilerPlugin("com.github.spinalhdl" % "spinalhdl-idsl-plugin_2.12" % spinalVersion),
       "org.scalatest" %% "scalatest" % "3.2.17",
-      "org.yaml" % "snakeyaml" % "1.8"
+      "org.yaml" % "snakeyaml" % "1.8",
+      "com.github.spinalhdl" %% "vexiiriscv" % "2.0.0"
     ),
     Compile / scalaSource := baseDirectory.value / "hardware" / "scala",
     Test / scalaSource := baseDirectory.value / "test" / "scala"

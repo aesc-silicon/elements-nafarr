@@ -20,7 +20,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v6
         with:
           path: nafarr
 
@@ -52,11 +52,24 @@ jobs:
           version: '2024-01-01'
 
       - name: Checkout SpinalCrypto
-        uses: actions/checkout@v2
+        uses: actions/checkout@v6
         with:
           repository: SpinalHDL/SpinalCrypto
           ref: master
           path: SpinalCrypto
+
+      - name: Checkout VexiiRiscv
+        uses: actions/checkout@v6
+        with:
+          repository: SpinalHDL/VexiiRiscv
+          ref: dev
+          path: VexiiRiscv
+          submodules: true
+
+      - name: Publish VexiiRiscv
+        run: |
+          cd VexiiRiscv
+          sbt publishLocal
 
       - name: Compile
         run: |

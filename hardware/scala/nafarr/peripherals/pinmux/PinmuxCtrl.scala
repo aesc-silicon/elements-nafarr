@@ -9,6 +9,7 @@ import spinal.lib._
 import spinal.lib.bus.misc.BusSlaveFactory
 import spinal.lib.io.{TriStateArray, TriState}
 import spinal.lib.io.ReadableOpenDrain
+import nafarr.IpIdentification
 
 import scala.collection.mutable.Map
 import scala.collection.mutable.ArrayBuffer
@@ -16,7 +17,9 @@ import scala.collection.mutable.ArrayBuffer
 object PinmuxCtrl {
   def apply(p: Parameter, mapping: ArrayBuffer[(Int, List[Int])]) = PinmuxCtrl(p, mapping)
 
-  case class Parameter(io: Pinmux.Parameter, inputs: Int, options: Int) {}
+  case class Parameter(io: Pinmux.Parameter, inputs: Int, options: Int) {
+    require(io.width <= 255, "Pin width must fit in 8 bits for the width register.")
+  }
 
   case class Io(parameter: Parameter) extends Bundle {
     val pins = master(TriStateArray(parameter.io.width bits))
@@ -53,11 +56,18 @@ object PinmuxCtrl {
       ctrl: Io,
       p: Parameter
   ) extends Area {
+    val idCtrl = IpIdentification(IpIdentification.Ids.Pinmux, 1, 0, 0)
+    idCtrl.driveFrom(busCtrl)
+    val staticOffset = idCtrl.length
+
+    busCtrl.read(B(0, 24 bits) ## B(p.io.width, 8 bits), staticOffset)
+    val regOffset = idCtrl.length + 0x4
+
     for (pin <- 0 until p.io.width) {
-      val option = Reg(UInt(log2Up(p.options) bits)).init(U(0))
+      val option = Reg(UInt(8 bits)).init(U(0))
       val muxAddress = pin * 4
-      busCtrl.readAndWrite(option, muxAddress)
-      ctrl.options(pin) := option
+      busCtrl.readAndWrite(option, muxAddress + regOffset)
+      ctrl.options(pin) := option(0, log2Up(p.options) bits)
     }
   }
 }

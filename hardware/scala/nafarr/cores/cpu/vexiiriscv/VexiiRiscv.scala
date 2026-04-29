@@ -44,7 +44,6 @@ object VexiiRiscvCoreParameter {
     param.resetVector = resetAddress.toLong
 
     // RV32I: base integer only, no compressed instructions
-    param.removeISA("zifencei")
 
     // No caches: deterministic memory access latency
     param.fetchL1Enable = false

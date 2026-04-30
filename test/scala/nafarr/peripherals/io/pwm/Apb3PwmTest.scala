@@ -61,8 +61,8 @@ class Apb3PwmTest extends AnyFunSuite {
         "IP Identification 0x0 should return 00080002 - API: 0, Length: 8, ID: 2"
       )
       assert(
-        apb.read(BigInt(4)) == BigInt("01000000", 16),
-        "IP Identification 0x4 should return 01000000 - 1.0.0"
+        apb.read(BigInt(4)) == BigInt("01010000", 16),
+        "IP Identification 0x4 should return 01010000 - 1.1.0"
       )
 
       /* Read channelPulseWidth, channelPeriodWidth, clockDividerWidth, io.channels */
@@ -71,9 +71,15 @@ class Apb3PwmTest extends AnyFunSuite {
         "Unable to read 14141401 from PWM config/channel declaration"
       )
 
+      /* Read dead-time and shot-count widthss */
+      assert(
+        apb.read(BigInt(staticOffset + 4)) == BigInt("00000808", 16),
+        "Unable to read 00000808 from PWM config/channel declaration"
+      )
+
       /* Read permissions */
       assert(
-        apb.read(BigInt(staticOffset + 4)) == BigInt("00000001", 16),
+        apb.read(BigInt(staticOffset + 8)) == BigInt("00000001", 16),
         "Unable to read 00000001 from PWM permission declaration"
       )
     }
@@ -91,19 +97,23 @@ class Apb3PwmTest extends AnyFunSuite {
       val apb = new Apb3Driver(dut.io.bus, dut.clockDomain)
       val regOffset = dut.mapper.regOffset
 
+      dut.io.pwm.syncIn #= false
+      dut.io.pwm.faultIn #= false
+
       /* Wait for reset and check initialized state */
       dut.clockDomain.waitSampling(2)
       dut.clockDomain.waitFallingEdge()
 
       /* Init - Set clock divider to 1 us */
-      apb.write(BigInt(regOffset), BigInt("99", 10))
+      apb.write(BigInt(regOffset + 0x14), BigInt("99", 10))
 
-      /* Init channel 0 */
-      apb.write(BigInt(regOffset + 8), BigInt("9", 10))
-      apb.write(BigInt(regOffset + 12), BigInt("5", 10))
+      /* Init channel 0: period=9, active [risingEdge=5, fallingEdge=9] -> 5/10 duty */
+      apb.write(BigInt(regOffset + 0x18), BigInt("9", 10))
+      apb.write(BigInt(regOffset + 0x1c), BigInt("5", 10))
+      apb.write(BigInt(regOffset + 0x20), BigInt("9", 10))
 
       assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
-      apb.write(BigInt(regOffset + 4), BigInt("1", 16))
+      apb.write(BigInt(regOffset + 0x10), BigInt("1", 16))
       dut.clockDomain.waitSampling(100)
 
       assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
@@ -128,20 +138,24 @@ class Apb3PwmTest extends AnyFunSuite {
       val apb = new Apb3Driver(dut.io.bus, dut.clockDomain)
       val regOffset = dut.mapper.regOffset
 
+      dut.io.pwm.syncIn #= false
+      dut.io.pwm.faultIn #= false
+
       /* Wait for reset and check initialized state */
       dut.clockDomain.waitSampling(2)
       dut.clockDomain.waitFallingEdge()
 
       /* Init - Set clock divider to 1 us */
-      apb.write(BigInt(regOffset), BigInt("99", 10))
+      apb.write(BigInt(regOffset + 0x14), BigInt("99", 10))
 
-      /* Init channel 0 */
-      apb.write(BigInt(regOffset + 8), BigInt("9", 10))
-      apb.write(BigInt(regOffset + 12), BigInt("5", 10))
+      /* Init channel 0: period=9, active [risingEdge=5, fallingEdge=9] -> 5/10 duty */
+      apb.write(BigInt(regOffset + 0x18), BigInt("9", 10))
+      apb.write(BigInt(regOffset + 0x1c), BigInt("5", 10))
+      apb.write(BigInt(regOffset + 0x20), BigInt("9", 10))
 
       assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
-      apb.write(BigInt(regOffset + 4), BigInt("1", 16))
-      dut.clockDomain.waitSampling(100)
+      apb.write(BigInt(regOffset + 0x10), BigInt("1", 16))
+      dut.clockDomain.waitSampling(10)
 
       assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
       dut.clockDomain.waitSampling(5 * 100)
@@ -149,12 +163,13 @@ class Apb3PwmTest extends AnyFunSuite {
       dut.clockDomain.waitSampling(5 * 100)
       assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
       dut.clockDomain.waitSampling(10)
-      apb.write(BigInt(regOffset + 4), BigInt("0", 16))
-      apb.write(BigInt(regOffset + 8), BigInt("9", 10))
-      apb.write(BigInt(regOffset + 12), BigInt("3", 10))
+      apb.write(BigInt(regOffset + 0x10), BigInt("0", 16))
+      apb.write(BigInt(regOffset + 0x18), BigInt("9", 10))
+      apb.write(BigInt(regOffset + 0x1c), BigInt("7", 10))
+      apb.write(BigInt(regOffset + 0x20), BigInt("9", 10))
 
       dut.clockDomain.waitSampling(90)
-      apb.write(BigInt(regOffset + 4), BigInt("1", 16))
+      apb.write(BigInt(regOffset + 0x10), BigInt("1", 16))
       dut.clockDomain.waitSampling(100)
 
       assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))

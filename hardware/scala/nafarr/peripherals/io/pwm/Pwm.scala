@@ -18,6 +18,10 @@ object Pwm {
 
   case class Io(p: Parameter) extends Bundle {
     val output = out(Bits(p.channels bits))
+    val compOutput = out(Bits(p.channels bits))
+    val syncOut = out(Bits(p.channels bits))
+    val syncIn = in(Bool)
+    val faultIn = in(Bool)
   }
 
   class Core[T <: spinal.core.Data with IMasterSlave](
@@ -28,10 +32,12 @@ object Pwm {
     val io = new Bundle {
       val bus = slave(busType())
       val pwm = Io(p.io)
+      val interrupt = out(Bool)
     }
 
     val ctrl = PwmCtrl(p)
     ctrl.io.pwm <> io.pwm
+    io.interrupt := ctrl.io.interrupt
 
     val mapper = PwmCtrl.Mapper(factory(io.bus), ctrl.io, p)
 

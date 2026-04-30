@@ -29,10 +29,12 @@ object Pio {
     val io = new Bundle {
       val bus = slave(busType())
       val pio = Io(parameter.io)
+      val interrupt = out(Bool)
     }
 
     val ctrl = PioCtrl(parameter)
     ctrl.io.pio <> io.pio
+    io.interrupt <> ctrl.io.interrupt
 
     val mapper = PioCtrl.Mapper(factory(io.bus), ctrl.io, parameter)
 
@@ -40,11 +42,13 @@ object Pio {
         name: String,
         address: BigInt,
         size: BigInt,
-        irqNumber: Option[Int] = null
+        irqNumber: Option[Int] = None
     ) = {
       val baseAddress = "%08x".format(address.toInt)
       val regSize = "%04x".format(size.toInt)
       var dt = s"""#define ${name.toUpperCase}_BASE\t\t0x${baseAddress}\n"""
+      if (irqNumber.isDefined)
+        dt += s"""#define ${name.toUpperCase}_IRQ\t\t${irqNumber.get}\n"""
       dt
     }
   }

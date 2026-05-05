@@ -19,6 +19,8 @@ object UartCtrlRx {
     val samplingTick = in(Bool)
     val read = master(Stream(Bits(p.dataWidthMax bits)))
     val rxd = in(Bool)
+    val framingError = out(Bool)
+    val parityError = out(Bool)
   }
 
   case class UartCtrlRx(p: UartCtrl.Parameter) extends Component {
@@ -27,7 +29,7 @@ object UartCtrlRx {
     // Implement the rxd sampling with a majority vote over samplingSize bits
     // Provide a new sampler.value each time sampler.tick is high
     val sampler = new Area {
-      val synchroniser = BufferCC(io.rxd, init = False)
+      val synchroniser = BufferCC(io.rxd, init = True)
       val samples = History(
         that = synchroniser,
         length = p.samplingSize,
@@ -64,6 +66,9 @@ object UartCtrlRx {
         value := value + 1
       }
     }
+
+    io.framingError := False
+    io.parityError := False
 
     val stateMachine = new Area {
 
@@ -113,11 +118,10 @@ object UartCtrlRx {
         is(State.PARITY) {
           when(bitTimer.tick) {
             bitCounter.reset()
-            when(parity === sampler.value) {
-              state := State.STOP
-              validReg := True
-            } otherwise {
-              state := State.IDLE
+            state := State.STOP
+            validReg := True
+            when(parity =/= sampler.value) {
+              io.parityError := True
             }
           }
         }
@@ -125,6 +129,7 @@ object UartCtrlRx {
           when(bitTimer.tick) {
             val stopBits = Uart.StopType.toBitCount(io.config.stop)
             when(!sampler.value) {
+              io.framingError := True
               state := State.IDLE
             } elsewhen (bitCounter.value === stopBits) {
               state := State.IDLE

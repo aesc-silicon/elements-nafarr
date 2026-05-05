@@ -30,7 +30,7 @@ object Plic {
     for (i <- 0 until p.sources) {
       gateways += PlicGatewayActiveHigh(
         source = io.sources(i),
-        id = i,
+        id = i + 1,
         priorityWidth = p.priorityWidth
       )
     }

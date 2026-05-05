@@ -74,8 +74,8 @@ class Apb3UartTest extends AnyFunSuite {
         "IP Identification 0x0 should return 00080001 - API: 0, Length: 8, ID: 3"
       )
       assert(
-        apb.read(BigInt(4)) == BigInt("01000000", 16),
-        "IP Identification 0x4 should return 01000000 - 1.0.0"
+        apb.read(BigInt(4)) == BigInt("01010000", 16),
+        "IP Identification 0x4 should return 01010000 - 1.1.0"
       )
 
       /* Read dataWidthMin, dataWidthMax, clockDividerWidth */

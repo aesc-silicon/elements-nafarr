@@ -63,6 +63,7 @@ object UartCtrl {
       samplingSize: Int = 5,
       postSamplingSize: Int = 2,
       interrupt: Boolean = true,
+      error: Boolean = true,
       flowControl: Boolean = true
   ) {
     require(dataWidthMax < 10 && dataWidthMax > 4)
@@ -125,10 +126,13 @@ object UartCtrl {
     val frameConfig = in(FrameConfig(p))
     val uart = master(Uart.Io(p))
     val interrupt = out(Bool)
-    val pendingInterrupts = in(Bits(2 bits))
+    val pendingInterrupts = in(Bits(3 bits))
     val write = slave(Stream(Bits(p.dataWidthMax bits)))
     val read = master(Stream(Bits(p.dataWidthMax bits)))
     val readIsFull = in(Bool)
+    val txIdle = out(Bool)
+    val framingError = out(Bool)
+    val parityError = out(Bool)
   }
 
   case class UartCtrl(p: Parameter) extends Component {
@@ -145,12 +149,15 @@ object UartCtrl {
     tx.io.samplingTick := clockDivider.io.tick
     tx.io.write << io.write
     io.uart.txd <> tx.io.txd
+    io.txIdle := tx.io.txIdle
 
     val rx = UartCtrlRx(p)
     rx.io.config <> io.frameConfig
     rx.io.samplingTick := clockDivider.io.tick
     io.read << rx.io.read
     io.uart.rxd <> rx.io.rxd
+    io.framingError := rx.io.framingError
+    io.parityError := rx.io.parityError
 
     if (p.flowControl) {
       io.uart.rts := io.readIsFull
@@ -166,7 +173,7 @@ object UartCtrl {
       ctrl: Io,
       p: Parameter
   ) extends Area {
-    val idCtrl = IpIdentification(IpIdentification.Ids.Uart, 1, 0, 0)
+    val idCtrl = IpIdentification(IpIdentification.Ids.Uart, 1, 1, 0)
     idCtrl.driveFrom(busCtrl)
     val staticOffset = idCtrl.length
 
@@ -260,13 +267,24 @@ object UartCtrl {
         val txTrigger =
           tx.fifoOccupancy === txOccupancyTrigger && txPreviousOccupancy === (txOccupancyTrigger + 1)
 
-        val irqCtrl = new InterruptCtrl(2)
+        val irqCtrl = new InterruptCtrl(3)
         irqCtrl.driveFrom(busCtrl, regOffset + 0x14)
         irqCtrl.io.inputs(0) := txTrigger
         irqCtrl.io.inputs(1) := ctrl.read.valid
+        irqCtrl.io.inputs(2) := ctrl.txIdle.rise(initAt = True)
         ctrl.pendingInterrupts := irqCtrl.io.pendings
       } else {
         ctrl.pendingInterrupts := 0
+      }
+    }
+
+    val error = new Area {
+      if (p.error) {
+        val errorCtrl = new InterruptCtrl(3)
+        errorCtrl.driveFrom(busCtrl, regOffset + 0x1c)
+        errorCtrl.io.inputs(0) := ctrl.framingError
+        errorCtrl.io.inputs(1) := ctrl.parityError
+        errorCtrl.io.inputs(2) := ctrl.readIsFull && ctrl.read.valid
       }
     }
   }

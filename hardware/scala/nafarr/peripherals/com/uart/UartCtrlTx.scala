@@ -19,6 +19,7 @@ object UartCtrlTx {
     val samplingTick = in(Bool)
     val write = slave(Stream(Bits(p.dataWidthMax bits)))
     val txd = out(Bool)
+    val txIdle = out(Bool)
     val cts = in(Bool)
   }
 
@@ -106,6 +107,7 @@ object UartCtrlTx {
       txEnable := False
     }
     io.txd := RegNext(txCtrl.stateMachine.txd).init(True)
+    io.txIdle := !txEnable
   }
 
 }

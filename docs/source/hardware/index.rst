@@ -1,4 +1,4 @@
-Hardware
+IP Cores
 ########
 
 The following list offers an overview of all available IP cores.

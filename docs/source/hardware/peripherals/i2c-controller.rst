@@ -93,7 +93,7 @@ Available bus architectures:
 By default, all buses are defined with 12 bit address and 32 bit data width.
 
 Parameter
-=========
+~~~~~~~~~
 
 `I2c.Parameter` defines the IO pins of the I2C controller.
 

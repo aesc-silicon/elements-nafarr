@@ -46,7 +46,7 @@ If you need to test a specific component, use the `testOnly` command:
 
 .. code-block:: bash
 
-    sbt "testOnly *Apb3GpioTest"
+    sbt "testOnly *GpioTest"
 
 Documentation
 *************

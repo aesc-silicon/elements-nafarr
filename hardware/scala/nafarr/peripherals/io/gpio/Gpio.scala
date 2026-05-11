@@ -8,8 +8,12 @@ import spinal.core._
 import spinal.lib._
 import spinal.lib.bus.misc._
 import spinal.lib.bus.amba3.apb._
-import spinal.lib.bus.avalon._
 import spinal.lib.bus.wishbone._
+import spinal.lib.bus.tilelink.{
+  Bus => TileLinkBus,
+  BusParameter => TileLinkParameter,
+  SlaveFactory => TileLinkSlaveFactory
+}
 import spinal.lib.io.{TriStateArray, TriState}
 import nafarr.peripherals.PeripheralsComponent
 
@@ -49,9 +53,8 @@ object Gpio {
       val regSize = "%04x".format(size.toInt)
       var dt = s"""
 \t\t$name: $name@$baseAddress {
-\t\t\tcompatible = "elements,gpio";
-\t\t\treg = <0x$baseAddress 0x$regSize>;
-\t\t\tstatus = "okay";"""
+\t\t\tcompatible = "aesc,gpio";
+\t\t\treg = <0x$baseAddress 0x$regSize>;"""
       if (irqNumber.isDefined) {
         dt += s"""
 \t\t\tinterrupt-parent = <&plic>;
@@ -60,6 +63,7 @@ object Gpio {
       dt += s"""
 \t\t\tgpio-controller;
 \t\t\t#gpio-cells = <2>;
+\t\t\tstatus = "okay";
 \t\t};"""
       dt
     }
@@ -95,11 +99,11 @@ case class WishboneGpio(
       Wishbone(busConfig.copy(addressWidth = 10)),
       WishboneSlaveFactory(_)
     )
-case class AvalonMMGpio(
+case class TileLinkGpio(
     parameter: GpioCtrl.Parameter,
-    busConfig: AvalonMMConfig = AvalonMMConfig.fixed(12, 32, 1)
-) extends Gpio.Core[AvalonMM](
+    busConfig: TileLinkParameter = TileLinkParameter.simple(12, 32, 32, 4)
+) extends Gpio.Core[TileLinkBus](
       parameter,
-      AvalonMM(busConfig),
-      AvalonMMSlaveFactory(_)
+      TileLinkBus(busConfig),
+      new TileLinkSlaveFactory(_, false)
     )

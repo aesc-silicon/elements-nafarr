@@ -12,8 +12,8 @@ import spinal.core.sim._
 import nafarr.CheckTester._
 import spinal.lib.bus.amba3.apb.sim.Apb3Driver
 
-class Apb3GpioTest extends AnyFunSuite {
-  test("parameters") {
+class GpioTest extends AnyFunSuite {
+  test("Apb3GpioParameters") {
     generationShouldPass(Apb3Gpio(GpioCtrl.Parameter.default()))
     generationShouldPass(Apb3Gpio(GpioCtrl.Parameter.noInterrupt()))
     generationShouldPass(Apb3Gpio(GpioCtrl.Parameter.onlyOutput()))
@@ -22,6 +22,28 @@ class Apb3GpioTest extends AnyFunSuite {
     generationShouldFail(Apb3Gpio(GpioCtrl.Parameter.default(0)))
     generationShouldPass(Apb3Gpio(GpioCtrl.Parameter.default(1)))
     generationShouldPass(Apb3Gpio(GpioCtrl.Parameter.default(33)))
+  }
+
+  test("TileLinkGpioParameters") {
+    generationShouldPass(TileLinkGpio(GpioCtrl.Parameter.default()))
+    generationShouldPass(TileLinkGpio(GpioCtrl.Parameter.noInterrupt()))
+    generationShouldPass(TileLinkGpio(GpioCtrl.Parameter.onlyOutput()))
+    generationShouldPass(TileLinkGpio(GpioCtrl.Parameter.onlyInput()))
+
+    generationShouldFail(TileLinkGpio(GpioCtrl.Parameter.default(0)))
+    generationShouldPass(TileLinkGpio(GpioCtrl.Parameter.default(1)))
+    generationShouldPass(TileLinkGpio(GpioCtrl.Parameter.default(33)))
+  }
+
+  test("WishboneGpioParameters") {
+    generationShouldPass(WishboneGpio(GpioCtrl.Parameter.default()))
+    generationShouldPass(WishboneGpio(GpioCtrl.Parameter.noInterrupt()))
+    generationShouldPass(WishboneGpio(GpioCtrl.Parameter.onlyOutput()))
+    generationShouldPass(WishboneGpio(GpioCtrl.Parameter.onlyInput()))
+
+    generationShouldFail(WishboneGpio(GpioCtrl.Parameter.default(0)))
+    generationShouldPass(WishboneGpio(GpioCtrl.Parameter.default(1)))
+    generationShouldPass(WishboneGpio(GpioCtrl.Parameter.default(33)))
   }
 
   test("basic") {

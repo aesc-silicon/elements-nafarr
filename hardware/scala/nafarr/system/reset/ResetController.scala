@@ -8,7 +8,11 @@ import spinal.core._
 import spinal.lib._
 import spinal.lib.bus.misc._
 import spinal.lib.bus.amba3.apb._
-import spinal.lib.bus.avalon._
+import spinal.lib.bus.tilelink.{
+  Bus => TileLinkBus,
+  BusParameter => TileLinkParameter,
+  SlaveFactory => TileLinkSlaveFactory
+}
 import spinal.lib.bus.wishbone._
 
 import nafarr.IpIdentification
@@ -57,7 +61,16 @@ case class Apb3ResetController(
       parameter,
       Apb3(busConfig),
       Apb3SlaveFactory(_)
-    ) { val dummy = 0 }
+    )
+
+case class TileLinkResetController(
+    parameter: ResetControllerCtrl.Parameter,
+    busConfig: TileLinkParameter = TileLinkParameter.simple(12, 32, 32, 4)
+) extends ResetController.Core[TileLinkBus](
+      parameter,
+      TileLinkBus(busConfig),
+      new TileLinkSlaveFactory(_, false)
+    )
 
 case class WishboneResetController(
     parameter: ResetControllerCtrl.Parameter,
@@ -66,13 +79,4 @@ case class WishboneResetController(
       parameter,
       Wishbone(busConfig.copy(addressWidth = 10)),
       WishboneSlaveFactory(_)
-    ) { val dummy = 0 }
-
-case class AvalonMMResetController(
-    parameter: ResetControllerCtrl.Parameter,
-    busConfig: AvalonMMConfig = AvalonMMConfig.fixed(12, 32, 1)
-) extends ResetController.Core[AvalonMM](
-      parameter,
-      AvalonMM(busConfig),
-      AvalonMMSlaveFactory(_)
-    ) { val dummy = 0 }
+    )

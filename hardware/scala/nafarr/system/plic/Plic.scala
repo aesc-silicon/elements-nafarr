@@ -8,7 +8,11 @@ import spinal.core._
 import spinal.lib._
 import spinal.lib.bus.misc._
 import spinal.lib.bus.amba3.apb._
-import spinal.lib.bus.avalon._
+import spinal.lib.bus.tilelink.{
+  Bus => TileLinkBus,
+  BusParameter => TileLinkParameter,
+  SlaveFactory => TileLinkSlaveFactory
+}
 import spinal.lib.bus.wishbone._
 import spinal.lib.misc.plic._
 
@@ -72,7 +76,16 @@ case class Apb3Plic(
       parameter,
       Apb3(busConfig),
       Apb3SlaveFactory(_)
-    ) { val dummy = 0 }
+    )
+
+case class TileLinkPlic(
+    parameter: PlicCtrl.Parameter,
+    busConfig: TileLinkParameter = TileLinkParameter.simple(22, 32, 32, 4)
+) extends Plic.Core[TileLinkBus](
+      parameter,
+      TileLinkBus(busConfig),
+      new TileLinkSlaveFactory(_, false)
+    )
 
 case class WishbonePlic(
     parameter: PlicCtrl.Parameter,
@@ -81,13 +94,4 @@ case class WishbonePlic(
       parameter,
       Wishbone(busConfig.copy(addressWidth = 20)),
       WishboneSlaveFactory(_)
-    ) { val dummy = 0 }
-
-case class AvalonMMPlic(
-    parameter: PlicCtrl.Parameter,
-    busConfig: AvalonMMConfig = AvalonMMConfig.fixed(22, 32, 1)
-) extends Plic.Core[AvalonMM](
-      parameter,
-      AvalonMM(busConfig),
-      AvalonMMSlaveFactory(_)
-    ) { val dummy = 0 }
+    )

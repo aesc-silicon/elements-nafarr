@@ -8,7 +8,11 @@ import spinal.core._
 import spinal.lib._
 import spinal.lib.bus.misc._
 import spinal.lib.bus.amba3.apb._
-import spinal.lib.bus.avalon._
+import spinal.lib.bus.tilelink.{
+  Bus => TileLinkBus,
+  BusParameter => TileLinkParameter,
+  SlaveFactory => TileLinkSlaveFactory
+}
 import spinal.lib.bus.wishbone._
 import spinal.lib.io.{TriStateArray, TriState}
 
@@ -62,7 +66,18 @@ case class Apb3Pinmux(
       mapping,
       Apb3(busConfig),
       Apb3SlaveFactory(_)
-    ) { val dummy = 0 }
+    )
+
+case class TileLinkPinmux(
+    parameter: PinmuxCtrl.Parameter,
+    mapping: ArrayBuffer[(Int, List[Int])],
+    busConfig: TileLinkParameter = TileLinkParameter.simple(12, 32, 32, 4)
+) extends Pinmux.Core[TileLinkBus](
+      parameter,
+      mapping,
+      TileLinkBus(busConfig),
+      new TileLinkSlaveFactory(_, false)
+    )
 
 case class WishbonePinmux(
     parameter: PinmuxCtrl.Parameter,
@@ -73,15 +88,4 @@ case class WishbonePinmux(
       mapping,
       Wishbone(busConfig.copy(addressWidth = 10)),
       WishboneSlaveFactory(_)
-    ) { val dummy = 0 }
-
-case class AvalonMMPinmux(
-    parameter: PinmuxCtrl.Parameter,
-    mapping: ArrayBuffer[(Int, List[Int])],
-    busConfig: AvalonMMConfig = AvalonMMConfig.fixed(12, 32, 1)
-) extends Pinmux.Core[AvalonMM](
-      parameter,
-      mapping,
-      AvalonMM(busConfig),
-      AvalonMMSlaveFactory(_)
-    ) { val dummy = 0 }
+    )

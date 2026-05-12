@@ -10,32 +10,36 @@ import spinal.sim._
 import spinal.core._
 import spinal.core.sim._
 import nafarr.CheckTester._
+import spinal.lib._
 import spinal.lib.bus.amba3.apb.sim.Apb3Driver
 
 
-class Apb3UartTest extends AnyFunSuite {
-  def genCore(parameter: UartCtrl.Parameter) = {
+class UartTest extends AnyFunSuite {
+  def genCore[T <: spinal.core.Data with IMasterSlave](
+      parameter: UartCtrl.Parameter,
+      constructor: UartCtrl.Parameter => Uart.Core[T]
+  ): Uart.Core[T] = {
     val cd = ClockDomain.current.copy(frequency = FixedFrequency(100 MHz))
     val area = new ClockingArea(cd) {
-      val dut = Apb3Uart(parameter)
+      val dut = constructor(parameter)
     }
     area.dut
   }
 
-  test("parameters") {
-    generationShouldPass(genCore(UartCtrl.Parameter.lightweight))
-    generationShouldPass(genCore(UartCtrl.Parameter.default))
-    generationShouldPass(genCore(UartCtrl.Parameter.full()))
-    generationShouldPass(genCore(UartCtrl.Parameter.full(9600)))
-    generationShouldPass(genCore(UartCtrl.Parameter.full(115200)))
-    generationShouldPass(genCore(UartCtrl.Parameter(interrupt = false)))
-    generationShouldPass(genCore(UartCtrl.Parameter(flowControl = false)))
+  test("Apb3UartParameters") {
+    generationShouldPass(genCore(UartCtrl.Parameter.lightweight, Apb3Uart(_)))
+    generationShouldPass(genCore(UartCtrl.Parameter.default, Apb3Uart(_)))
+    generationShouldPass(genCore(UartCtrl.Parameter.full(), Apb3Uart(_)))
+    generationShouldPass(genCore(UartCtrl.Parameter.full(9600), Apb3Uart(_)))
+    generationShouldPass(genCore(UartCtrl.Parameter.full(115200), Apb3Uart(_)))
+    generationShouldPass(genCore(UartCtrl.Parameter(interrupt = false), Apb3Uart(_)))
+    generationShouldPass(genCore(UartCtrl.Parameter(flowControl = false), Apb3Uart(_)))
     generationShouldPass {
       val parameter = UartCtrl.Parameter(
         init = UartCtrl.InitParameter.default(115200),
         permission = UartCtrl.PermissionParameter.restricted
       )
-      genCore(parameter)
+      genCore(parameter, Apb3Uart(_))
     }
 
     generationShouldFail {
@@ -43,11 +47,62 @@ class Apb3UartTest extends AnyFunSuite {
         init = UartCtrl.InitParameter.disabled,
         permission = UartCtrl.PermissionParameter.restricted
       )
-      genCore(parameter)
+      genCore(parameter, Apb3Uart(_))
     }
   }
+
+  test("TileLinkUartPrameters") {
+    generationShouldPass(genCore(UartCtrl.Parameter.lightweight, TileLinkUart(_)))
+    generationShouldPass(genCore(UartCtrl.Parameter.default, TileLinkUart(_)))
+    generationShouldPass(genCore(UartCtrl.Parameter.full(), TileLinkUart(_)))
+    generationShouldPass(genCore(UartCtrl.Parameter.full(9600), TileLinkUart(_)))
+    generationShouldPass(genCore(UartCtrl.Parameter.full(115200), TileLinkUart(_)))
+    generationShouldPass(genCore(UartCtrl.Parameter(interrupt = false), TileLinkUart(_)))
+    generationShouldPass(genCore(UartCtrl.Parameter(flowControl = false), TileLinkUart(_)))
+    generationShouldPass {
+      val parameter = UartCtrl.Parameter(
+        init = UartCtrl.InitParameter.default(115200),
+        permission = UartCtrl.PermissionParameter.restricted
+      )
+      genCore(parameter, TileLinkUart(_))
+    }
+
+    generationShouldFail {
+      val parameter = UartCtrl.Parameter(
+        init = UartCtrl.InitParameter.disabled,
+        permission = UartCtrl.PermissionParameter.restricted
+      )
+      genCore(parameter, TileLinkUart(_))
+    }
+  }
+
+  test("WishboneUartParameters") {
+    generationShouldPass(genCore(UartCtrl.Parameter.lightweight, WishboneUart(_)))
+    generationShouldPass(genCore(UartCtrl.Parameter.default, WishboneUart(_)))
+    generationShouldPass(genCore(UartCtrl.Parameter.full(), WishboneUart(_)))
+    generationShouldPass(genCore(UartCtrl.Parameter.full(9600), WishboneUart(_)))
+    generationShouldPass(genCore(UartCtrl.Parameter.full(115200), WishboneUart(_)))
+    generationShouldPass(genCore(UartCtrl.Parameter(interrupt = false), WishboneUart(_)))
+    generationShouldPass(genCore(UartCtrl.Parameter(flowControl = false), WishboneUart(_)))
+    generationShouldPass {
+      val parameter = UartCtrl.Parameter(
+        init = UartCtrl.InitParameter.default(115200),
+        permission = UartCtrl.PermissionParameter.restricted
+      )
+      genCore(parameter, WishboneUart(_))
+    }
+
+    generationShouldFail {
+      val parameter = UartCtrl.Parameter(
+        init = UartCtrl.InitParameter.disabled,
+        permission = UartCtrl.PermissionParameter.restricted
+      )
+      genCore(parameter, WishboneUart(_))
+    }
+  }
+
   test("basic") {
-    val compiled = SimConfig.withWave.compile(genCore(UartCtrl.Parameter.default))
+    val compiled = SimConfig.withWave.compile(genCore(UartCtrl.Parameter.default, Apb3Uart(_)))
 
     compiled.doSim("basicRegisters") { dut =>
       dut.clockDomain.forkStimulus(10)

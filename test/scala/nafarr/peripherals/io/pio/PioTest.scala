@@ -12,7 +12,7 @@ import spinal.core.sim._
 import nafarr.CheckTester._
 import spinal.lib.bus.amba3.apb.sim.Apb3Driver
 
-class Apb3PioTest extends AnyFunSuite {
+class PioTest extends AnyFunSuite {
   def fillCommands(apb: Apb3Driver, regOffset: Int, commands: List[BigInt]) {
     // Disable engine and reset write pointer
     apb.write(BigInt(regOffset), BigInt("00000", 2))
@@ -32,7 +32,7 @@ class Apb3PioTest extends AnyFunSuite {
   }
 
 
-  test("parameters") {
+  test("Apb3PioParameters") {
     generationShouldFail(Apb3Pio(PioCtrl.Parameter.default(0)))
     generationShouldPass(Apb3Pio(PioCtrl.Parameter.default(1)))
     generationShouldPass(Apb3Pio(PioCtrl.Parameter.default(16)))
@@ -67,6 +67,80 @@ class Apb3PioTest extends AnyFunSuite {
       Apb3Pio(parameter)
     }
   }
+
+  test("TileLinkPioParameters") {
+    generationShouldFail(TileLinkPio(PioCtrl.Parameter.default(0)))
+    generationShouldPass(TileLinkPio(PioCtrl.Parameter.default(1)))
+    generationShouldPass(TileLinkPio(PioCtrl.Parameter.default(16)))
+    generationShouldFail(TileLinkPio(PioCtrl.Parameter.default(17)))
+
+    generationShouldPass(TileLinkPio(PioCtrl.Parameter.light()))
+
+    generationShouldPass {
+      val parameter = PioCtrl.Parameter(io = Pio.Parameter(1), readBufferDepth = 0,
+                                        permission = null, init = PioCtrl.InitParameter(100))
+      TileLinkPio(parameter)
+    }
+
+    generationShouldPass {
+      val parameter = PioCtrl.Parameter(io = Pio.Parameter(1), readBufferDepth = 0,
+                                       init = null)
+      TileLinkPio(parameter)
+    }
+
+    generationShouldPass {
+      val parameter = PioCtrl.Parameter(io = Pio.Parameter(10), dataWidth = 20)
+      TileLinkPio(parameter)
+    }
+
+    generationShouldFail {
+      val parameter = PioCtrl.Parameter(io = Pio.Parameter(1), dataWidth = 25)
+      TileLinkPio(parameter)
+    }
+
+    generationShouldFail {
+      val parameter = PioCtrl.Parameter(io = Pio.Parameter(1), init = null, permission = null)
+      TileLinkPio(parameter)
+    }
+  }
+
+  test("WishbonePioParameters") {
+    generationShouldFail(WishbonePio(PioCtrl.Parameter.default(0)))
+    generationShouldPass(WishbonePio(PioCtrl.Parameter.default(1)))
+    generationShouldPass(WishbonePio(PioCtrl.Parameter.default(16)))
+    generationShouldFail(WishbonePio(PioCtrl.Parameter.default(17)))
+
+    generationShouldPass(WishbonePio(PioCtrl.Parameter.light()))
+
+    generationShouldPass {
+      val parameter = PioCtrl.Parameter(io = Pio.Parameter(1), readBufferDepth = 0,
+                                        permission = null, init = PioCtrl.InitParameter(100))
+      WishbonePio(parameter)
+    }
+
+    generationShouldPass {
+      val parameter = PioCtrl.Parameter(io = Pio.Parameter(1), readBufferDepth = 0,
+                                       init = null)
+      WishbonePio(parameter)
+    }
+
+    generationShouldPass {
+      val parameter = PioCtrl.Parameter(io = Pio.Parameter(10), dataWidth = 20)
+      WishbonePio(parameter)
+    }
+
+    generationShouldFail {
+      val parameter = PioCtrl.Parameter(io = Pio.Parameter(1), dataWidth = 25)
+      WishbonePio(parameter)
+    }
+
+    generationShouldFail {
+      val parameter = PioCtrl.Parameter(io = Pio.Parameter(1), init = null, permission = null)
+      WishbonePio(parameter)
+    }
+  }
+
+
   test("basic") {
     val compiled = SimConfig.withWave.compile {
       Apb3Pio(PioCtrl.Parameter(io=Pio.Parameter(2), init=PioCtrl.InitParameter(2, 2)))

@@ -8,7 +8,11 @@ import spinal.core._
 import spinal.lib._
 import spinal.lib.bus.misc._
 import spinal.lib.bus.amba3.apb._
-import spinal.lib.bus.avalon._
+import spinal.lib.bus.tilelink.{
+  Bus => TileLinkBus,
+  BusParameter => TileLinkParameter,
+  SlaveFactory => TileLinkSlaveFactory
+}
 import spinal.lib.bus.wishbone._
 import spinal.lib.io.{TriStateArray, TriState}
 
@@ -61,7 +65,16 @@ case class Apb3Pio(
       parameter,
       Apb3(busConfig),
       Apb3SlaveFactory(_)
-    ) { val dummy = 0 }
+    )
+
+case class TileLinkPio(
+    parameter: PioCtrl.Parameter,
+    busConfig: TileLinkParameter = TileLinkParameter.simple(12, 32, 32, 4)
+) extends Pio.Core[TileLinkBus](
+      parameter,
+      TileLinkBus(busConfig),
+      new TileLinkSlaveFactory(_, false)
+    )
 
 case class WishbonePio(
     parameter: PioCtrl.Parameter,
@@ -70,13 +83,4 @@ case class WishbonePio(
       parameter,
       Wishbone(busConfig.copy(addressWidth = 10)),
       WishboneSlaveFactory(_)
-    ) { val dummy = 0 }
-
-case class AvalonMMPio(
-    parameter: PioCtrl.Parameter,
-    busConfig: AvalonMMConfig = AvalonMMConfig.fixed(12, 32, 1)
-) extends Pio.Core[AvalonMM](
-      parameter,
-      AvalonMM(busConfig),
-      AvalonMMSlaveFactory(_)
-    ) { val dummy = 0 }
+    )

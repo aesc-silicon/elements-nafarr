@@ -94,8 +94,8 @@ Configuration
 Available bus architectures:
 
 - APB3
+- TileLink
 - Wishbone
-- AvalonMM
 
 By default, all buses are defined with 12 bit address and 32 bit data width.
 

@@ -8,7 +8,11 @@ import spinal.core._
 import spinal.lib._
 import spinal.lib.bus.misc._
 import spinal.lib.bus.amba3.apb._
-import spinal.lib.bus.avalon._
+import spinal.lib.bus.tilelink.{
+  Bus => TileLinkBus,
+  BusParameter => TileLinkParameter,
+  SlaveFactory => TileLinkSlaveFactory
+}
 import spinal.lib.bus.wishbone._
 
 object I2cController {
@@ -92,7 +96,16 @@ case class Apb3I2cController(
       parameter,
       Apb3(busConfig),
       Apb3SlaveFactory(_)
-    ) { val dummy = 0 }
+    )
+
+case class TileLinkI2cController(
+    parameter: I2cControllerCtrl.Parameter,
+    busConfig: TileLinkParameter = TileLinkParameter.simple(12, 32, 32, 4)
+) extends I2cController.Core[TileLinkBus](
+      parameter,
+      TileLinkBus(busConfig),
+      new TileLinkSlaveFactory(_, false)
+    )
 
 case class WishboneI2cController(
     parameter: I2cControllerCtrl.Parameter,
@@ -101,13 +114,4 @@ case class WishboneI2cController(
       parameter,
       Wishbone(busConfig.copy(addressWidth = 10)),
       WishboneSlaveFactory(_)
-    ) { val dummy = 0 }
-
-case class AvalonMMI2cController(
-    parameter: I2cControllerCtrl.Parameter,
-    busConfig: AvalonMMConfig = AvalonMMConfig.fixed(12, 32, 1)
-) extends I2cController.Core[AvalonMM](
-      parameter,
-      AvalonMM(busConfig),
-      AvalonMMSlaveFactory(_)
-    ) { val dummy = 0 }
+    )

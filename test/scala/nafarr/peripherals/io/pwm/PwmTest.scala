@@ -12,8 +12,8 @@ import spinal.core.sim._
 import nafarr.CheckTester._
 import spinal.lib.bus.amba3.apb.sim.Apb3Driver
 
-class Apb3PwmTest extends AnyFunSuite {
-  test("parameters") {
+class PwmTest extends AnyFunSuite {
+  test("Apb3PwmParameters") {
     generationShouldPass(Apb3Pwm(PwmCtrl.Parameter.default()))
     generationShouldPass(Apb3Pwm(PwmCtrl.Parameter.default(1)))
     generationShouldPass(Apb3Pwm(PwmCtrl.Parameter.default(2)))
@@ -29,6 +29,42 @@ class Apb3PwmTest extends AnyFunSuite {
     generationShouldPass(Apb3Pwm(PwmCtrl.Parameter.default(12)))
 
     generationShouldFail(Apb3Pwm(PwmCtrl.Parameter.default(0)))
+  }
+
+  test("TileLinkPwmParameters") {
+    generationShouldPass(TileLinkPwm(PwmCtrl.Parameter.default()))
+    generationShouldPass(TileLinkPwm(PwmCtrl.Parameter.default(1)))
+    generationShouldPass(TileLinkPwm(PwmCtrl.Parameter.default(2)))
+    generationShouldPass(TileLinkPwm(PwmCtrl.Parameter.default(3)))
+    generationShouldPass(TileLinkPwm(PwmCtrl.Parameter.default(4)))
+    generationShouldPass(TileLinkPwm(PwmCtrl.Parameter.default(5)))
+    generationShouldPass(TileLinkPwm(PwmCtrl.Parameter.default(6)))
+    generationShouldPass(TileLinkPwm(PwmCtrl.Parameter.default(7)))
+    generationShouldPass(TileLinkPwm(PwmCtrl.Parameter.default(8)))
+    generationShouldPass(TileLinkPwm(PwmCtrl.Parameter.default(9)))
+    generationShouldPass(TileLinkPwm(PwmCtrl.Parameter.default(10)))
+    generationShouldPass(TileLinkPwm(PwmCtrl.Parameter.default(11)))
+    generationShouldPass(TileLinkPwm(PwmCtrl.Parameter.default(12)))
+
+    generationShouldFail(TileLinkPwm(PwmCtrl.Parameter.default(0)))
+  }
+
+  test("WishbonePwmParameters") {
+    generationShouldPass(WishbonePwm(PwmCtrl.Parameter.default()))
+    generationShouldPass(WishbonePwm(PwmCtrl.Parameter.default(1)))
+    generationShouldPass(WishbonePwm(PwmCtrl.Parameter.default(2)))
+    generationShouldPass(WishbonePwm(PwmCtrl.Parameter.default(3)))
+    generationShouldPass(WishbonePwm(PwmCtrl.Parameter.default(4)))
+    generationShouldPass(WishbonePwm(PwmCtrl.Parameter.default(5)))
+    generationShouldPass(WishbonePwm(PwmCtrl.Parameter.default(6)))
+    generationShouldPass(WishbonePwm(PwmCtrl.Parameter.default(7)))
+    generationShouldPass(WishbonePwm(PwmCtrl.Parameter.default(8)))
+    generationShouldPass(WishbonePwm(PwmCtrl.Parameter.default(9)))
+    generationShouldPass(WishbonePwm(PwmCtrl.Parameter.default(10)))
+    generationShouldPass(WishbonePwm(PwmCtrl.Parameter.default(11)))
+    generationShouldPass(WishbonePwm(PwmCtrl.Parameter.default(12)))
+
+    generationShouldFail(WishbonePwm(PwmCtrl.Parameter.default(0)))
   }
 
   test("basic") {

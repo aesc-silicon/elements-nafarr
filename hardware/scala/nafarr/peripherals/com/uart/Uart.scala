@@ -8,7 +8,11 @@ import spinal.core._
 import spinal.lib._
 import spinal.lib.bus.misc._
 import spinal.lib.bus.amba3.apb._
-import spinal.lib.bus.avalon._
+import spinal.lib.bus.tilelink.{
+  Bus => TileLinkBus,
+  BusParameter => TileLinkParameter,
+  SlaveFactory => TileLinkSlaveFactory
+}
 import spinal.lib.bus.wishbone._
 
 object Uart {
@@ -110,7 +114,16 @@ case class Apb3Uart(
       parameter,
       Apb3(busConfig),
       Apb3SlaveFactory(_)
-    ) { val dummy = 0 }
+    )
+
+case class TileLinkUart(
+    parameter: UartCtrl.Parameter,
+    busConfig: TileLinkParameter = TileLinkParameter.simple(12, 32, 32, 4)
+) extends Uart.Core[TileLinkBus](
+      parameter,
+      TileLinkBus(busConfig),
+      new TileLinkSlaveFactory(_, false)
+    )
 
 case class WishboneUart(
     parameter: UartCtrl.Parameter,
@@ -119,13 +132,4 @@ case class WishboneUart(
       parameter,
       Wishbone(busConfig.copy(addressWidth = 10)),
       WishboneSlaveFactory(_)
-    ) { val dummy = 0 }
-
-case class AvalonMMUart(
-    parameter: UartCtrl.Parameter,
-    busConfig: AvalonMMConfig = AvalonMMConfig.fixed(12, 32, 1)
-) extends Uart.Core[AvalonMM](
-      parameter,
-      AvalonMM(busConfig),
-      AvalonMMSlaveFactory(_)
-    ) { val dummy = 0 }
+    )

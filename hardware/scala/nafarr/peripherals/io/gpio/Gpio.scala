@@ -8,12 +8,12 @@ import spinal.core._
 import spinal.lib._
 import spinal.lib.bus.misc._
 import spinal.lib.bus.amba3.apb._
-import spinal.lib.bus.wishbone._
 import spinal.lib.bus.tilelink.{
   Bus => TileLinkBus,
   BusParameter => TileLinkParameter,
   SlaveFactory => TileLinkSlaveFactory
 }
+import spinal.lib.bus.wishbone._
 import spinal.lib.io.{TriStateArray, TriState}
 import nafarr.peripherals.PeripheralsComponent
 
@@ -91,14 +91,7 @@ case class Apb3Gpio(
       Apb3(busConfig),
       Apb3SlaveFactory(_)
     )
-case class WishboneGpio(
-    parameter: GpioCtrl.Parameter,
-    busConfig: WishboneConfig = WishboneConfig(10, 32)
-) extends Gpio.Core[Wishbone](
-      parameter,
-      Wishbone(busConfig.copy(addressWidth = 10)),
-      WishboneSlaveFactory(_)
-    )
+
 case class TileLinkGpio(
     parameter: GpioCtrl.Parameter,
     busConfig: TileLinkParameter = TileLinkParameter.simple(12, 32, 32, 4)
@@ -106,4 +99,13 @@ case class TileLinkGpio(
       parameter,
       TileLinkBus(busConfig),
       new TileLinkSlaveFactory(_, false)
+    )
+
+case class WishboneGpio(
+    parameter: GpioCtrl.Parameter,
+    busConfig: WishboneConfig = WishboneConfig(10, 32)
+) extends Gpio.Core[Wishbone](
+      parameter,
+      Wishbone(busConfig.copy(addressWidth = 10)),
+      WishboneSlaveFactory(_)
     )

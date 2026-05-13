@@ -5,38 +5,18 @@
 package nafarr.cores.cpu.vexiiriscv
 
 import spinal.core._
-import spinal.lib.bus.bmb._
+import spinal.lib.bus.tilelink.{BusParameter => TileLinkParameter}
 import spinal.lib.misc.plugin.Hostable
 
 import vexiiriscv.ParamSimple
 
 case class VexiiRiscvCoreParameter(
     plugins: Seq[Hostable],
-    iBusBmbParam: BmbParameter,
-    dBusBmbParam: BmbParameter
+    iBusTlParam: TileLinkParameter,
+    dBusTlParam: TileLinkParameter
 )
 
 object VexiiRiscvCoreParameter {
-  val iBusBmbParam = BmbParameter(
-    addressWidth = 32,
-    dataWidth = 32,
-    lengthWidth = 4,
-    sourceWidth = 4,
-    contextWidth = 4,
-    canRead = true,
-    canWrite = false,
-    alignment = BmbParameter.BurstAlignement.LENGTH
-  )
-  val dBusBmbParam = BmbParameter(
-    addressWidth = 32,
-    dataWidth = 32,
-    lengthWidth = 4,
-    sourceWidth = 4,
-    contextWidth = 4,
-    canRead = true,
-    canWrite = true,
-    alignment = BmbParameter.BurstAlignement.LENGTH
-  )
   def realtime(resetAddress: BigInt): VexiiRiscvCoreParameter = {
     val param = new ParamSimple()
 
@@ -75,6 +55,10 @@ object VexiiRiscvCoreParameter {
     val plugins = param.plugins()
     ParamSimple.setPma(plugins)
 
-    VexiiRiscvCoreParameter(plugins, iBusBmbParam, dBusBmbParam)
+    // TileLink params: TL-UL (sizeBytes=4), sourceWidth=1 for pendingMax=2
+    val iBusTlParam = TileLinkParameter.simple(32, 32, 4, 1)
+    val dBusTlParam = TileLinkParameter.simple(32, 32, 4, 1)
+
+    VexiiRiscvCoreParameter(plugins, iBusTlParam, dBusTlParam)
   }
 }

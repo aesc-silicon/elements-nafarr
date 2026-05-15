@@ -50,7 +50,7 @@ class GpioTest extends AnyFunSuite {
     generationShouldPass(WishboneGpio(GpioCtrl.Parameter.default(33)))
   }
 
-  def init(dut: Apb3Gpio): (Apb3Driver, BigInt, BigInt) = {
+  def init(dut: Apb3Gpio): (Apb3Driver, GpioCtrl.Regs) = {
     dut.clockDomain.forkStimulus(10)
     fork {
       dut.clockDomain.fallingEdge()
@@ -62,6 +62,7 @@ class GpioTest extends AnyFunSuite {
     }
 
     val apb = new Apb3Driver(dut.io.bus, dut.clockDomain)
+    val regs = GpioCtrl.Regs(dut.mapper.idCtrl.length)
 
     /* Init */
     dut.io.gpio.pins.read #= 0
@@ -74,7 +75,7 @@ class GpioTest extends AnyFunSuite {
       f"Interrupt pending (0x${dut.io.interrupt.toBigInt}%08x)"
     )
 
-    return (apb, dut.mapper.staticOffset, dut.mapper.regOffset)
+    return (apb, regs)
   }
 
   def seqToBigInt(seq: Seq[Int]): BigInt = seq.foldLeft(BigInt(0))((acc, bit) => acc | (BigInt(1) << bit))
@@ -94,19 +95,19 @@ class GpioTest extends AnyFunSuite {
     }
 
     compiled.doSim("registerMap") { dut =>
-      val (apb, staticOffset, _) = init(dut)
+      val (apb, regs) = init(dut)
 
       /* Check IP identification */
       IpIdentificationTest.V0.checkApi(apb, IpIdentification.Ids.Gpio)
       IpIdentificationTest.V0.checkVersion(apb, 1, 0, 0)
 
       /* Read bank and pin count */
-      SimTest.readField(apb, staticOffset, 31, 16, 1,  "GPIO bank count")
-      SimTest.readField(apb, staticOffset, 15,  0, 32, "GPIO pin count")
+      SimTest.readField(apb, regs.info, 31, 16, 1,  "GPIO bank count")
+      SimTest.readField(apb, regs.info, 15,  0, 32, "GPIO pin count")
     }
 
     compiled.doSim("testIO") { dut =>
-      val (apb, _, regOffset) = init(dut)
+      val (apb, regs) = init(dut)
 
       val inputMask = seqToBigInt(dut.parameter.input.get)
       val outputMask = seqToBigInt(dut.parameter.output.get)
@@ -119,30 +120,30 @@ class GpioTest extends AnyFunSuite {
       SimTest.checkPins(dut.ctrl.io.value.toBigInt, BigInt("ffffffff", 16), "GPIO output all high")
 
       /* Check if input filter is working */
-      SimTest.read(apb, regOffset, inputMask, f"Unable to get 0x${inputMask}%08x from GPIO read")
+      SimTest.read(apb, regs.input(0), inputMask, f"Unable to get 0x${inputMask}%08x from GPIO read")
 
       /* Check if GPIO write works */
       dut.clockDomain.waitFallingEdge()
-      apb.write(regOffset + 4, BigInt("ffffffff", 16))
+      apb.write(regs.output(0), BigInt("ffffffff", 16))
       dut.clockDomain.waitFallingEdge(1)
       SimTest.checkPins(dut.io.gpio.pins.write.toBigInt, outputMask, f"GPIO output doesn't match 0x${outputMask}%08x")
-      SimTest.read(apb, regOffset + 4, outputMask, f"Unable to get 0x${outputMask}%08x from GPIO write")
+      SimTest.read(apb, regs.output(0), outputMask, f"Unable to get 0x${outputMask}%08x from GPIO write")
 
       /* Check if GPIO direction works */
       dut.clockDomain.waitFallingEdge()
-      apb.write(regOffset + 8, BigInt("ffffffff", 16))
+      apb.write(regs.direction(0), BigInt("ffffffff", 16))
       dut.clockDomain.waitFallingEdge(1)
 
       SimTest.checkPins(dut.io.gpio.pins.writeEnable.toBigInt, outputMask, f"GPIO output enable doesn't match 0x${outputMask}%08x")
-      SimTest.read(apb, regOffset + 8, outputMask, f"Unable to get 0x${outputMask}%08x from GPIO write")
+      SimTest.read(apb, regs.direction(0), outputMask, f"Unable to get 0x${outputMask}%08x from GPIO write")
     }
 
     compiled.doSim("testIRQ - Level High") { dut =>
-      val (apb, _, regOffset) = init(dut)
+      val (apb, regs) = init(dut)
 
       val irqMask = seqToBigInt(dut.parameter.interrupt.get)
-      val irqPendingReg = regOffset + 12
-      val irqMaskReg = regOffset + 16
+      val irqPendingReg = regs.highPending(0)
+      val irqMaskReg = regs.highEnable(0)
 
       /* Test interrupt on high signal */
       dut.io.gpio.pins.read #= BigInt("00000000", 16)
@@ -174,11 +175,11 @@ class GpioTest extends AnyFunSuite {
     }
 
     compiled.doSim("testIRQ - Level Low") { dut =>
-      val (apb, _, regOffset) = init(dut)
+      val (apb, regs) = init(dut)
 
       val irqMask = seqToBigInt(dut.parameter.interrupt.get)
-      val irqPendingReg = regOffset + 20
-      val irqMaskReg = regOffset + 24
+      val irqPendingReg = regs.lowPending(0)
+      val irqMaskReg = regs.lowEnable(0)
 
       /* Test interrupt on low signal */
       dut.io.gpio.pins.read #= BigInt("ffffffff", 16)
@@ -210,11 +211,11 @@ class GpioTest extends AnyFunSuite {
     }
 
     compiled.doSim("testIRQ - Rising Edge") { dut =>
-      val (apb, _, regOffset) = init(dut)
+      val (apb, regs) = init(dut)
 
       val irqMask = seqToBigInt(dut.parameter.interrupt.get)
-      val irqPendingReg = regOffset + 28
-      val irqMaskReg = regOffset + 32
+      val irqPendingReg = regs.risePending(0)
+      val irqMaskReg = regs.riseEnable(0)
 
       /* Test interrupt on rising signal */
       dut.io.gpio.pins.read #= BigInt("00000000", 16)
@@ -248,11 +249,11 @@ class GpioTest extends AnyFunSuite {
     }
 
     compiled.doSim("testIRQ - Falling Edge") { dut =>
-      val (apb, _, regOffset) = init(dut)
+      val (apb, regs) = init(dut)
 
       val irqMask = seqToBigInt(dut.parameter.interrupt.get)
-      val irqPendingReg = regOffset + 36
-      val irqMaskReg = regOffset + 40
+      val irqPendingReg = regs.fallPending(0)
+      val irqMaskReg = regs.fallEnable(0)
 
       /* Test interrupt on falling signal */
       dut.io.gpio.pins.read #= BigInt("ffffffff", 16)

@@ -14,6 +14,26 @@ import nafarr.IpIdentification
 object GpioCtrl {
   def apply(p: Parameter = Parameter.default()) = GpioCtrl(p)
 
+  object Regs {
+    def apply(base: BigInt) = new Regs(base)
+  }
+
+  class Regs(base: BigInt) {
+    val info = base + 0x00
+    private def bankBase(bank: Int): BigInt = base + 0x04 + bank * 0x2c
+    def input(bank: Int) = bankBase(bank) + 0x00
+    def output(bank: Int) = bankBase(bank) + 0x04
+    def direction(bank: Int) = bankBase(bank) + 0x08
+    def highPending(bank: Int) = bankBase(bank) + 0x0c
+    def highEnable(bank: Int) = bankBase(bank) + 0x10
+    def lowPending(bank: Int) = bankBase(bank) + 0x14
+    def lowEnable(bank: Int) = bankBase(bank) + 0x18
+    def risePending(bank: Int) = bankBase(bank) + 0x1c
+    def riseEnable(bank: Int) = bankBase(bank) + 0x20
+    def fallPending(bank: Int) = bankBase(bank) + 0x24
+    def fallEnable(bank: Int) = bankBase(bank) + 0x28
+  }
+
   case class Parameter(
       io: Gpio.Parameter,
       readBufferDepth: Int = 0,
@@ -100,45 +120,41 @@ object GpioCtrl {
   ) extends Area {
     val idCtrl = IpIdentification(IpIdentification.Ids.Gpio, 1, 0, 0)
     idCtrl.driveFrom(busCtrl)
-    val staticOffset = idCtrl.length
+
+    val regs = Regs(idCtrl.length)
 
     val banks = (p.io.width / 32.0).ceil.toInt
-    busCtrl.read(B(banks, 16 bits) ## B(p.io.width, 16 bits), staticOffset)
-    val regOffset = idCtrl.length + 0x4
+    busCtrl.read(B(banks, 16 bits) ## B(p.io.width, 16 bits), regs.info)
 
     for (bank <- 0 until banks) {
       val pins = if (bank < banks - 1) 32 else if (p.io.width % 32 == 0) 32 else p.io.width % 32
-      val baseAddr = regOffset + bank * 44
-      val inputAddr = baseAddr
-      val outputAddr = baseAddr + 4
-      val directionAddr = baseAddr + 8
 
       val irqHighCtrl = new InterruptCtrl(pins)
-      irqHighCtrl.driveFrom(busCtrl, baseAddr + 12)
+      irqHighCtrl.driveFrom(busCtrl, regs.highPending(bank).toInt)
       val irqLowCtrl = new InterruptCtrl(pins)
-      irqLowCtrl.driveFrom(busCtrl, baseAddr + 20)
+      irqLowCtrl.driveFrom(busCtrl, regs.lowPending(bank).toInt)
       val irqRiseCtrl = new InterruptCtrl(pins)
-      irqRiseCtrl.driveFrom(busCtrl, baseAddr + 28)
+      irqRiseCtrl.driveFrom(busCtrl, regs.risePending(bank).toInt)
       val irqFallCtrl = new InterruptCtrl(pins)
-      irqFallCtrl.driveFrom(busCtrl, baseAddr + 36)
+      irqFallCtrl.driveFrom(busCtrl, regs.fallPending(bank).toInt)
 
       for (i <- 0 until pins) {
         val pin = bank * 32 + i
         // IO registers
         if (p.input.forall(_.contains(pin)))
-          busCtrl.read(ctrl.value(pin), inputAddr, i)
+          busCtrl.read(ctrl.value(pin), regs.input(bank), i)
         if (p.output.forall(_.contains(pin))) {
-          busCtrl.driveAndRead(ctrl.config.write(pin), outputAddr, i).init(False)
+          busCtrl.driveAndRead(ctrl.config.write(pin), regs.output(bank), i).init(False)
         } else {
-          busCtrl.read(False, outputAddr, i)
+          busCtrl.read(False, regs.output(bank), i)
           ctrl.config.write(pin) := False
         }
         if (p.output.forall(_.contains(pin)) && p.input.forall(_.contains(pin))) {
-          busCtrl.driveAndRead(ctrl.config.direction(pin), directionAddr, i).init(False)
+          busCtrl.driveAndRead(ctrl.config.direction(pin), regs.direction(bank), i).init(False)
         } else {
           val direction = RegInit(Bool(p.output.forall(_.contains(pin))))
           direction.allowUnsetRegToAvoidLatch
-          busCtrl.read(direction, directionAddr, i)
+          busCtrl.read(direction, regs.direction(bank), i)
           ctrl.config.direction(pin) := direction
         }
         // Interrupt controller

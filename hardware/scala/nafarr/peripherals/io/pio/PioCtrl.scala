@@ -16,6 +16,25 @@ import nafarr.library.ClockDivider
 object PioCtrl {
   def apply(parameter: Parameter = Parameter.default()) = PioCtrl(parameter)
 
+  object Regs {
+    def apply(base: BigInt) = new Regs(base)
+  }
+
+  class Regs(base: BigInt) {
+    val dataWidth = base + 0x00
+    val fifoDepth = base + 0x04
+    val permissions = base + 0x08
+    val control = base + 0x0c
+    val readWrite = base + 0x10
+    val fifoStatus = base + 0x14
+    val clockDivider = base + 0x18
+    val readDelay = base + 0x1c
+    val errorPending = base + 0x20
+    val errorEnable = base + 0x24
+    val interruptPending = base + 0x28
+    val interruptEnable = base + 0x2c
+  }
+
   case class InitParameter(clockDivider: Int = 0, readDelay: Int = 0) {}
   object InitParameter {
     def disabled = InitParameter(0, 0)
@@ -367,49 +386,48 @@ object PioCtrl {
   ) extends Area {
     val idCtrl = IpIdentification(IpIdentification.Ids.Pio, 1, 1, 0)
     idCtrl.driveFrom(busCtrl)
-    val staticOffset = idCtrl.length
+    val regs = Regs(idCtrl.length)
 
     busCtrl.read(
       B(p.readBufferDepth, 8 bits) ## B(p.clockDividerWidth, 8 bits) ##
         B(p.dataWidth, 8 bits) ## B(p.io.width, 8 bits),
-      staticOffset
+      regs.dataWidth
     )
 
     busCtrl.read(
       B(0, 16 bits) ## B(p.memory.readFifoDepth, 8 bits) ## B(p.memory.commandFifoDepth, 8 bits),
-      staticOffset + 0x4
+      regs.fifoDepth
     )
 
     if (p.permission != null) {
       val permissionBits = Bool(p.permission.busCanWriteClockDividerConfig)
-      busCtrl.read(B(0, 32 - 1 bits) ## permissionBits, staticOffset + 0x8)
+      busCtrl.read(B(0, 32 - 1 bits) ## permissionBits, regs.permissions)
     } else {
-      busCtrl.read(B(0), staticOffset + 0x8)
+      busCtrl.read(B(0), regs.permissions)
     }
-    val regOffset = staticOffset + 0xc
 
     // Basic control
     val enable = Reg(ctrl.config.enable).init(False)
-    busCtrl.readAndWrite(enable, regOffset + 0x00, bitOffset = 0x0)
+    busCtrl.readAndWrite(enable, regs.control, bitOffset = 0x0)
     ctrl.config.enable := enable
 
     val stopAtLoop = Reg(ctrl.config.stopAtLoop).init(False)
-    busCtrl.readAndWrite(stopAtLoop, regOffset + 0x00, bitOffset = 0x1)
+    busCtrl.readAndWrite(stopAtLoop, regs.control, bitOffset = 0x1)
     ctrl.config.stopAtLoop := stopAtLoop
 
     val tx = new Area {
       // Write into program memory: each bus write advances writePtr
       val cmdContainer = CommandContainer(p)
-      ctrl.programWrite << busCtrl.createAndDriveFlow(cmdContainer, address = regOffset + 0x04)
+      ctrl.programWrite << busCtrl.createAndDriveFlow(cmdContainer, address = regs.readWrite)
 
       // Program status (read) and reset (write) share the same address:
       //   read  -> execPtr[7:0] | writePtr[15:8] | rxOccupancy[31:24] (set by rx area)
       //   write -> pulse programReset (any write triggers reset)
-      busCtrl.read(ctrl.execPtr, address = regOffset + 0x08, bitOffset = 0)
-      busCtrl.read(ctrl.writePtr, address = regOffset + 0x08, bitOffset = 8)
+      busCtrl.read(ctrl.execPtr, address = regs.fifoStatus, bitOffset = 0)
+      busCtrl.read(ctrl.writePtr, address = regs.fifoStatus, bitOffset = 8)
       val programResetPulse = Bool()
       programResetPulse := False
-      busCtrl.onWrite(regOffset + 0x08) {
+      busCtrl.onWrite(regs.fifoStatus) {
         programResetPulse := True
       }
       ctrl.config.programReset := programResetPulse
@@ -420,31 +438,31 @@ object PioCtrl {
       val readIsFull = fifoOccupancy >= p.memory.readFifoDepth - 1
       busCtrl.readStreamNonBlocking(
         stream,
-        address = regOffset + 0x04,
+        address = regs.readWrite,
         validBitOffset = 16,
         payloadBitOffset = 0
       )
-      busCtrl.read(fifoOccupancy, address = regOffset + 0x08, bitOffset = 24)
+      busCtrl.read(fifoOccupancy, address = regs.fifoStatus, bitOffset = 24)
     }
 
     val clockDivider = Reg(UInt(p.clockDividerWidth bits))
     if (p.init != null && p.init.clockDivider != 0)
       clockDivider.init(p.init.clockDivider)
     if (p.permission != null && p.permission.busCanWriteClockDividerConfig)
-      busCtrl.write(clockDivider, regOffset + 0x0c)
-    busCtrl.read(clockDivider, regOffset + 0x0c)
+      busCtrl.write(clockDivider, regs.clockDivider)
+    busCtrl.read(clockDivider, regs.clockDivider)
     ctrl.config.clockDivider := clockDivider
 
     val readDelay = Reg(UInt(p.readDelayWidth bits))
     if (p.init != null && p.init.readDelay != 0)
       readDelay.init(p.init.readDelay)
-    busCtrl.readAndWrite(readDelay, regOffset + 0x10)
+    busCtrl.readAndWrite(readDelay, regs.readDelay)
     ctrl.config.readDelay := readDelay
 
     val error = new Area {
       if (p.error) {
         val errorCtrl = new InterruptCtrl(1)
-        errorCtrl.driveFrom(busCtrl, regOffset + 0x14)
+        errorCtrl.driveFrom(busCtrl, regs.errorPending.toInt)
         errorCtrl.io.inputs(0) := rx.readIsFull && ctrl.read.valid // read FIFO is full error
       }
     }
@@ -452,7 +470,7 @@ object PioCtrl {
     val interrupt = new Area {
       if (p.interrupt) {
         val irqCtrl = new InterruptCtrl(2)
-        irqCtrl.driveFrom(busCtrl, regOffset + 0x1c)
+        irqCtrl.driveFrom(busCtrl, regs.interruptPending.toInt)
         irqCtrl.io.inputs(0) := (rx.fifoOccupancy > 0)
         irqCtrl.io.inputs(1) := ctrl.loopDone
         ctrl.pendingInterrupts := irqCtrl.io.pendings

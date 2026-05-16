@@ -14,6 +14,30 @@ import nafarr.library.ClockDivider
 object PwmCtrl {
   def apply(p: Parameter = Parameter.default()) = PwmCtrl(p)
 
+  object Regs {
+    def apply(base: BigInt) = new Regs(base)
+  }
+
+  class Regs(base: BigInt) {
+    val channelConfig = base + 0x00
+    val timingConfig = base + 0x04
+    val permissions = base + 0x08
+    val interruptPending = base + 0x0c
+    val interruptMask = base + 0x10
+    val errorPending = base + 0x14
+    val errorMask = base + 0x18
+    private def channelBase(channel: Int): BigInt = base + 0x1c + channel * 0x24
+    def control(channel: Int) = channelBase(channel) + 0x00
+    def clockDivider(channel: Int) = channelBase(channel) + 0x04
+    def period(channel: Int) = channelBase(channel) + 0x08
+    def risingEdge(channel: Int) = channelBase(channel) + 0x0c
+    def fallingEdge(channel: Int) = channelBase(channel) + 0x10
+    def deadTime(channel: Int) = channelBase(channel) + 0x14
+    def phaseOffset(channel: Int) = channelBase(channel) + 0x18
+    def shotCount(channel: Int) = channelBase(channel) + 0x1c
+    def status(channel: Int) = channelBase(channel) + 0x20
+  }
+
   case class InitParameter(clockDivider: Int) {}
   object InitParameter {
     def disabled = InitParameter(0)
@@ -125,7 +149,15 @@ object PwmCtrl {
           periodLive := s.period
           risingEdgeLive := s.risingEdge
           fallingEdgeLive := s.fallingEdge
-          periodCounter := s.phaseOffset
+          when(s.mode) {
+            periodCounter := s.phaseOffset
+          } otherwise {
+            when(s.phaseOffset === 0) {
+              periodCounter := s.period
+            } otherwise {
+              periodCounter := s.phaseOffset
+            }
+          }
           direction := False
           shotDoneReg := False
           shotRemaining := s.shotCount
@@ -219,32 +251,30 @@ object PwmCtrl {
   ) extends Area {
     val idCtrl = IpIdentification(IpIdentification.Ids.Pwm, 1, 1, 0)
     idCtrl.driveFrom(busCtrl)
-    val staticOffset = idCtrl.length
+    val regs = Regs(idCtrl.length)
 
     // Static word 1: implementation widths and channel count
     busCtrl.read(
       B(p.channelPeriodWidth, 8 bits) ## B(p.channelPulseWidth, 8 bits) ##
         B(p.clockDividerWidth, 8 bits) ## B(p.io.channels, 8 bits),
-      staticOffset
+      regs.channelConfig
     )
 
     // Static word 2: dead-time and shot-count widths
     busCtrl.read(
       B(0, 16 bits) ## B(p.shotCountWidth, 8 bits) ## B(p.deadTimeWidth, 8 bits),
-      staticOffset + 0x4
+      regs.timingConfig
     )
 
     if (p.permission != null) {
       val permissionBits = Bool(p.permission.busCanWriteClockDividerConfig)
-      busCtrl.read(B(0, 32 - 1 bits) ## permissionBits, staticOffset + 0x8)
+      busCtrl.read(B(0, 32 - 1 bits) ## permissionBits, regs.permissions)
     } else {
-      busCtrl.read(B(0), staticOffset + 0x8)
+      busCtrl.read(B(0), regs.permissions)
     }
 
-    val regOffset = staticOffset + 0xc
-
     val irqPeriodCompleteCtrl = new InterruptCtrl(p.io.channels)
-    irqPeriodCompleteCtrl.driveFrom(busCtrl, regOffset + 0x00)
+    irqPeriodCompleteCtrl.driveFrom(busCtrl, regs.interruptPending.toInt)
     for (i <- 0 until p.io.channels) {
       irqPeriodCompleteCtrl.io.inputs(i) := ctrl.irqPeriodComplete.valid(i)
       ctrl.irqPeriodComplete.pending(i) := irqPeriodCompleteCtrl.io.pendings(i)
@@ -255,7 +285,7 @@ object PwmCtrl {
 
     // Error module: faultIn rising edge (input 0) + per-channel configError (inputs 1..N)
     val errorCtrl = new InterruptCtrl(1 + p.io.channels)
-    errorCtrl.driveFrom(busCtrl, regOffset + 0x08)
+    errorCtrl.driveFrom(busCtrl, regs.errorPending.toInt)
     errorCtrl.io.inputs(0) := ctrl.faultError
     for (i <- 0 until p.io.channels) {
       errorCtrl.io.inputs(1 + i) :=
@@ -263,10 +293,8 @@ object PwmCtrl {
     }
     ctrl.errorPending := errorCtrl.io.pendings.orR
 
-    // Channel registers: stride 0x28 (40 bytes), starting at regOffset + 0x14
+    // Channel registers
     for (i <- 0 until p.io.channels) {
-      val channel = regOffset + 0x10 + i * 0x28
-
       channelCfg(i).enable.init(False)
       channelCfg(i).invert.init(False)
       channelCfg(i).mode.init(False)
@@ -282,30 +310,30 @@ object PwmCtrl {
       else
         channelCfg(i).clockDivider.init(0)
 
-      busCtrl.readAndWrite(channelCfg(i).enable, address = channel + 0x00, bitOffset = 0)
-      busCtrl.readAndWrite(channelCfg(i).invert, address = channel + 0x00, bitOffset = 1)
-      busCtrl.readAndWrite(channelCfg(i).mode, address = channel + 0x00, bitOffset = 2)
+      busCtrl.readAndWrite(channelCfg(i).enable, address = regs.control(i), bitOffset = 0)
+      busCtrl.readAndWrite(channelCfg(i).invert, address = regs.control(i), bitOffset = 1)
+      busCtrl.readAndWrite(channelCfg(i).mode, address = regs.control(i), bitOffset = 2)
 
       if (p.permission != null && p.permission.busCanWriteClockDividerConfig)
-        busCtrl.readAndWrite(channelCfg(i).clockDivider, address = channel + 0x04)
+        busCtrl.readAndWrite(channelCfg(i).clockDivider, address = regs.clockDivider(i))
       else {
         channelCfg(i).clockDivider.allowUnsetRegToAvoidLatch
-        busCtrl.read(channelCfg(i).clockDivider, address = channel + 0x04)
+        busCtrl.read(channelCfg(i).clockDivider, address = regs.clockDivider(i))
       }
 
-      busCtrl.readAndWrite(channelCfg(i).period, address = channel + 0x08)
-      busCtrl.readAndWrite(channelCfg(i).risingEdge, address = channel + 0x0c)
-      busCtrl.readAndWrite(channelCfg(i).fallingEdge, address = channel + 0x10)
-      busCtrl.readAndWrite(channelCfg(i).deadTime, address = channel + 0x14)
-      busCtrl.readAndWrite(channelCfg(i).phaseOffset, address = channel + 0x18)
-      busCtrl.readAndWrite(channelCfg(i).shotCount, address = channel + 0x1c)
+      busCtrl.readAndWrite(channelCfg(i).period, address = regs.period(i))
+      busCtrl.readAndWrite(channelCfg(i).risingEdge, address = regs.risingEdge(i))
+      busCtrl.readAndWrite(channelCfg(i).fallingEdge, address = regs.fallingEdge(i))
+      busCtrl.readAndWrite(channelCfg(i).deadTime, address = regs.deadTime(i))
+      busCtrl.readAndWrite(channelCfg(i).phaseOffset, address = regs.phaseOffset(i))
+      busCtrl.readAndWrite(channelCfg(i).shotCount, address = regs.shotCount(i))
 
       // Status register (read-only): configError[0], shotDone[1]
       val configError =
         channelCfg(i).fallingEdge.resize(p.channelPeriodWidth) > channelCfg(i).period
       busCtrl.read(
         B(0, 30 bits) ## ctrl.shotDone(i) ## configError,
-        channel + 0x20
+        regs.status(i)
       )
     }
     ctrl.shadow := channelCfg

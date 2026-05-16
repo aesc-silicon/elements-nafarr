@@ -9,8 +9,12 @@ import org.scalatest.funsuite.AnyFunSuite
 import spinal.sim._
 import spinal.core._
 import spinal.core.sim._
-import nafarr.CheckTester._
 import spinal.lib.bus.amba3.apb.sim.Apb3Driver
+
+import nafarr.CheckTester._
+import nafarr.IpIdentification
+import nafarr.IpIdentificationTest
+import nafarr.SimTest
 
 class PwmTest extends AnyFunSuite {
   test("Apb3PwmParameters") {
@@ -67,130 +71,358 @@ class PwmTest extends AnyFunSuite {
     generationShouldFail(WishbonePwm(PwmCtrl.Parameter.default(0)))
   }
 
+  def init(dut: Apb3Pwm): (Apb3Driver, PwmCtrl.Regs) = {
+    dut.clockDomain.forkStimulus(10)
+    fork {
+      dut.clockDomain.fallingEdge()
+      sleep(10)
+      while (true) {
+        dut.clockDomain.clockToggle()
+        sleep(5)
+      }
+    }
+
+    val apb = new Apb3Driver(dut.io.bus, dut.clockDomain)
+    val regs = PwmCtrl.Regs(dut.mapper.idCtrl.length)
+
+    /* Init */
+    dut.io.pwm.syncIn #= false
+    dut.io.pwm.faultIn #= false
+
+    /* Wait for reset and check initialized state */
+    dut.clockDomain.waitSampling(2)
+    dut.clockDomain.waitFallingEdge()
+
+    return (apb, regs)
+  }
+
   test("basic") {
     val compiled = SimConfig.withWave.compile {
       val dut = Apb3Pwm(PwmCtrl.Parameter.default(1))
       dut
     }
     compiled.doSim("basicRegisters") { dut =>
-      dut.clockDomain.forkStimulus(10)
-      fork {
-        dut.clockDomain.fallingEdge()
-        sleep(10)
-        while (true) {
-          dut.clockDomain.clockToggle()
-          sleep(5)
-        }
-      }
-
-      val apb = new Apb3Driver(dut.io.bus, dut.clockDomain)
-      val staticOffset = dut.mapper.staticOffset
-      val regOffset = dut.mapper.regOffset
-
-      /* Wait for reset and check initialized state */
-      dut.clockDomain.waitSampling(2)
-      dut.clockDomain.waitFallingEdge()
+      val (apb, regs) = init(dut)
 
       /* Check IP identification */
-      assert(
-        apb.read(BigInt(0)) == BigInt("00080002", 16),
-        "IP Identification 0x0 should return 00080002 - API: 0, Length: 8, ID: 2"
-      )
-      assert(
-        apb.read(BigInt(4)) == BigInt("01010000", 16),
-        "IP Identification 0x4 should return 01010000 - 1.1.0"
-      )
+      IpIdentificationTest.V0.checkApi(apb, IpIdentification.Ids.Pwm)
+      IpIdentificationTest.V0.checkVersion(apb, 1, 1, 0)
 
       /* Read channelPulseWidth, channelPeriodWidth, clockDividerWidth, io.channels */
-      assert(
-        apb.read(BigInt(staticOffset)) == BigInt("14141401", 16),
-        "Unable to read 14141401 from PWM config/channel declaration"
-      )
+      SimTest.readField(apb, regs.channelConfig, 31, 24, 20,  "Channel period width")
+      SimTest.readField(apb, regs.channelConfig, 23, 16, 20,  "Channel pulse width")
+      SimTest.readField(apb, regs.channelConfig, 15, 8, 20,  "Clock divider width")
+      SimTest.readField(apb, regs.channelConfig, 7, 0, 1,  "IO channels")
 
       /* Read dead-time and shot-count widthss */
-      assert(
-        apb.read(BigInt(staticOffset + 4)) == BigInt("00000808", 16),
-        "Unable to read 00000808 from PWM config/channel declaration"
-      )
+      SimTest.readField(apb, regs.timingConfig, 15, 8, 8,  "Shot count width")
+      SimTest.readField(apb, regs.timingConfig, 7, 0, 8,  "Dead time width")
 
       /* Read permissions */
-      assert(
-        apb.read(BigInt(staticOffset + 8)) == BigInt("00000001", 16),
-        "Unable to read 00000001 from PWM permission declaration"
-      )
+      SimTest.readField(apb, regs.permissions, 1, 0, 1, "Permissions")
     }
-    compiled.doSim("channel1dutyCycle") { dut =>
-      dut.clockDomain.forkStimulus(10)
-      fork {
-        dut.clockDomain.fallingEdge()
-        sleep(10)
-        while (true) {
-          dut.clockDomain.clockToggle()
-          sleep(5)
-        }
-      }
 
-      val apb = new Apb3Driver(dut.io.bus, dut.clockDomain)
-      val regOffset = dut.mapper.regOffset
-
-      dut.io.pwm.syncIn #= false
-      dut.io.pwm.faultIn #= false
-
-      /* Wait for reset and check initialized state */
-      dut.clockDomain.waitSampling(2)
-      dut.clockDomain.waitFallingEdge()
+    compiled.doSim("channel0 - duty cycle") { dut =>
+      val (apb, regs) = init(dut)
+      val channel = 0
 
       /* Init - Set clock divider to 1 us */
-      apb.write(BigInt(regOffset + 0x14), BigInt("99", 10))
+      apb.write(regs.clockDivider(channel), BigInt("99", 10))
 
       /* Init channel 0: period=9, active [risingEdge=5, fallingEdge=9] -> 5/10 duty */
-      apb.write(BigInt(regOffset + 0x18), BigInt("9", 10))
-      apb.write(BigInt(regOffset + 0x1c), BigInt("5", 10))
-      apb.write(BigInt(regOffset + 0x20), BigInt("9", 10))
+      apb.write(regs.period(channel), BigInt("9", 10))
+      apb.write(regs.risingEdge(channel), BigInt("5", 10))
+      apb.write(regs.fallingEdge(channel), BigInt("9", 10))
+
+      apb.write(regs.control(channel), BigInt("1", 16))
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(2)
+
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(491)
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(1)
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(400)
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000001", 16))
+
+      dut.clockDomain.waitSampling(1)
+
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(498)
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling()
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(400)
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000001", 16))
+    }
+
+    compiled.doSim("channel0 - duty cycle show count 2") { dut =>
+      val (apb, regs) = init(dut)
+      val channel = 0
+
+      /* Init - Set clock divider to 1 us */
+      apb.write(regs.clockDivider(channel), BigInt("99", 10))
+
+      /* Init channel 0: period=9, active [risingEdge=5, fallingEdge=9] -> 5/10 duty */
+      apb.write(regs.period(channel), BigInt("9", 10))
+      apb.write(regs.risingEdge(channel), BigInt("5", 10))
+      apb.write(regs.fallingEdge(channel), BigInt("9", 10))
+      apb.write(regs.shotCount(channel), BigInt("2", 10))
+
+      apb.write(regs.control(channel), BigInt("1", 16))
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(2)
+
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(489)
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(1)
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(400)
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000001", 16))
+
+      SimTest.readField(apb, regs.status(channel), 1, 1, 0,  "Channel shot done set")
+
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(497)
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling()
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(400)
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000001", 16))
+
+      SimTest.readField(apb, regs.status(channel), 1, 1, 1,  "Channel shot done not set")
 
       assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
-      apb.write(BigInt(regOffset + 0x10), BigInt("1", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+    }
+
+    compiled.doSim("channel0 - duty cycle phase offset") { dut =>
+      val (apb, regs) = init(dut)
+      val channel = 0
+
+      /* Init - Set clock divider to 1 us */
+      apb.write(regs.clockDivider(channel), BigInt("99", 10))
+
+      /* Init channel 0: period=9, active [risingEdge=5, fallingEdge=9] -> 5/10 duty */
+      apb.write(regs.period(channel), BigInt("9", 10))
+      apb.write(regs.risingEdge(channel), BigInt("5", 10))
+      apb.write(regs.fallingEdge(channel), BigInt("9", 10))
+      apb.write(regs.phaseOffset(channel), BigInt("1", 10))
+
+      apb.write(regs.control(channel), BigInt("1", 16))
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
       dut.clockDomain.waitSampling(100)
 
       assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
-      dut.clockDomain.waitSampling(5 * 100)
-      assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
-      dut.clockDomain.waitSampling(5 * 100)
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(491)
       assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
-      dut.clockDomain.waitSampling(5 * 100)
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(1)
       assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(400)
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000001", 16))
+
+      dut.clockDomain.waitSampling(1)
+
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(498)
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling()
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(400)
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000001", 16))
     }
-    compiled.doSim("channel1StartStopStart") { dut =>
-      dut.clockDomain.forkStimulus(10)
-      fork {
-        dut.clockDomain.fallingEdge()
-        sleep(10)
-        while (true) {
-          dut.clockDomain.clockToggle()
-          sleep(5)
-        }
-      }
 
-      val apb = new Apb3Driver(dut.io.bus, dut.clockDomain)
-      val regOffset = dut.mapper.regOffset
-
-      dut.io.pwm.syncIn #= false
-      dut.io.pwm.faultIn #= false
-
-      /* Wait for reset and check initialized state */
-      dut.clockDomain.waitSampling(2)
-      dut.clockDomain.waitFallingEdge()
+    compiled.doSim("channel0 - dead time") { dut =>
+      val (apb, regs) = init(dut)
+      val channel = 0
 
       /* Init - Set clock divider to 1 us */
-      apb.write(BigInt(regOffset + 0x14), BigInt("99", 10))
+      apb.write(regs.clockDivider(channel), BigInt("99", 10))
 
       /* Init channel 0: period=9, active [risingEdge=5, fallingEdge=9] -> 5/10 duty */
-      apb.write(BigInt(regOffset + 0x18), BigInt("9", 10))
-      apb.write(BigInt(regOffset + 0x1c), BigInt("5", 10))
-      apb.write(BigInt(regOffset + 0x20), BigInt("9", 10))
+      apb.write(regs.period(channel), BigInt("9", 10))
+      apb.write(regs.risingEdge(channel), BigInt("5", 10))
+      apb.write(regs.fallingEdge(channel), BigInt("9", 10))
+      apb.write(regs.deadTime(channel), BigInt("1", 10))
+
+      apb.write(regs.control(channel), BigInt("1", 16))
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(2)
+
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(489)
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(1)
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(100)
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(300)
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000001", 16))
+
+      dut.clockDomain.waitSampling(1)
 
       assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
-      apb.write(BigInt(regOffset + 0x10), BigInt("1", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(100)
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(398)
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(1)
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(100)
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(300)
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000001", 16))
+    }
+
+    compiled.doSim("channel0 - duty cycle inverted") { dut =>
+      val (apb, regs) = init(dut)
+      val channel = 0
+
+      /* Init - Set clock divider to 1 us */
+      apb.write(regs.clockDivider(channel), BigInt("99", 10))
+
+      /* Init channel 0: period=9, active [risingEdge=5, fallingEdge=9] -> 5/10 duty */
+      apb.write(regs.period(channel), BigInt("9", 10))
+      apb.write(regs.risingEdge(channel), BigInt("5", 10))
+      apb.write(regs.fallingEdge(channel), BigInt("9", 10))
+
+      apb.write(regs.control(channel), BigInt("3", 16))
+      dut.clockDomain.waitSampling(1)
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(1)
+
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(491)
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(1)
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(400)
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000001", 16))
+
+      dut.clockDomain.waitSampling(1)
+
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(498)
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling()
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(400)
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000001", 16))
+    }
+
+    compiled.doSim("channel0 - start stop start") { dut =>
+      val (apb, regs) = init(dut)
+      val channel = 0
+
+      /* Init - Set clock divider to 1 us */
+      apb.write(regs.clockDivider(channel), BigInt("99", 10))
+
+      /* Init channel 0: period=9, active [risingEdge=5, fallingEdge=9] -> 5/10 duty */
+      apb.write(regs.period(channel), BigInt("9", 10))
+      apb.write(regs.risingEdge(channel), BigInt("5", 10))
+      apb.write(regs.fallingEdge(channel), BigInt("9", 10))
+
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
+      apb.write(regs.control(channel), BigInt("1", 16))
       dut.clockDomain.waitSampling(10)
 
       assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
@@ -199,13 +431,13 @@ class PwmTest extends AnyFunSuite {
       dut.clockDomain.waitSampling(5 * 100)
       assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
       dut.clockDomain.waitSampling(10)
-      apb.write(BigInt(regOffset + 0x10), BigInt("0", 16))
-      apb.write(BigInt(regOffset + 0x18), BigInt("9", 10))
-      apb.write(BigInt(regOffset + 0x1c), BigInt("7", 10))
-      apb.write(BigInt(regOffset + 0x20), BigInt("9", 10))
+      apb.write(regs.control(channel), BigInt("0", 16))
+      apb.write(regs.period(channel), BigInt("9", 10))
+      apb.write(regs.risingEdge(channel), BigInt("7", 10))
+      apb.write(regs.fallingEdge(channel), BigInt("9", 10))
 
       dut.clockDomain.waitSampling(90)
-      apb.write(BigInt(regOffset + 0x10), BigInt("1", 16))
+      apb.write(regs.control(channel), BigInt("1", 16))
       dut.clockDomain.waitSampling(100)
 
       assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
@@ -214,5 +446,210 @@ class PwmTest extends AnyFunSuite {
       dut.clockDomain.waitSampling(7 * 100)
       assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
     }
+
+    compiled.doSim("channel0 - center-aligned mode") { dut =>
+      val (apb, regs) = init(dut)
+      val channel = 0
+
+      /* Init - Set clock divider to 1 us */
+      apb.write(regs.clockDivider(channel), BigInt("99", 10))
+
+      /* Init channel 0: period=9, active [risingEdge=5, fallingEdge=9] -> 5/10 duty */
+      apb.write(regs.period(channel), BigInt("9", 10))
+      apb.write(regs.risingEdge(channel), BigInt("5", 10))
+      apb.write(regs.fallingEdge(channel), BigInt("9", 10))
+
+      apb.write(regs.control(channel), BigInt("5", 16))
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(2)
+
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(491)
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(1)
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(400)
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000001", 16))
+
+      dut.clockDomain.waitSampling(1)
+
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(498)
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling()
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(400)
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+    }
+
+    compiled.doSim("channel0 - sync in") { dut =>
+      val (apb, regs) = init(dut)
+      val channel = 0
+
+      /* Init - Set clock divider to 1 us */
+      apb.write(regs.clockDivider(channel), BigInt("99", 10))
+
+      /* Init channel 0: period=9, active [risingEdge=5, fallingEdge=9] -> 5/10 duty */
+      apb.write(regs.period(channel), BigInt("9", 10))
+      apb.write(regs.risingEdge(channel), BigInt("5", 10))
+      apb.write(regs.fallingEdge(channel), BigInt("9", 10))
+
+      apb.write(regs.control(channel), BigInt("1", 16))
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(2)
+
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(491)
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(1)
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(100)
+
+      dut.io.pwm.syncIn #= true
+      dut.clockDomain.waitSampling(1)
+      dut.io.pwm.syncIn #= false
+      dut.clockDomain.waitSampling(2)
+
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(496)
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(1)
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(400)
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000001", 16))
+
+      dut.clockDomain.waitSampling(1)
+
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(498)
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling()
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000000", 16))
+      dut.clockDomain.waitSampling(400)
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000001", 16))
+    }
+
+    compiled.doSim("channel0 - interrupt completed") { dut =>
+      val (apb, regs) = init(dut)
+      val channel = 0
+
+      /* Init - Set clock divider to 1 us */
+      apb.write(regs.clockDivider(channel), BigInt("99", 10))
+
+      /* Init channel 0: period=9, active [risingEdge=5, fallingEdge=9] -> 5/10 duty */
+      apb.write(regs.period(channel), BigInt("9", 10))
+      apb.write(regs.risingEdge(channel), BigInt("5", 10))
+      apb.write(regs.fallingEdge(channel), BigInt("9", 10))
+      apb.write(regs.interruptMask, BigInt("1", 16))
+      apb.write(regs.control(channel), BigInt("1", 16))
+
+      dut.clockDomain.waitSampling(2)
+
+      SimTest.checkPins(dut.io.interrupt.toBigInt, 0, f"Interrupt pending")
+      SimTest.read(apb, regs.interruptPending, BigInt("00000000", 16), "Period completed interrupt is pending")
+
+      dut.clockDomain.waitSampling(899)
+      SimTest.checkPins(dut.io.interrupt.toBigInt, 1, f"Interrupt isn't pending")
+      SimTest.read(apb, regs.interruptPending, BigInt("00000001", 16), "Period completed interrupt not pending")
+      apb.write(regs.interruptPending, BigInt("1", 16))
+      dut.clockDomain.waitSampling(1)
+      SimTest.checkPins(dut.io.interrupt.toBigInt, 0, f"Interrupt pending")
+      SimTest.read(apb, regs.interruptPending, BigInt("00000000", 16), "Period completed interrupt is pending")
+
+      dut.clockDomain.waitSampling(898)
+      SimTest.checkPins(dut.io.interrupt.toBigInt, 1, f"Interrupt isn't pending")
+      SimTest.read(apb, regs.interruptPending, BigInt("00000001", 16), "Period completed interrupt not pending")
+    }
+
+    compiled.doSim("channel0 - fault input") { dut =>
+      val (apb, regs) = init(dut)
+      val channel = 0
+
+      /* Init - Set clock divider to 1 us */
+      apb.write(regs.clockDivider(channel), BigInt("99", 10))
+
+      apb.write(regs.period(channel), BigInt("9", 10))
+      apb.write(regs.risingEdge(channel), BigInt("5", 10))
+      apb.write(regs.fallingEdge(channel), BigInt("9", 10))
+      apb.write(regs.errorMask, BigInt("1", 16))
+      apb.write(regs.control(channel), BigInt("1", 16))
+
+      dut.clockDomain.waitSampling(2)
+
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
+      SimTest.read(apb, regs.errorPending, BigInt("00000000", 16), "Fault input error is pending")
+      dut.io.pwm.faultIn #= true
+      SimTest.read(apb, regs.errorPending, BigInt("00000001", 16), "Fault input error isn't pending")
+      assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
+      assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
+    }
+
+    compiled.doSim("channel0 - config error - falling edge") { dut =>
+      val (apb, regs) = init(dut)
+      val channel = 0
+
+      /* Init - Set clock divider to 1 us */
+      apb.write(regs.clockDivider(channel), BigInt("99", 10))
+
+      apb.write(regs.errorMask, BigInt("2", 16))
+      SimTest.read(apb, regs.errorPending, BigInt("00000000", 16), "Config error pending")
+
+      /* Init channel 0: period=9, active [risingEdge=5, fallingEdge=9] -> 5/10 duty */
+      apb.write(regs.period(channel), BigInt("9", 10))
+      apb.write(regs.risingEdge(channel), BigInt("5", 10))
+      apb.write(regs.fallingEdge(channel), BigInt("9", 10))
+
+      SimTest.read(apb, regs.errorPending, BigInt("00000000", 16), "Config error pending")
+
+      apb.write(regs.period(channel), BigInt("9", 10))
+      apb.write(regs.risingEdge(channel), BigInt("5", 10))
+      apb.write(regs.fallingEdge(channel), BigInt("10", 10))
+
+      SimTest.read(apb, regs.errorPending, BigInt("00000002", 16), "Config error isn't pending")
+    }
+
   }
 }

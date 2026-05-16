@@ -14,7 +14,7 @@ object IpIdentification {
 
   object Ids extends SpinalEnum {
     val Gpio, Pio, Pwm, Uart, I2cController, I2cDevice, SpiController, SpiXipController, SpiDevice,
-        AesAccelerator, AesMaskedAccelerator, Reset, Clock, Pinmux = newElement()
+        AesAccelerator, AesMaskedAccelerator, Reset, Clock, Pinmux, Semaphore = newElement()
   }
 
   case class IpIdentificationCtrl(

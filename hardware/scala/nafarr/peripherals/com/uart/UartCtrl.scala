@@ -14,6 +14,26 @@ import nafarr.library.ClockDivider
 object UartCtrl {
   def apply(p: Parameter = Parameter.default) = UartCtrl(p)
 
+  object Regs {
+    def apply(base: BigInt) = new Regs(base)
+  }
+
+  class Regs(base: BigInt) {
+    val dataWidth = base + 0x00
+    val samplingSize = base + 0x04
+    val fifoDepth = base + 0x08
+    val permissions = base + 0x0c
+    val readWrite = base + 0x10
+    val fifoStatus = base + 0x14
+    val clockDivider = base + 0x18
+    val frameConfig = base + 0x1c
+    val transmitTrigger = base + 0x20
+    val interruptPending = base + 0x24
+    val interruptEnable = base + 0x28
+    val errorPending = base + 0x2c
+    val errorEnable = base + 0x30
+  }
+
   case class InitParameter(
       baudrate: Int = 0,
       dataLength: Int = 0,
@@ -175,37 +195,36 @@ object UartCtrl {
   ) extends Area {
     val idCtrl = IpIdentification(IpIdentification.Ids.Uart, 1, 1, 0)
     idCtrl.driveFrom(busCtrl)
-    val staticOffset = idCtrl.length
+    val regs = Regs(idCtrl.length)
 
     busCtrl.read(
       B(0, 8 bits) ## B(p.dataWidthMin, 8 bits) ## B(p.dataWidthMax, 8 bits) ##
         B(p.clockDividerWidth, 8 bits),
-      staticOffset
+      regs.dataWidth
     )
 
     busCtrl.read(
       B(0, 8 bits) ## B(p.preSamplingSize, 8 bits) ## B(p.samplingSize, 8 bits) ##
         B(p.postSamplingSize, 8 bits),
-      staticOffset + 0x4
+      regs.samplingSize
     )
 
     busCtrl.read(
       B(0, 16 bits) ## B(p.memory.txFifoDepth, 8 bits) ## B(p.memory.rxFifoDepth, 8 bits),
-      staticOffset + 0x8
+      regs.fifoDepth
     )
 
     val permissionBits =
       Bool(p.permission.busCanWriteFrameConfig) ## Bool(p.permission.busCanWriteClockDividerConfig)
-    busCtrl.read(B(0, 32 - permissionBits.getWidth bits) ## permissionBits, staticOffset + 0xc)
-    val regOffset = staticOffset + 0x10
+    busCtrl.read(B(0, 32 - permissionBits.getWidth bits) ## permissionBits, regs.permissions)
 
     val tx = new Area {
       val streamUnbuffered =
-        busCtrl.createAndDriveFlow(Bits(p.dataWidthMax bits), address = regOffset + 0x00).toStream
+        busCtrl.createAndDriveFlow(Bits(p.dataWidthMax bits), address = regs.readWrite).toStream
       val (stream, fifoOccupancy) =
         streamUnbuffered.queueWithOccupancy(p.memory.txFifoDepth)
       val fifoVacancy = p.memory.txFifoDepth - fifoOccupancy
-      busCtrl.read(fifoVacancy, address = regOffset + 0x04, bitOffset = 16)
+      busCtrl.read(fifoVacancy, address = regs.fifoStatus, bitOffset = 16)
       ctrl.write << stream
       streamUnbuffered.ready.allowPruning()
     }
@@ -216,11 +235,11 @@ object UartCtrl {
       ctrl.readIsFull := fifoOccupancy >= p.memory.rxFifoDepth - 1
       busCtrl.readStreamNonBlocking(
         stream,
-        address = regOffset + 0x0,
+        address = regs.readWrite,
         validBitOffset = 16,
         payloadBitOffset = 0
       )
-      busCtrl.read(fifoOccupancy, address = regOffset + 0x04, bitOffset = 24)
+      busCtrl.read(fifoOccupancy, address = regs.fifoStatus, bitOffset = 24)
     }
 
     val config = new Area {
@@ -229,11 +248,11 @@ object UartCtrl {
       if (p.init != null && p.init.baudrate != 0)
         cfg.clockDivider.init(p.getClockDivider(p.init.baudrate))
       if (p.permission != null && p.permission.busCanWriteClockDividerConfig)
-        busCtrl.write(cfg.clockDivider, address = regOffset + 0x08)
-      busCtrl.read(cfg.clockDivider, regOffset + 0x08)
+        busCtrl.write(cfg.clockDivider, address = regs.clockDivider)
+      busCtrl.read(cfg.clockDivider, regs.clockDivider)
 
       cfg.clockDividerReload := False
-      busCtrl.onWrite(regOffset + 0x08) {
+      busCtrl.onWrite(regs.clockDivider) {
         cfg.clockDividerReload := True
       }
 
@@ -247,13 +266,13 @@ object UartCtrl {
         frameCfg.stop.init(p.init.stop)
 
       if (p.permission != null && p.permission.busCanWriteFrameConfig) {
-        busCtrl.write(frameCfg.dataLength, address = regOffset + 0x0c, bitOffset = 0)
-        busCtrl.write(frameCfg.parity, address = regOffset + 0x0c, bitOffset = 8)
-        busCtrl.write(frameCfg.stop, address = regOffset + 0x0c, bitOffset = 16)
+        busCtrl.write(frameCfg.dataLength, address = regs.frameConfig, bitOffset = 0)
+        busCtrl.write(frameCfg.parity, address = regs.frameConfig, bitOffset = 8)
+        busCtrl.write(frameCfg.stop, address = regs.frameConfig, bitOffset = 16)
       }
-      busCtrl.read(frameCfg.dataLength, address = regOffset + 0x0c, bitOffset = 0)
-      busCtrl.read(frameCfg.parity, address = regOffset + 0x0c, bitOffset = 8)
-      busCtrl.read(frameCfg.stop, address = regOffset + 0x0c, bitOffset = 16)
+      busCtrl.read(frameCfg.dataLength, address = regs.frameConfig, bitOffset = 0)
+      busCtrl.read(frameCfg.parity, address = regs.frameConfig, bitOffset = 8)
+      busCtrl.read(frameCfg.stop, address = regs.frameConfig, bitOffset = 16)
 
       ctrl.config <> cfg
       ctrl.frameConfig <> frameCfg
@@ -263,12 +282,12 @@ object UartCtrl {
       if (p.interrupt) {
         val txOccupancyTrigger = Reg(cloneOf(tx.fifoOccupancy))
         val txPreviousOccupancy = RegNext(tx.fifoOccupancy)
-        busCtrl.readAndWrite(txOccupancyTrigger, regOffset + 0x10)
+        busCtrl.readAndWrite(txOccupancyTrigger, regs.transmitTrigger)
         val txTrigger =
           tx.fifoOccupancy === txOccupancyTrigger && txPreviousOccupancy === (txOccupancyTrigger + 1)
 
         val irqCtrl = new InterruptCtrl(3)
-        irqCtrl.driveFrom(busCtrl, regOffset + 0x14)
+        irqCtrl.driveFrom(busCtrl, regs.interruptPending.toInt)
         irqCtrl.io.inputs(0) := txTrigger
         irqCtrl.io.inputs(1) := ctrl.read.valid
         irqCtrl.io.inputs(2) := ctrl.txIdle.rise(initAt = True)
@@ -281,7 +300,7 @@ object UartCtrl {
     val error = new Area {
       if (p.error) {
         val errorCtrl = new InterruptCtrl(3)
-        errorCtrl.driveFrom(busCtrl, regOffset + 0x1c)
+        errorCtrl.driveFrom(busCtrl, regs.errorPending.toInt)
         errorCtrl.io.inputs(0) := ctrl.framingError
         errorCtrl.io.inputs(1) := ctrl.parityError
         errorCtrl.io.inputs(2) := ctrl.readIsFull && ctrl.read.valid

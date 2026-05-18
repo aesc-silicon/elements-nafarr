@@ -1,7 +1,7 @@
 .. _hardware-peripherals-gpio:
 
-GPIO
-####
+General-Purpose I/O (GPIO)
+##########################
 
 A GPIO (General-Purpose Input/Output) controller with tri-state pins is a versatile digital interface that allows each pin to be configured as either an input or an output, with additional control for setting the direction of data flow. Here's a breakdown of its functionality:
 

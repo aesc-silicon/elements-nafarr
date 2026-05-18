@@ -1,7 +1,7 @@
 .. _hardware-peripherals-uart:
 
-UART
-####
+Universal Asynchronous Receiver-Transmitter (UART)
+##################################################
 
 The UART (Universal Asynchronous Receiver-Transmitter) IP Core is a configurable serial communication interface designed to handle data transmission and reception. The core includes an internal clock divider and supports flexible frame configurations, allowing for variable data length, parity, and stop bit settings.
 

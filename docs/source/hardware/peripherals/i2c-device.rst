@@ -1,7 +1,7 @@
 .. _hardware-peripherals-i2c-device:
 
-I2C Device
-##########
+Inter-Integrated Circuit (I2C) Device
+#####################################
 
 The I2C (Inter-Integrated Circuit) Device IP core is a flexible interface designed to handle and process I2C transmissions. It features an internal clock divider, automatic timeout detection for stalled transmissions, and a configurable sampling bit count.
 

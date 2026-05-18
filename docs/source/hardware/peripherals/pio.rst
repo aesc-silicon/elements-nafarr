@@ -1,7 +1,7 @@
 .. _hardware-peripherals-pio:
 
-Programmable IO
-###############
+Programmable I/O (PIO)
+######################
 
 The Programmable IO (PIO) IP Core is a versatile and highly configurable module designed for generating and controlling low-speed digital interfaces. It features an internal state machine that executes a user-defined program stored in on-chip memory to drive IO signals in precise sequences. This allows the IP core to support a wide range of protocols and custom interfaces by bit-banging signals according to the programmed commands, without requiring continuous CPU intervention.
 

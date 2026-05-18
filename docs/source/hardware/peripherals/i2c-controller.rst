@@ -1,7 +1,7 @@
 .. _hardware-peripherals-i2c-controller:
 
-I2C Controller
-##############
+Inter-Integrated Circuit (I2C) Controller
+#########################################
 
 This IP core is a highly configurable module designed for efficient communication with I2C devices. This controller integrates advanced features to manage data transmission, handle device interactions, and respond to various operational conditions.
 

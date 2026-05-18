@@ -1,7 +1,7 @@
 .. _hardware-peripherals-pwm:
 
-Pulse-Width Modulation
-######################
+Pulse-Width Modulation (PWM)
+############################
 
 The Pulse-Width Modulation (PWM) IP Core is a multi-channel controller for generating
 precise PWM signals. Each channel operates independently with its own clock divider and

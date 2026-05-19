@@ -13,8 +13,20 @@ object IpIdentification {
     IpIdentificationCtrl(id, major, minor, patch)
 
   object Ids extends SpinalEnum {
-    val Gpio, Pio, Pwm, Uart, I2cController, I2cDevice, SpiController, SpiXipController, SpiDevice,
-        AesAccelerator, AesMaskedAccelerator, Reset, Clock, Pinmux = newElement()
+    val Gpio = newElement() // 0
+    val Pio = newElement() // 1
+    val Pwm = newElement() // 2
+    val Uart = newElement() // 3
+    val I2cController = newElement() // 4
+    val I2cDevice = newElement() // 5
+    val SpiController = newElement() // 6
+    val SpiXipController = newElement() // 7
+    val SpiDevice = newElement() // 8
+    val AesAccelerator = newElement() // 9
+    val AesMaskedAccelerator = newElement() // 10
+    val Reset = newElement() // 11
+    val Clock = newElement() // 12
+    val Pinmux = newElement() // 13
   }
 
   case class IpIdentificationCtrl(

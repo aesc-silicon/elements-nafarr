@@ -28,6 +28,7 @@ object IpIdentification {
     val Clock = newElement() // 12
     val Pinmux = newElement() // 13
     val Semaphore = newElement() // 14
+    val Mailbox = newElement() // 15
   }
 
   case class IpIdentificationCtrl(

@@ -15,8 +15,23 @@ import nafarr.system.reset.ResetControllerCtrl
 
 object ClockControllerCtrl {
 
+  object Regs {
+    def apply(base: BigInt) = new Regs(base)
+  }
+
+  class Regs(base: BigInt) {
+    val domains = base + 0x00
+    val enable = base + 0x04
+  }
+
   case class Parameter(domains: List[ClockParameter]) {
-    // TODO check synchronousWith is before
+    require(domains.length > 0, "At least one domain is required")
+    val domainNames = domains.map(_.name).toSet
+    for (domain <- domains if domain.synchronousWith.nonEmpty)
+      require(
+        domainNames.contains(domain.synchronousWith),
+        s"Clock '${domain.name}': synchronousWith '${domain.synchronousWith}' is not a known domain name."
+      )
 
     def getDomainByName(name: String): (Int, ClockParameter) = {
       val domain = domains.find(_.name.equals(name)).get
@@ -81,42 +96,46 @@ object ClockControllerCtrl {
 
     val clockCtrl = new ClockingArea(clockCtrlClockDomain) {
       for (clockName <- clocks) {
-        val (domainIndex, domain) = parameter.getDomainByName(clockName)
-        val outputHz = domain.frequency.toDouble
+        val clockArea = new Area {
+          val (domainIndex, domain) = parameter.getDomainByName(clockName)
+          val outputHz = domain.frequency.toDouble
 
-        require(
-          inputHz % outputHz == 0,
-          s"Clock '$clockName': output frequency ${outputHz.toLong} Hz does not divide input frequency ${inputHz.toLong} Hz evenly"
-        )
-        val divider = (inputHz / outputHz).toInt
-        require(
-          divider >= 1,
-          s"Clock '$clockName': divider $divider must be >= 1"
-        )
-
-        val clockOut = if (divider == 1) {
-          io.mainClock
-        } else {
           require(
-            divider % 2 == 0,
-            s"Clock '$clockName': divider $divider must be even to generate a 50% duty cycle clock"
+            inputHz % outputHz == 0,
+            s"Clock '$clockName': output frequency ${outputHz.toLong} Hz does not divide input frequency ${inputHz.toLong} Hz evenly"
           )
-          val halfPeriod = divider / 2
-          val divided = Reg(Bool()) init False
-          if (halfPeriod == 1) {
-            divided := !divided
+          val divider = (inputHz / outputHz).toInt
+          require(
+            divider >= 1,
+            s"Clock '$clockName': divider $divider must be >= 1"
+          )
+
+          val clockOut = if (divider == 1) {
+            io.mainClock
           } else {
-            val counter = Reg(UInt(log2Up(halfPeriod) bits)) init 0
-            when(counter === halfPeriod - 1) {
-              counter := 0
+            require(
+              divider % 2 == 0,
+              s"Clock '$clockName': divider $divider must be even to generate a 50% duty cycle clock"
+            )
+            val halfPeriod = divider / 2
+            val divided = Reg(Bool()).init(False)
+            if (halfPeriod == 1) {
               divided := !divided
-            } otherwise {
-              counter := counter + 1
+            } else {
+              val counter = Reg(UInt(log2Up(halfPeriod) bits))
+                .init(halfPeriod - 1)
+                .setName(s"domain_${clockName}_counter")
+              when(counter === halfPeriod - 1) {
+                counter := 0
+                divided := !divided
+              } otherwise {
+                counter := counter + 1
+              }
             }
+            divided
           }
-          divided
-        }
-        io.clocks(domainIndex) := clockOut
+          io.clocks(domainIndex) := clockOut & io.config.enable(domainIndex)
+        }.setName(s"domain_${clockName}")
       }
     }
   }

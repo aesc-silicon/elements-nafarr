@@ -7,3 +7,4 @@ The following list offers an overview of all available IP cores.
    :maxdepth: 2
 
    peripherals/index.rst
+   system/index.rst

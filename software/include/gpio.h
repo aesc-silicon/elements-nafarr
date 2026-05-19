@@ -7,10 +7,15 @@
 #ifndef ELEMNETS_GPIO
 #define ELEMNETS_GPIO
 
-struct gpio_regs {
-	int ip_api;
-	int ip_version;
-	int ip_info;
+#ifndef GPIO_BANK_WIDTH
+#define GPIO_BANK_WIDTH 32
+#endif
+
+#ifndef GPIO_MAX_BANKS
+#define GPIO_MAX_BANKS 16
+#endif
+
+struct gpio_bank_regs {
 	int data_in;
 	int data_out;
 	int dir_en;
@@ -22,6 +27,13 @@ struct gpio_regs {
 	int irq_rising_mask;
 	int irq_falling_pending;
 	int irq_falling_mask;
+};
+
+struct gpio_regs {
+	int ip_api;
+	int ip_version;
+	int ip_info;
+	struct gpio_bank_regs banks[GPIO_MAX_BANKS];
 };
 
 struct gpio_driver {

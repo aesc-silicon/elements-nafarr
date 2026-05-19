@@ -1,7 +1,7 @@
 .. _hardware-peripherals-pinmux:
 
-Pinmux
-######
+Pin Multiplexer (Pinmux)
+########################
 
 A Pin Multiplexer (Pinmux) routes physical IO pins to one of several peripheral
 input/output signals. Each physical pin can be connected to exactly one

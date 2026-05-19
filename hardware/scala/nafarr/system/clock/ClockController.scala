@@ -15,6 +15,8 @@ import spinal.lib.bus.tilelink.{
 }
 import spinal.lib.bus.wishbone._
 
+import nafarr.IpIdentification
+
 case class ClockParameter(
     name: String,
     frequency: HertzNumber,
@@ -36,7 +38,13 @@ object ClockController {
     }
     val busCtrl = factory(io.bus)
 
-    busCtrl.driveAndRead(io.config.enable, 0x0).init(U((0 until p.domains.length) -> true))
+    val idCtrl = IpIdentification(IpIdentification.Ids.Clock, 1, 0, 0)
+    idCtrl.driveFrom(busCtrl)
+    val regs = ClockControllerCtrl.Regs(idCtrl.length)
+
+    busCtrl.read(B(p.domains.length, 8 bits), regs.domains)
+
+    busCtrl.driveAndRead(io.config.enable, regs.enable).init(U((0 until p.domains.length) -> true))
   }
 }
 

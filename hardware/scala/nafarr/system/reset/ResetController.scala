@@ -38,16 +38,15 @@ object ResetController {
 
     val idCtrl = IpIdentification(IpIdentification.Ids.Reset, 1, 0, 0)
     idCtrl.driveFrom(busCtrl)
-    val staticOffset = idCtrl.length
+    val regs = ResetControllerCtrl.Regs(idCtrl.length)
 
-    busCtrl.read(B(p.domains.length, 8 bits), staticOffset)
-    val regOffset = idCtrl.length + 0x4
+    busCtrl.read(B(p.domains.length, 8 bits), regs.domains)
 
     busCtrl
-      .driveAndRead(io.config.enable, regOffset + 0x0)
+      .driveAndRead(io.config.enable, regs.enable)
       .init(U((0 until p.domains.length) -> true))
-    busCtrl.readAndWrite(trigger, regOffset + 0x4)
-    busCtrl.onWrite(0x8)(acknowledge := True)
+    busCtrl.readAndWrite(trigger, regs.trigger)
+    busCtrl.onWrite(regs.acknowledge)(acknowledge := True)
 
     io.config.trigger := trigger
     io.config.acknowledge := acknowledge

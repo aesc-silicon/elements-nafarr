@@ -11,7 +11,19 @@ import scala.collection.mutable.Map
 
 object ResetControllerCtrl {
 
+  object Regs {
+    def apply(base: BigInt) = new Regs(base)
+  }
+
+  class Regs(base: BigInt) {
+    val domains = base + 0x00
+    val enable = base + 0x04
+    val trigger = base + 0x08
+    val acknowledge = base + 0x0c
+  }
+
   case class Parameter(domains: List[ResetParameter]) {
+    require(domains.length > 0, "At least one domain is required")
     for (domain <- domains)
       require(domain.delay > 0, s"Delay for reset domain ${domain.name} must at least 1 cycle!")
   }
@@ -63,26 +75,28 @@ object ResetControllerCtrl {
       val trigger = BufferCC(io.trigger)
 
       for (((domain), index) <- parameter.domains.zipWithIndex) {
-        val resetUnbuffered = True
-        // Extend external reset with one cycle.
-        val locked = RegInit(False)
-        val counter = Reg(UInt(log2Up(domain.delay) bits)).init(0)
+        val resetDomain = new Area {
+          val resetUnbuffered = True
+          // Extend external reset with one cycle.
+          val locked = RegInit(False)
+          val counter = Reg(UInt(log2Up(domain.delay) bits)).init(0)
 
-        when(configAcknowledge && configTrigger(index)) {
-          locked := False
-        }
-        when(configEnable(index) && trigger(index)) {
-          locked := False
-        }
-        when(!locked && counter =/= U(domain.delay - 1)) {
-          counter := counter + 1
-          resetUnbuffered := False
-        }
-        when(counter === U(domain.delay - 1)) {
-          counter := 0
-          locked := True
-        }
-        internalResets(index) := RegNext(resetUnbuffered)
+          when(configAcknowledge && configTrigger(index)) {
+            locked := False
+          }
+          when(configEnable(index) && trigger(index)) {
+            locked := False
+          }
+          when(!locked && counter =/= U(domain.delay - 1)) {
+            counter := counter + 1
+            resetUnbuffered := False
+          }
+          when(counter === U(domain.delay - 1)) {
+            counter := 0
+            locked := True
+          }
+          internalResets(index) := RegNext(resetUnbuffered)
+        }.setName(s"domain_${domain.name}")
       }
     }
 
@@ -98,17 +112,27 @@ object ResetControllerCtrl {
     )
 
     val resetCtrl = new ClockingArea(resetCtrlClockDomain) {
+      val configAcknowledge = BufferCC(io.config.acknowledge)
+      val configTrigger = BufferCC(io.config.trigger)
+      val configEnable = BufferCC(io.config.enable)
+      val trigger = BufferCC(io.trigger)
+
       for (((domain), index) <- parameter.domains.zipWithIndex) {
-        val resetUnbuffered = True
-        val counter = Reg(UInt(log2Up(domain.delay) bits)).init(0)
-        when(counter =/= U(domain.delay - 1)) {
-          counter := counter + 1
-          resetUnbuffered := False
-        }
-        when(counter === U(domain.delay - 1) && BufferCC(io.trigger(index))) {
-          counter := 0
-        }
-        io.resets(index) := RegNext(resetUnbuffered)
+        val resetDomain = new Area {
+          val resetUnbuffered = True
+          val counter = Reg(UInt(log2Up(domain.delay) bits)).init(0)
+          when(counter =/= U(domain.delay - 1)) {
+            counter := counter + 1
+            resetUnbuffered := False
+          }
+          when(counter === U(domain.delay - 1) && (configEnable(index) && trigger(index))) {
+            counter := 0
+          }
+          when(configAcknowledge && configTrigger(index)) {
+            counter := 0
+          }
+          io.resets(index) := RegNext(resetUnbuffered)
+        }.setName(s"domain_${domain.name}")
       }
     }
   }

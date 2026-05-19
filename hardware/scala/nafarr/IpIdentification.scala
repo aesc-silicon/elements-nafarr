@@ -29,6 +29,8 @@ object IpIdentification {
     val Pinmux = newElement() // 13
     val Semaphore = newElement() // 14
     val Mailbox = newElement() // 15
+    val Prng = newElement() // 16
+    val Trng = newElement() // 17
   }
 
   case class IpIdentificationCtrl(

@@ -31,6 +31,9 @@ object IpIdentification {
     val Mailbox = newElement() // 15
     val Prng = newElement() // 16
     val Trng = newElement() // 17
+    val Crc8 = newElement() // 18
+    val Crc16 = newElement() // 19
+    val Crc32 = newElement() // 20
   }
 
   case class IpIdentificationCtrl(

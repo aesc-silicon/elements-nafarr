@@ -58,7 +58,7 @@ object MailboxCtrl {
       val push = Vec(slave(Stream(Bits(32 bits))), p.channelCount)
       val pop = Vec(master(Stream(Bits(32 bits))), p.channelCount)
       val occupancy = out(Vec(UInt(log2Up(p.depth + 1) bits), p.channelCount))
-      val interrupt = out Bool()
+      val interrupt = out Bool ()
       val pendingInterrupts = in(Vec(Bits(2 bits), p.channelCount))
     }
 

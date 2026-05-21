@@ -10,3 +10,4 @@ The following list offers an overview of all available system IP cores.
    mailbox.rst
    reset.rst
    semaphore.rst
+   watchdog.rst

@@ -10,6 +10,7 @@ The following list offers an overview of all available peripheral IP cores.
    pinmux.rst
    pio.rst
    pwm.rst
+   timer.rst
    uart.rst
    i2c-device.rst
    i2c-controller.rst

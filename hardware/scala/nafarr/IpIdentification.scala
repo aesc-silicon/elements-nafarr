@@ -35,6 +35,7 @@ object IpIdentification {
     val Crc16 = newElement() // 19
     val Crc32 = newElement() // 20
     val Watchdog = newElement() // 21
+    val Esm = newElement() // 22
   }
 
   case class IpIdentificationCtrl(

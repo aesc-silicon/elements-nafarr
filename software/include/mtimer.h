@@ -20,7 +20,7 @@ struct mtimer_driver {
 	volatile struct mtimer_regs *regs;
 };
 
-int mtimer_init(struct mtimer_driver *driver, unsigned int base_address);
+int mtimer_init(struct mtimer_driver *driver, unsigned long base_address);
 unsigned int mtimer_sleep32(struct mtimer_driver *driver, unsigned int cycles);
 
 #endif

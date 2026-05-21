@@ -45,7 +45,7 @@ struct mailbox_driver {
 	volatile struct mailbox_regs *regs;
 };
 
-int          mailbox_init(struct mailbox_driver *driver, unsigned int base_address);
+int          mailbox_init(struct mailbox_driver *driver, unsigned long base_address);
 
 /**
  * Push a 32-bit message to channel @ch.

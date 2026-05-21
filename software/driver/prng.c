@@ -6,7 +6,7 @@
 
 #include "prng.h"
 
-int prng_init(struct prng_driver *driver, unsigned int base_address)
+int prng_init(struct prng_driver *driver, unsigned long base_address)
 {
 	driver->regs = (volatile struct prng_regs *)base_address;
 

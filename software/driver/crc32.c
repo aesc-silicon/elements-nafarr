@@ -6,7 +6,7 @@
 
 #include "crc32.h"
 
-int crc32_init_driver(struct crc32_driver *driver, unsigned int base_address)
+int crc32_init_driver(struct crc32_driver *driver, unsigned long base_address)
 {
 	driver->regs = (volatile struct crc32_regs *)base_address;
 

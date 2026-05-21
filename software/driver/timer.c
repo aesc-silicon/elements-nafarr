@@ -14,7 +14,7 @@ static volatile unsigned int *timer_base(struct timer_driver *driver, unsigned i
 					 t * driver->stride);
 }
 
-void timer_init(struct timer_driver *driver, unsigned int base_address)
+void timer_init(struct timer_driver *driver, unsigned long base_address)
 {
 	unsigned int info;
 

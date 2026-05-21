@@ -6,7 +6,7 @@
 
 #include "semaphore.h"
 
-int semaphore_init(struct semaphore_driver *driver, unsigned int base_address,
+int semaphore_init(struct semaphore_driver *driver, unsigned long base_address,
 		   unsigned int count)
 {
 	driver->regs = (volatile struct semaphore_regs *)base_address;

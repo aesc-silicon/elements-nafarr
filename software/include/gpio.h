@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef ELEMNETS_GPIO
-#define ELEMNETS_GPIO
+#ifndef ELEMENTS_GPIO_H
+#define ELEMENTS_GPIO_H
 
 #ifndef GPIO_BANK_WIDTH
 #define GPIO_BANK_WIDTH 32
@@ -16,23 +16,23 @@
 #endif
 
 struct gpio_bank_regs {
-	int data_in;
-	int data_out;
-	int dir_en;
-	int irq_high_pending;
-	int irq_high_mask;
-	int irq_low_pending;
-	int irq_low_mask;
-	int irq_rising_pending;
-	int irq_rising_mask;
-	int irq_falling_pending;
-	int irq_falling_mask;
+	unsigned int input;
+	unsigned int output;
+	unsigned int direction;
+	unsigned int irq_high_pending;
+	unsigned int irq_high_enable;
+	unsigned int irq_low_pending;
+	unsigned int irq_low_enable;
+	unsigned int irq_rising_pending;
+	unsigned int irq_rising_enable;
+	unsigned int irq_falling_pending;
+	unsigned int irq_falling_enable;
 };
 
 struct gpio_regs {
-	int ip_api;
-	int ip_version;
-	int ip_info;
+	unsigned int ip_header;
+	unsigned int ip_version;
+	unsigned int ip_info;
 	struct gpio_bank_regs banks[GPIO_MAX_BANKS];
 };
 
@@ -45,7 +45,7 @@ struct gpio_driver {
 #define GPIO_IRQ_RISING_EDGE		(1 << 2)
 #define GPIO_IRQ_FALLING_EDGE		(1 << 3)
 
-int gpio_init(struct gpio_driver *driver, unsigned int base_address);
+int gpio_init(struct gpio_driver *driver, unsigned long base_address);
 unsigned int gpio_value_get(struct gpio_driver *driver, unsigned int pin);
 void gpio_value_set(struct gpio_driver *driver, unsigned int pin);
 void gpio_value_clr(struct gpio_driver *driver, unsigned int pin);

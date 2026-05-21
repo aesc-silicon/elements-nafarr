@@ -57,7 +57,7 @@ struct watchdog_driver {
 	volatile struct watchdog_regs *regs;
 };
 
-int watchdog_init(struct watchdog_driver *driver, unsigned int base_address);
+int watchdog_init(struct watchdog_driver *driver, unsigned long base_address);
 
 /**
  * Configure prescaler and timeout for watchdog @wdt.

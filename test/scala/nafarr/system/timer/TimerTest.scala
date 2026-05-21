@@ -105,7 +105,7 @@ class TimerTest extends AnyFunSuite {
         driver.write(regs.counter(0), 0xE0)    // preload near overflow (width=8, max=0xFF)
         driver.write(regs.prescaler(0), 0)
         driver.write(regs.control(0), 0x1)     // free-run
-        dut.clockDomain.waitSampling(4)
+        dut.clockDomain.waitSampling(40)       // need >32 ticks to wrap from 0xE0 past 0xFF
 
         val cnt = driver.read(regs.counter(0))
         // After 0xE0 + ~4 ticks it should have wrapped (0xFF → 0) and continued

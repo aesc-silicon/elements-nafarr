@@ -101,7 +101,7 @@ struct esm_driver {
 	uint32_t bank_count;
 };
 
-int esm_init(struct esm_driver *driver, unsigned int base_address);
+int esm_init(struct esm_driver *driver, unsigned long base_address);
 
 /* Master enable / disable. Disable is ignored when locked. */
 void esm_enable(struct esm_driver *driver);

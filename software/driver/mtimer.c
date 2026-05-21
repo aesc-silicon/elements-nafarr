@@ -6,7 +6,7 @@
 
 #include "mtimer.h"
 
-int mtimer_init(struct mtimer_driver *driver, unsigned int base_address)
+int mtimer_init(struct mtimer_driver *driver, unsigned long base_address)
 {
 	driver->regs = (struct mtimer_regs *)base_address;
 

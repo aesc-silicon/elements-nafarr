@@ -23,7 +23,7 @@ struct prng_driver {
 	volatile struct prng_regs *regs;
 };
 
-int prng_init(struct prng_driver *driver, unsigned int base_address);
+int prng_init(struct prng_driver *driver, unsigned long base_address);
 
 void prng_enable(struct prng_driver *driver);
 void prng_disable(struct prng_driver *driver);

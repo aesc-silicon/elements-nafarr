@@ -27,7 +27,7 @@ struct crc32_driver {
 	volatile struct crc32_regs *regs;
 };
 
-int crc32_init_driver(struct crc32_driver *driver, unsigned int base_address);
+int crc32_init_driver(struct crc32_driver *driver, unsigned long base_address);
 
 /**
  * Reset the CRC state to the polynomial init value.

@@ -6,7 +6,7 @@
 
 #include "watchdog.h"
 
-int watchdog_init(struct watchdog_driver *driver, unsigned int base_address)
+int watchdog_init(struct watchdog_driver *driver, unsigned long base_address)
 {
 	driver->regs = (volatile struct watchdog_regs *)base_address;
 

@@ -6,7 +6,7 @@
 
 #include "esm.h"
 
-int esm_init(struct esm_driver *driver, unsigned int base_address)
+int esm_init(struct esm_driver *driver, unsigned long base_address)
 {
 	driver->regs = (volatile struct esm_regs *)base_address;
 	driver->bank_count = (driver->regs->info >> 9) & 0x7Fu;

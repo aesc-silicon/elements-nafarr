@@ -6,7 +6,7 @@
 
 #include "mailbox.h"
 
-int mailbox_init(struct mailbox_driver *driver, unsigned int base_address)
+int mailbox_init(struct mailbox_driver *driver, unsigned long base_address)
 {
 	driver->regs = (volatile struct mailbox_regs *)base_address;
 

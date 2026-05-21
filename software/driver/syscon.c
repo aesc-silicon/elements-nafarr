@@ -6,7 +6,7 @@
 
 #include "syscon.h"
 
-void syscon_init(struct syscon_driver *driver, unsigned int base_address)
+void syscon_init(struct syscon_driver *driver, unsigned long base_address)
 {
 	driver->regs = (volatile struct syscon_regs *)base_address;
 }

@@ -6,7 +6,7 @@
 
 #include "plic.h"
 
-int plic_init(struct plic_driver *driver, unsigned int base_address)
+int plic_init(struct plic_driver *driver, unsigned long base_address)
 {
 	driver->gateway_priority = (unsigned int *)base_address;
 	driver->gateway_pending = (unsigned int *)base_address +

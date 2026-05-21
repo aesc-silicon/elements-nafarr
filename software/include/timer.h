@@ -42,7 +42,7 @@ struct timer_driver {
  * Initialise the driver. Reads count and channel_count from the info register.
  * base_address: MMIO base of the timer IP.
  */
-void timer_init(struct timer_driver *driver, unsigned int base_address);
+void timer_init(struct timer_driver *driver, unsigned long base_address);
 
 /* Per-timer register access */
 void         timer_set_control(struct timer_driver *driver, unsigned int t, unsigned int ctrl);

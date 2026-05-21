@@ -24,7 +24,7 @@ struct semaphore_driver {
 	unsigned int count;
 };
 
-int semaphore_init(struct semaphore_driver *driver, unsigned int base_address,
+int semaphore_init(struct semaphore_driver *driver, unsigned long base_address,
 		   unsigned int count);
 
 /**

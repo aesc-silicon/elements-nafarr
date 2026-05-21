@@ -11,4 +11,5 @@ The following list offers an overview of all available system IP cores.
    reset.rst
    semaphore.rst
    esm.rst
+   syscon.rst
    watchdog.rst

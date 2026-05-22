@@ -15,6 +15,7 @@ import spinal.lib.bus.tilelink.{
 }
 import spinal.lib.bus.wishbone._
 import spinal.lib.io.{TriStateArray, TriState}
+import nafarr.Feature
 import nafarr.peripherals.PeripheralsComponent
 
 object Gpio {
@@ -43,42 +44,12 @@ object Gpio {
 
     val mapper = GpioCtrl.Mapper(factory(io.bus), ctrl.io, p)
 
-    def deviceTreeZephyr(
-        name: String,
-        address: BigInt,
-        size: BigInt,
-        irqNumber: Option[Int] = None
-    ) = {
-      val baseAddress = "%x".format(address.toInt)
-      val regSize = "%04x".format(size.toInt)
-      var dt = s"""
-\t\t$name: $name@$baseAddress {
-\t\t\tcompatible = "aesc,gpio";
-\t\t\treg = <0x$baseAddress 0x$regSize>;"""
-      if (irqNumber.isDefined) {
-        dt += s"""
-\t\t\tinterrupt-parent = <&plic>;
-\t\t\tinterrupts = <$irqNumber 1>;"""
-      }
-      dt += s"""
-\t\t\tgpio-controller;
-\t\t\t#gpio-cells = <2>;
-\t\t\tstatus = "okay";
-\t\t};"""
-      dt
-    }
-    def headerBareMetal(
-        name: String,
-        address: BigInt,
-        size: BigInt,
-        irqNumber: Option[Int] = None
-    ) = {
+    override def getInterrupt = Some(io.interrupt)
+    override def sysconFeatures = Some(List(Feature.Gpio))
+
+    override def headerBareMetal(name: String, address: BigInt, size: BigInt) = {
       val baseAddress = "%08x".format(address.toInt)
-      val regSize = "%04x".format(size.toInt)
-      var dt = s"""#define ${name.toUpperCase}_BASE\t\t0x${baseAddress}\n"""
-      if (irqNumber.isDefined)
-        dt += s"""#define ${name.toUpperCase}_IRQ\t\t${irqNumber.get}\n"""
-      dt
+      s"""#define ${name.toUpperCase}_BASE\t\t0x${baseAddress}\n"""
     }
   }
 }

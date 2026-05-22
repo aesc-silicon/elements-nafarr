@@ -15,7 +15,8 @@ import spinal.lib.bus.tilelink.{
 }
 import spinal.lib.bus.wishbone._
 
-import nafarr.IpIdentification
+import nafarr.{Feature, IpIdentification}
+import nafarr.peripherals.PeripheralsComponent
 
 case class ClockParameter(
     name: String,
@@ -31,7 +32,7 @@ object ClockController {
       p: ClockControllerCtrl.Parameter,
       busType: HardType[T],
       factory: T => BusSlaveFactory
-  ) extends Component {
+  ) extends PeripheralsComponent {
     val io = new Bundle {
       val bus = slave(busType())
       val config = out(ClockControllerCtrl.Config(p))
@@ -45,6 +46,13 @@ object ClockController {
     busCtrl.read(B(p.domains.length, 8 bits), regs.domains)
 
     busCtrl.driveAndRead(io.config.enable, regs.enable).init(U((0 until p.domains.length) -> true))
+
+    override def sysconFeatures = Some(List(Feature.Clock))
+
+    override def headerBareMetal(name: String, address: BigInt, size: BigInt) = {
+      val baseAddress = "%08x".format(address.toInt)
+      s"""#define ${name.toUpperCase}_BASE\t\t0x${baseAddress}\n"""
+    }
   }
 }
 

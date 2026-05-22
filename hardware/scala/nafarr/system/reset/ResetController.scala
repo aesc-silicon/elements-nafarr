@@ -15,7 +15,8 @@ import spinal.lib.bus.tilelink.{
 }
 import spinal.lib.bus.wishbone._
 
-import nafarr.IpIdentification
+import nafarr.{Feature, IpIdentification}
+import nafarr.peripherals.PeripheralsComponent
 
 case class ResetParameter(name: String, delay: Int)
 
@@ -24,7 +25,7 @@ object ResetController {
       p: ResetControllerCtrl.Parameter,
       busType: HardType[T],
       factory: T => BusSlaveFactory
-  ) extends Component {
+  ) extends PeripheralsComponent {
     val io = new Bundle {
       val bus = slave(busType())
       val config = out(ResetControllerCtrl.Config(p))
@@ -50,6 +51,13 @@ object ResetController {
 
     io.config.trigger := trigger
     io.config.acknowledge := acknowledge
+
+    override def sysconFeatures = Some(List(Feature.Reset))
+
+    override def headerBareMetal(name: String, address: BigInt, size: BigInt) = {
+      val baseAddress = "%08x".format(address.toInt)
+      s"""#define ${name.toUpperCase}_BASE\t\t0x${baseAddress}\n"""
+    }
   }
 }
 

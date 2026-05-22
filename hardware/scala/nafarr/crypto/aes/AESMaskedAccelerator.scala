@@ -10,29 +10,26 @@ import spinal.lib.bus.misc._
 import spinal.lib.bus.amba3.apb._
 import spinal.lib.bus.avalon._
 import spinal.lib.bus.wishbone._
+import nafarr.Feature
+import nafarr.peripherals.PeripheralsComponent
 
 object AesMaskedAccelerator {
   class Core[T <: spinal.core.Data with IMasterSlave](
       p: AesMaskedAcceleratorCtrl.Parameter,
       busType: HardType[T],
       factory: T => BusSlaveFactory
-  ) extends Component {
+  ) extends PeripheralsComponent {
     val io = new Bundle {
       val bus = slave(busType())
     }
     val ctrl = AesMaskedAcceleratorCtrl(p)
     val mapper = AesMaskedAcceleratorCtrl.Mapper(factory(io.bus), ctrl.io, p)
 
-    def headerBareMetal(
-        name: String,
-        address: BigInt,
-        size: BigInt,
-        irqNumber: Option[Int] = null
-    ) = {
+    override def sysconFeatures = Some(List(Feature.Aes))
+
+    override def headerBareMetal(name: String, address: BigInt, size: BigInt) = {
       val baseAddress = "%08x".format(address.toInt)
-      val regSize = "%04x".format(size.toInt)
-      var dt = s"""#define ${name.toUpperCase}_BASE\t\t0x${baseAddress}\n"""
-      dt
+      s"""#define ${name.toUpperCase}_BASE\t\t0x${baseAddress}\n"""
     }
   }
 }

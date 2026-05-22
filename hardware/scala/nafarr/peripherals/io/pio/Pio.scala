@@ -15,6 +15,8 @@ import spinal.lib.bus.tilelink.{
 }
 import spinal.lib.bus.wishbone._
 import spinal.lib.io.{TriStateArray, TriState}
+import nafarr.Feature
+import nafarr.peripherals.PeripheralsComponent
 
 object Pio {
   case class Parameter(width: Int) {
@@ -29,31 +31,28 @@ object Pio {
       parameter: PioCtrl.Parameter,
       busType: HardType[T],
       factory: T => BusSlaveFactory
-  ) extends Component {
+  ) extends PeripheralsComponent {
     val io = new Bundle {
       val bus = slave(busType())
       val pio = Io(parameter.io)
       val interrupt = out(Bool)
+      val error = out(Bool)
     }
 
     val ctrl = PioCtrl(parameter)
     ctrl.io.pio <> io.pio
     io.interrupt <> ctrl.io.interrupt
+    io.error := ctrl.io.error
 
     val mapper = PioCtrl.Mapper(factory(io.bus), ctrl.io, parameter)
 
-    def headerBareMetal(
-        name: String,
-        address: BigInt,
-        size: BigInt,
-        irqNumber: Option[Int] = None
-    ) = {
+    override def getInterrupt = Some(io.interrupt)
+    override def getError = Some(io.error)
+    override def sysconFeatures = Some(List(Feature.Pio))
+
+    override def headerBareMetal(name: String, address: BigInt, size: BigInt) = {
       val baseAddress = "%08x".format(address.toInt)
-      val regSize = "%04x".format(size.toInt)
-      var dt = s"""#define ${name.toUpperCase}_BASE\t\t0x${baseAddress}\n"""
-      if (irqNumber.isDefined)
-        dt += s"""#define ${name.toUpperCase}_IRQ\t\t${irqNumber.get}\n"""
-      dt
+      s"""#define ${name.toUpperCase}_BASE\t\t0x${baseAddress}\n"""
     }
   }
 }

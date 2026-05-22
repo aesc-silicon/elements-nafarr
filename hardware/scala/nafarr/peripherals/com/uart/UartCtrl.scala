@@ -147,6 +147,8 @@ object UartCtrl {
     val uart = master(Uart.Io(p))
     val interrupt = out(Bool)
     val pendingInterrupts = in(Bits(3 bits))
+    val error = out(Bool)
+    val pendingErrors = in(Bits(3 bits))
     val write = slave(Stream(Bits(p.dataWidthMax bits)))
     val read = master(Stream(Bits(p.dataWidthMax bits)))
     val readIsFull = in(Bool)
@@ -163,6 +165,7 @@ object UartCtrl {
     clockDivider.io.reload := io.config.clockDividerReload
 
     io.interrupt := io.pendingInterrupts.orR
+    io.error := io.pendingErrors.orR
 
     val tx = UartCtrlTx(p)
     tx.io.config <> io.frameConfig
@@ -304,6 +307,9 @@ object UartCtrl {
         errorCtrl.io.inputs(0) := ctrl.framingError
         errorCtrl.io.inputs(1) := ctrl.parityError
         errorCtrl.io.inputs(2) := ctrl.readIsFull && ctrl.read.valid
+        ctrl.pendingErrors := errorCtrl.io.pendings
+      } else {
+        ctrl.pendingErrors := 0
       }
     }
   }

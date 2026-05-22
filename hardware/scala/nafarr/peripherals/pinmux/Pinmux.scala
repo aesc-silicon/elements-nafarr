@@ -17,6 +17,8 @@ import spinal.lib.bus.wishbone._
 import spinal.lib.io.{TriStateArray, TriState}
 
 import scala.collection.mutable.ArrayBuffer
+import nafarr.Feature
+import nafarr.peripherals.PeripheralsComponent
 
 object Pinmux {
   case class Parameter(width: Int) {
@@ -32,7 +34,7 @@ object Pinmux {
       mapping: ArrayBuffer[(Int, List[Int])],
       busType: HardType[T],
       factory: T => BusSlaveFactory
-  ) extends Component {
+  ) extends PeripheralsComponent {
     val io = new Bundle {
       val bus = slave(busType())
       val pins = Io(p.io)
@@ -43,16 +45,11 @@ object Pinmux {
     ctrl.io.inputs <> io.inputs
     val mapper = PinmuxCtrl.Mapper(factory(io.bus), ctrl.io, p)
 
-    def headerBareMetal(
-        name: String,
-        address: BigInt,
-        size: BigInt,
-        irqNumber: Option[Int] = null
-    ) = {
+    override def sysconFeatures = Some(List(Feature.Pinmux))
+
+    override def headerBareMetal(name: String, address: BigInt, size: BigInt) = {
       val baseAddress = "%08x".format(address.toInt)
-      val regSize = "%04x".format(size.toInt)
-      var dt = s"""#define ${name.toUpperCase}_BASE\t\t0x${baseAddress}\n"""
-      dt
+      s"""#define ${name.toUpperCase}_BASE\t\t0x${baseAddress}\n"""
     }
   }
 }

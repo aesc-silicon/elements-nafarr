@@ -122,6 +122,8 @@ object PioCtrl {
     val pio = Pio.Io(parameter.io)
     val interrupt = out(Bool)
     val pendingInterrupts = in(Bits(2 bits))
+    val error = out(Bool)
+    val pendingErrors = in(Bits(1 bits))
     val config = in(Config(parameter))
     val programWrite = slave(Flow(CommandContainer(parameter)))
     val writePtr = out(UInt(log2Up(parameter.memory.commandFifoDepth) bits))
@@ -145,6 +147,7 @@ object PioCtrl {
     clockDivider.io.reload := False
 
     io.interrupt := io.pendingInterrupts.orR
+    io.error := io.pendingErrors.orR
     io.loopDone := False
 
     // Program memory
@@ -464,6 +467,9 @@ object PioCtrl {
         val errorCtrl = new InterruptCtrl(1)
         errorCtrl.driveFrom(busCtrl, regs.errorPending.toInt)
         errorCtrl.io.inputs(0) := rx.readIsFull && ctrl.read.valid // read FIFO is full error
+        ctrl.pendingErrors := errorCtrl.io.pendings
+      } else {
+        ctrl.pendingErrors := 0
       }
     }
 

@@ -27,6 +27,7 @@ object IpIdentification {
     val Reset = newElement() // 11
     val Clock = newElement() // 12
     val Pinmux = newElement() // 13
+    val Semaphore = newElement() // 14
   }
 
   case class IpIdentificationCtrl(

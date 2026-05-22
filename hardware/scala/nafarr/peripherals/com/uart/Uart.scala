@@ -14,6 +14,8 @@ import spinal.lib.bus.tilelink.{
   SlaveFactory => TileLinkSlaveFactory
 }
 import spinal.lib.bus.wishbone._
+import nafarr.Feature
+import nafarr.peripherals.PeripheralsComponent
 
 object Uart {
   case class Io(p: UartCtrl.Parameter) extends Bundle with IMasterSlave {
@@ -49,60 +51,32 @@ object Uart {
       p: UartCtrl.Parameter,
       busType: HardType[T],
       factory: T => BusSlaveFactory
-  ) extends Component {
+  ) extends PeripheralsComponent {
     val io = new Bundle {
       val bus = slave(busType())
       val uart = master(Io(p))
       val interrupt = out(Bool)
+      val error = out(Bool)
     }
 
     val ctrl = UartCtrl(p)
     ctrl.io.uart <> io.uart
     io.interrupt := ctrl.io.interrupt
+    io.error := ctrl.io.error
 
     val mapper = UartCtrl.Mapper(factory(io.bus), ctrl.io, p)
 
     val clockSpeed = ClockDomain.current.frequency.getValue.toInt
-    def deviceTreeZephyr(
-        name: String,
-        address: BigInt,
-        size: BigInt,
-        irqNumber: Option[Int] = null
-    ) = {
-      val baseAddress = "%x".format(address.toInt)
-      val regSize = "%04x".format(size.toInt)
-      val baudrate = this.p.init.baudrate
-      var dt = s"""
-\t\t$name: $name@$baseAddress {
-\t\t\tcompatible = "elements,uart";
-\t\t\treg = <0x$baseAddress 0x$regSize>;
-\t\t\tstatus = "okay";"""
-      if (irqNumber.isDefined) {
-        dt += s"""
-\t\t\tinterrupt-parent = <&plic>;
-\t\t\tinterrupts = <${irqNumber.get} 1>;"""
-      }
-      dt += s"""
-\t\t\tclock-frequency = <$clockSpeed>;
-\t\t\tcurrent-speed = <$baudrate>;
-\t\t};"""
-      dt
-    }
-    def headerBareMetal(
-        name: String,
-        address: BigInt,
-        size: BigInt,
-        irqNumber: Option[Int] = null
-    ) = {
+    override def getInterrupt = Some(io.interrupt)
+    override def getError = Some(io.error)
+    override def sysconFeatures = Some(List(Feature.Uart))
+
+    override def headerBareMetal(name: String, address: BigInt, size: BigInt) = {
       val baseAddress = "%08x".format(address.toInt)
-      val regSize = "%04x".format(size.toInt)
-      var dt = s"""#define ${name.toUpperCase}_BASE\t\t0x${baseAddress}
+      s"""#define ${name.toUpperCase}_BASE\t\t0x${baseAddress}
 #define ${name.toUpperCase}_FREQ\t\t${clockSpeed}
 #define ${name.toUpperCase}_BAUD\t\t${this.p.init.baudrate}
 """
-      if (irqNumber.isDefined)
-        dt += s"""#define ${name.toUpperCase}_IRQ\t\t${irqNumber.get}\n"""
-      dt
     }
   }
 }

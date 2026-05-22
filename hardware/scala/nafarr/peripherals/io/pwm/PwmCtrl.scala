@@ -90,6 +90,7 @@ object PwmCtrl {
     val irqPeriodComplete = InterruptConfig(p)
     val faultError = out(Bool)
     val errorPending = in(Bool)
+    val error = out(Bool)
   }
 
   case class PwmCtrl(p: Parameter) extends Component {
@@ -240,6 +241,7 @@ object PwmCtrl {
 
     val faultInPrev = RegNext(io.pwm.faultIn, False)
     io.faultError := io.pwm.faultIn && !faultInPrev
+    io.error := io.errorPending
 
     io.interrupt := io.irqPeriodComplete.pending.orR
   }

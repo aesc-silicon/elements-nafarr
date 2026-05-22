@@ -14,6 +14,7 @@ import spinal.lib.bus.tilelink.{
   SlaveFactory => TileLinkSlaveFactory
 }
 import spinal.lib.bus.wishbone._
+import nafarr.Feature
 import nafarr.peripherals.PeripheralsComponent
 
 object SpiController {
@@ -79,40 +80,12 @@ object SpiController {
     SpiControllerCtrl.Mapper(busFactory, spiControllerCtrl.io, p)
     SpiControllerCtrl.StreamMapper(busFactory, spiControllerCtrl.io, p)
 
-    def deviceTreeZephyr(
-        name: String,
-        address: BigInt,
-        size: BigInt,
-        irqNumber: Option[Int] = null
-    ) = {
-      val baseAddress = "%x".format(address.toInt)
-      val regSize = "%04x".format(size.toInt)
-      var dt = s"""
-\t\t$name: $name@$baseAddress {
-\t\t\tcompatible = "elements,spi";
-\t\t\treg = <0x$baseAddress 0x$regSize>;
-\t\t\tstatus = "okay";"""
-      if (irqNumber.isDefined) {
-        dt += s"""
-\t\t\tinterrupt-parent = <&plic>;
-\t\t\tinterrupts = <$irqNumber 1>;"""
-      }
-      dt += s"""
-\t\t};"""
-      dt
-    }
-    def headerBareMetal(
-        name: String,
-        address: BigInt,
-        size: BigInt,
-        irqNumber: Option[Int] = null
-    ) = {
+    override def getInterrupt = Some(io.interrupt)
+    override def sysconFeatures = Some(List(Feature.Spi))
+
+    override def headerBareMetal(name: String, address: BigInt, size: BigInt) = {
       val baseAddress = "%08x".format(address.toInt)
-      val regSize = "%04x".format(size.toInt)
-      var dt = s"""#define ${name.toUpperCase}_BASE\t\t0x${baseAddress}\n"""
-      if (irqNumber.isDefined)
-        dt += s"""#define ${name.toUpperCase}_IRQ\t\t${irqNumber.get}\n"""
-      dt
+      s"""#define ${name.toUpperCase}_BASE\t\t0x${baseAddress}\n"""
     }
   }
 }

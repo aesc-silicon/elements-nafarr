@@ -14,6 +14,8 @@ import spinal.lib.bus.tilelink.{
   SlaveFactory => TileLinkSlaveFactory
 }
 import spinal.lib.bus.wishbone._
+import nafarr.Feature
+import nafarr.peripherals.PeripheralsComponent
 
 object Pwm {
   case class Parameter(channels: Int) {
@@ -32,29 +34,28 @@ object Pwm {
       p: PwmCtrl.Parameter,
       busType: HardType[T],
       factory: T => BusSlaveFactory
-  ) extends Component {
+  ) extends PeripheralsComponent {
     val io = new Bundle {
       val bus = slave(busType())
       val pwm = Io(p.io)
       val interrupt = out(Bool)
+      val error = out(Bool)
     }
 
     val ctrl = PwmCtrl(p)
     ctrl.io.pwm <> io.pwm
     io.interrupt := ctrl.io.interrupt
+    io.error := ctrl.io.error
 
     val mapper = PwmCtrl.Mapper(factory(io.bus), ctrl.io, p)
 
-    def headerBareMetal(
-        name: String,
-        address: BigInt,
-        size: BigInt,
-        irqNumber: Option[Int] = null
-    ) = {
+    override def getInterrupt = Some(io.interrupt)
+    override def getError = Some(io.error)
+    override def sysconFeatures = Some(List(Feature.Pwm))
+
+    override def headerBareMetal(name: String, address: BigInt, size: BigInt) = {
       val baseAddress = "%08x".format(address.toInt)
-      val regSize = "%04x".format(size.toInt)
-      var dt = s"""#define ${name.toUpperCase}_BASE\t\t0x${baseAddress}\n"""
-      dt
+      s"""#define ${name.toUpperCase}_BASE\t\t0x${baseAddress}\n"""
     }
   }
 }

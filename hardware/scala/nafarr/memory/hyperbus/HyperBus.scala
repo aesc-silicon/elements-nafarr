@@ -11,6 +11,8 @@ import spinal.lib.bus.amba3.apb._
 import spinal.lib.bus.avalon._
 import spinal.lib.bus.wishbone._
 import spinal.lib.io.{TriStateArray, TriState}
+import nafarr.Feature
+import nafarr.peripherals.PeripheralsComponent
 
 object HyperBus {
 
@@ -144,7 +146,7 @@ object HyperBus {
       p: HyperBusCtrl.Parameter,
       busType: HardType[T],
       factory: T => BusSlaveFactory
-  ) extends Component {
+  ) extends PeripheralsComponent {
     val io = new Bundle {
       val bus = slave(busType())
       val phy = master(Phy.Interface(p))
@@ -159,18 +161,11 @@ object HyperBus {
 
     val mapper = HyperBusCtrl.Mapper(factory(io.bus), ctrl.io, p)
 
-    def headerBareMetal(
-        name: String,
-        address: BigInt,
-        size: BigInt,
-        irqNumber: Option[Int] = null
-    ) = {
+    override def sysconFeatures = Some(List(Feature.Hyperbus))
+
+    override def headerBareMetal(name: String, address: BigInt, size: BigInt) = {
       val baseAddress = "%08x".format(address.toInt)
-      val regSize = "%04x".format(size.toInt)
-      var dt = s"""#define ${name.toUpperCase}_BASE\t\t0x${baseAddress}\n"""
-      if (irqNumber.isDefined)
-        dt += s"""#define ${name.toUpperCase}_IRQ\t\t${irqNumber.get}\n"""
-      dt
+      s"""#define ${name.toUpperCase}_BASE\t\t0x${baseAddress}\n"""
     }
   }
 }

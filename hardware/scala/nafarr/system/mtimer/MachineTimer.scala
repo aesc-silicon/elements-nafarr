@@ -14,13 +14,15 @@ import spinal.lib.bus.tilelink.{
   SlaveFactory => TileLinkSlaveFactory
 }
 import spinal.lib.bus.wishbone._
+import nafarr.Feature
+import nafarr.peripherals.PeripheralsComponent
 
 object MachineTimer {
   class Core[T <: spinal.core.Data with IMasterSlave](
       p: MachineTimerCtrl.Parameter,
       busType: HardType[T],
       factory: T => BusSlaveFactory
-  ) extends Component {
+  ) extends PeripheralsComponent {
     val io = new Bundle {
       val bus = slave(busType())
       val interrupt = out(Bool)
@@ -32,7 +34,10 @@ object MachineTimer {
     val mapper = MachineTimerCtrl.Mapper(factory(io.bus), ctrl.io, p)
 
     val clockSpeed = ClockDomain.current.frequency.getValue.toInt
-    def headerBareMetal(name: String, address: BigInt, size: BigInt) = {
+    override def getInterrupt = Some(io.interrupt)
+    override def sysconFeatures = Some(List(Feature.Mtimer))
+
+    override def headerBareMetal(name: String, address: BigInt, size: BigInt) = {
       val baseAddress = "%08x".format(address.toInt)
       val regSize = "%04x".format(size.toInt)
       var dt = s"""#define ${name.toUpperCase}_BASE\t\t0x${baseAddress}

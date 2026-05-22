@@ -14,6 +14,8 @@ import spinal.lib.bus.tilelink.{
   SlaveFactory => TileLinkSlaveFactory
 }
 import spinal.lib.bus.wishbone._
+import nafarr.Feature
+import nafarr.peripherals.PeripheralsComponent
 
 object I2cController {
   case class Cmd() extends Bundle {
@@ -33,7 +35,7 @@ object I2cController {
       p: I2cControllerCtrl.Parameter,
       busType: HardType[T],
       factory: T => BusSlaveFactory
-  ) extends Component {
+  ) extends PeripheralsComponent {
     val io = new Bundle {
       val bus = slave(busType())
       val i2c = master(I2c.Io(p.io))
@@ -47,44 +49,14 @@ object I2cController {
     val mapper = I2cControllerCtrl.Mapper(factory(io.bus), i2cControllerCtrl.io, p)
 
     val clockSpeed = ClockDomain.current.frequency.getValue.toInt
-    def deviceTreeZephyr(
-        name: String,
-        address: BigInt,
-        size: BigInt,
-        irqNumber: Option[Int] = null
-    ) = {
-      val baseAddress = "%x".format(address.toInt)
-      val regSize = "%04x".format(size.toInt)
-      var dt = s"""
-\t\t$name: $name@$baseAddress {
-\t\t\tcompatible = "elements,i2c";
-\t\t\treg = <0x$baseAddress 0x$regSize>;
-\t\t\tstatus = "okay";"""
-      if (irqNumber.isDefined) {
-        dt += s"""
-\t\t\tinterrupt-parent = <&plic>;
-\t\t\tinterrupts = <${irqNumber.get} 1>;"""
-      }
-      dt += s"""
-\t\t\tinput-frequency = <$clockSpeed>;
-\t\t\tclock-frequency = <100000>;
-\t\t};"""
-      dt
-    }
-    def headerBareMetal(
-        name: String,
-        address: BigInt,
-        size: BigInt,
-        irqNumber: Option[Int] = null
-    ) = {
+    override def getInterrupt = Some(io.interrupt)
+    override def sysconFeatures = Some(List(Feature.I2c))
+
+    override def headerBareMetal(name: String, address: BigInt, size: BigInt) = {
       val baseAddress = "%08x".format(address.toInt)
-      val regSize = "%04x".format(size.toInt)
-      var dt = s"""#define ${name.toUpperCase}_BASE\t\t0x${baseAddress}
+      s"""#define ${name.toUpperCase}_BASE\t\t0x${baseAddress}
 #define ${name.toUpperCase}_FREQ\t\t${clockSpeed}
 """
-      if (irqNumber.isDefined)
-        dt += s"""#define ${name.toUpperCase}_IRQ\t\t${irqNumber.get}\n"""
-      dt
     }
   }
 }

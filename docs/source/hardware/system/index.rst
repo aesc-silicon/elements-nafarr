@@ -8,3 +8,4 @@ The following list offers an overview of all available system IP cores.
 
    clock.rst
    reset.rst
+   semaphore.rst

@@ -26,6 +26,21 @@ io.interrupt := ctrl.io.interrupt
 io.error := ctrl.io.error
 ```
 
+## Scala `if` After `:=`
+
+A Scala `if` expression used directly as the RHS of a SpinalHDL `:=` must be
+wrapped in parentheses, otherwise the parser rejects it.
+
+**Wrong:**
+```scala
+d.data := if (cond) a else b
+```
+
+**Correct:**
+```scala
+d.data := (if (cond) a else b)
+```
+
 ## Creating or Updating IP Cores
 
 When creating a new IP core, adding a peripheral, or modifying an existing IP, use the

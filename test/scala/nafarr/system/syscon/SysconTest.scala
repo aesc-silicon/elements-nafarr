@@ -86,8 +86,8 @@ class SysconTest extends AnyFunSuite {
     SimConfig.withWave.compile(Apb3Syscon(p))
       .doSim("SiliconRevision") { dut =>
         val (driver, regs) = init(dut)
-        SimTest.read(driver, regs.siliconMajor, 2, "siliconMajor=2")
-        SimTest.read(driver, regs.siliconMinor, 5, "siliconMinor=5")
+        SimTest.readField(driver, regs.siliconRev, 31, 16, 2, "siliconMajor=2")
+        SimTest.readField(driver, regs.siliconRev, 15, 0, 5, "siliconMinor=5")
       }
   }
 
@@ -100,7 +100,8 @@ class SysconTest extends AnyFunSuite {
     SimConfig.withWave.compile(Apb3Syscon(p))
       .doSim("FeaturesRegister") { dut =>
         val (driver, regs) = init(dut)
-        SimTest.read(driver, regs.features, expectedMask, "features bitmask")
+        SimTest.readField(driver, regs.featureInfo, 7, 0, regs.featureRegCount, "featureRegCount")
+        SimTest.read(driver, regs.features(0), expectedMask, "features bitmask")
       }
   }
 
@@ -108,7 +109,8 @@ class SysconTest extends AnyFunSuite {
     SimConfig.withWave.compile(Apb3Syscon(baseParam))
       .doSim("FeaturesEmpty") { dut =>
         val (driver, regs) = init(dut)
-        SimTest.read(driver, regs.features, 0, "no features")
+        SimTest.readField(driver, regs.featureInfo, 7, 0, regs.featureRegCount, "featureRegCount")
+        SimTest.read(driver, regs.features(0), 0, "no features")
       }
   }
 

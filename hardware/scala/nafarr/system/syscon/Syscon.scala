@@ -41,11 +41,12 @@ object Syscon {
   }
   class Regs(base: BigInt) {
     val identity = base + 0x00
-    val siliconMajor = base + 0x04
-    val siliconMinor = base + 0x08
-    val features = base + 0x0c
-    val refClock = base + 0x10
-    val buildDate = base + 0x14
+    val siliconRev = base + 0x04
+    val buildDate = base + 0x08
+    val refClock = base + 0x0c
+    val featureRegCount = (Feature.elements.size + 31) / 32
+    val featureInfo = base + 0x10
+    def features(idx: Int) = base + 0x14 + (idx * 4)
   }
 
   /** All registers are read-only constants derived from compile-time Parameters.
@@ -57,8 +58,11 @@ object Syscon {
     *   [15:8]  = platform       (Platform enum ordinal)
     *   [7:0]   = vendor         (Vendor enum ordinal)
     *
-    * features register: bit N is set when Feature element with ordinal N is present
-    * in p.features. Populated automatically by the SoC builder via sysconFeatures
+    * features registers: one 32-bit register per group of 32 Feature ordinals.
+    * features(0) covers ordinals 0-31, features(1) covers 32-63, etc.
+    * Bit N in features(i) is set when ordinal (i*32 + N) is present in p.features.
+    * Register count is derived from the Feature enum size.
+    * Populated automatically by the SoC builder via sysconFeatures
     * on each IP's Core class.
     */
   case class Mapper(busCtrl: BusSlaveFactory, p: Parameter) extends Area {
@@ -75,16 +79,22 @@ object Syscon {
       regs.identity
     )
 
-    busCtrl.read(B(p.siliconMajor, 32 bits), regs.siliconMajor)
-    busCtrl.read(B(p.siliconMinor, 32 bits), regs.siliconMinor)
+    busCtrl.read(B(p.siliconMajor, 16 bits) ## B(p.siliconMinor, 16 bits), regs.siliconRev)
 
-    // features: bit N set for each Feature element whose ordinal is N
-    var featureMask: BigInt = 0
-    p.features.foreach { f => featureMask |= BigInt(1) << f.position }
-    busCtrl.read(B(featureMask, 32 bits), regs.features)
+    busCtrl.read(B(p.buildDate, 32 bits), regs.buildDate)
 
     busCtrl.read(B(p.refClockHz, 32 bits), regs.refClock)
-    busCtrl.read(B(p.buildDate, 32 bits), regs.buildDate)
+
+    busCtrl.read(B(0, 24 bits) ## B(regs.featureRegCount, 8 bits), regs.featureInfo)
+
+    // features: bit N in register i set for Feature with ordinal (i*32 + N)
+    var featureMask: BigInt = 0
+    p.features.foreach { f => featureMask |= BigInt(1) << f.position }
+    for (i <- 0 until regs.featureRegCount) {
+      val regBits = (featureMask >> (i * 32)) & ((BigInt(1) << 32) - 1)
+      busCtrl.read(B(regBits, 32 bits), regs.features(i))
+    }
+
   }
 
   class Core[T <: spinal.core.Data with IMasterSlave](

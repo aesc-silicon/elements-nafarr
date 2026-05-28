@@ -14,6 +14,17 @@ import nafarr.blackboxes.ihp.sg13g2._
 object AesMaskedAcceleratorCtrl {
   def apply(p: Parameter = Parameter.default) = AesMaskedAcceleratorCtrl(p)
 
+  object Regs {
+    def apply(base: BigInt) = new Regs(base)
+  }
+  class Regs(base: BigInt) {
+    val control = base + 0x00
+    val key = base + 0x04
+    val plaintext = base + 0x08
+    val ciphertext = base + 0x0c
+    val masking = base + 0x10
+  }
+
   case class Parameter(textLength: Int = 128, maskingDepth: Int = 280) {
     val keyDepth = textLength / 32
     val plaintextDepth = textLength / 32
@@ -71,7 +82,9 @@ object AesMaskedAcceleratorCtrl {
 
     val key = StreamFifo(Bits(32 bits), p.keyDepth * 2)
     val plaintext = StreamFifo(Bits(32 bits), p.ciphertextDepth * 2)
-    val ciphertext = Stream(Bits(32 bits))
+    val ct1 = Stream(Bits(32 bits))
+    val ct2 = Stream(Bits(32 bits))
+    val ciphertext = StreamArbiterFactory.lowerFirst.on(Seq(ct1, ct2))
 
     val enabled = Reg(Bool).init(False)
     val done = Reg(Bool).init(False)
@@ -85,8 +98,6 @@ object AesMaskedAcceleratorCtrl {
     aes.io.key1_valid := False
     aes.io.key2_payload := B(0)
     aes.io.key2_valid := False
-    aes.io.ct1_ready := False
-    aes.io.ct2_ready := False
 
     key.io.push << io.key
     plaintext.io.push << io.plaintext
@@ -120,7 +131,11 @@ object AesMaskedAcceleratorCtrl {
     }
 
     when(enabled & (!key.io.pop.valid) & (!plaintext.io.pop.valid)) {
-      mCounter := mCounter + 1
+      when(mCounter < U(p.maskingDepth - 1)) {
+        mCounter := mCounter + 1
+      } otherwise {
+        mCounter := 0
+      }
     }
 
     when(plaintext.io.occupancy <= U(4)) {
@@ -143,15 +158,12 @@ object AesMaskedAcceleratorCtrl {
       key.io.pop.ready := aes.io.key1_ready
     }
 
-    when(aes.io.ct1_valid) {
-      ciphertext.payload := aes.io.ct1_payload
-      ciphertext.valid := aes.io.ct1_valid
-      aes.io.ct1_ready := ciphertext.ready
-    } otherwise {
-      ciphertext.payload := aes.io.ct2_payload
-      ciphertext.valid := aes.io.ct2_valid
-      aes.io.ct2_ready := ciphertext.ready
-    }
+    ct1.payload := aes.io.ct1_payload
+    ct1.valid := aes.io.ct1_valid
+    aes.io.ct1_ready := ct1.ready
+    ct2.payload := aes.io.ct2_payload
+    ct2.valid := aes.io.ct2_valid
+    aes.io.ct2_ready := ct2.ready
 
     aes.io.enable := enabled
     when(io.enable) {
@@ -171,20 +183,19 @@ object AesMaskedAcceleratorCtrl {
   ) extends Area {
     val idCtrl = IpIdentification(IpIdentification.Ids.AesMaskedAccelerator, 1, 0, 0)
     idCtrl.driveFrom(busCtrl)
-    val staticOffset = idCtrl.length
-    val regOffset = staticOffset + 0x0
+    val regs = Regs(idCtrl.length)
 
-    busCtrl.read(ctrl.done, address = regOffset + 0x0)
-    ctrl.enable := busCtrl.isWriting(regOffset + 0x0)
+    busCtrl.read(ctrl.done, address = regs.control)
+    ctrl.enable := busCtrl.isWriting(regs.control)
 
-    ctrl.key << busCtrl.createAndDriveFlow(Bits(32 bits), address = regOffset + 0x4).toStream
-    ctrl.plaintext << busCtrl.createAndDriveFlow(Bits(32 bits), address = regOffset + 0x8).toStream
+    ctrl.key << busCtrl.createAndDriveFlow(Bits(32 bits), address = regs.key).toStream
+    ctrl.plaintext << busCtrl.createAndDriveFlow(Bits(32 bits), address = regs.plaintext).toStream
 
     val (stream, fifoOccupancy) = ctrl.ciphertext.queueWithOccupancy(p.ciphertextDepth * 2)
-    busCtrl.read(stream.payload, address = regOffset + 0xc)
-    stream.ready := busCtrl.isReading(regOffset + 0xc)
-    busCtrl.read(fifoOccupancy, address = regOffset + 0x00, bitOffset = 24)
+    busCtrl.read(stream.payload, address = regs.ciphertext)
+    stream.ready := busCtrl.isReading(regs.ciphertext)
+    busCtrl.read(fifoOccupancy, address = regs.control, bitOffset = 24)
 
-    ctrl.masking << busCtrl.createAndDriveFlow(Bits(28 bits), address = regOffset + 0x10).toStream
+    ctrl.masking << busCtrl.createAndDriveFlow(Bits(28 bits), address = regs.masking).toStream
   }
 }

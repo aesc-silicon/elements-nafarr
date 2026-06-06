@@ -465,7 +465,7 @@ class ResetControllerTest extends AnyFunSuite {
     compiled.doSim("delay") { dut =>
       val (apb, regs) = init(dut)
 
-      for (_ <- 0 until 8 - 1 - 2) {
+      for (_ <- 0 until 8 - 1 - 1) {
         dut.clockDomain.waitFallingEdge()
         SimTest.checkPins(dut.io.resets.toBigInt, BigInt("0", 16), "Found non-active reset")
       }

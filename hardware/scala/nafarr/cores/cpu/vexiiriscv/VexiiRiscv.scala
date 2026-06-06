@@ -17,16 +17,29 @@ case class VexiiRiscvCoreParameter(
 )
 
 object VexiiRiscvCoreParameter {
-  def realtime(resetAddress: BigInt): VexiiRiscvCoreParameter = {
+  def realtime(
+      resetAddress: BigInt,
+      iCacheSets: Int = 0,
+      withMul: Boolean = false,
+      withCompressed: Boolean = false
+  ): VexiiRiscvCoreParameter = {
     val param = new ParamSimple()
 
     param.xlen = 32
     param.resetVector = resetAddress.toLong
 
-    // RV32I: base integer only, no compressed instructions
+    // Optional ISA extensions (base is RV32I)
+    if (withMul) param.addISA("m")
+    if (withCompressed) param.addISA("c")
 
-    // No caches: deterministic memory access latency
-    param.fetchL1Enable = false
+    // Instruction cache: 1-way, disabled when iCacheSets = 0
+    param.fetchL1Enable = iCacheSets > 0
+    if (iCacheSets > 0) {
+      param.fetchL1Sets = iCacheSets
+      param.fetchL1Ways = 1
+    }
+
+    // No data cache: deterministic data access latency
     param.lsuL1Enable = false
 
     // No branch prediction: fully deterministic fetch
@@ -55,9 +68,11 @@ object VexiiRiscvCoreParameter {
     val plugins = param.plugins()
     ParamSimple.setPma(plugins)
 
-    // TileLink params: TL-UL (sizeBytes=4), sourceWidth=1 for pendingMax=2
-    val iBusTlParam = TileLinkParameter.simple(32, 32, 4, 1)
-    val dBusTlParam = TileLinkParameter.simple(32, 32, 4, 1)
+    // TileLink params: sizeBytes must match across iBus/dBus for the shared
+    // decoder in the platform. Cache line size (64 B) when enabled, else 4 B.
+    val sizeBytes = if (iCacheSets > 0) 64 else 4
+    val iBusTlParam = TileLinkParameter.simple(32, 32, sizeBytes, 1)
+    val dBusTlParam = TileLinkParameter.simple(32, 32, sizeBytes, 1)
 
     VexiiRiscvCoreParameter(plugins, iBusTlParam, dBusTlParam)
   }

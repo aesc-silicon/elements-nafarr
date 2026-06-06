@@ -12,7 +12,7 @@ import spinal.lib.com.jtag.Jtag
 import spinal.lib.misc.plugin.Hostable
 
 import vexiiriscv.VexiiRiscv
-import vexiiriscv.fetch.FetchCachelessPlugin
+import vexiiriscv.fetch.{FetchCachelessPlugin, FetchL1Plugin}
 import vexiiriscv.execute.lsu.LsuCachelessPlugin
 import vexiiriscv.misc.{EmbeddedRiscvJtag, PrivilegedPlugin}
 
@@ -59,7 +59,10 @@ class TileLinkVexiiRiscv(
   val jtag = Jtag()
   val ndmreset = Bool()
 
-  private val fetchPlugin = parameter.plugins.collectFirst { case p: FetchCachelessPlugin => p }.get
+  private val fetchCachelessPlugin = parameter.plugins.collectFirst {
+    case p: FetchCachelessPlugin => p
+  }
+  private val fetchL1Plugin = parameter.plugins.collectFirst { case p: FetchL1Plugin => p }
   private val lsuPlugin = parameter.plugins.collectFirst { case p: LsuCachelessPlugin => p }.get
   private val privPlugin = parameter.plugins.collectFirst { case p: PrivilegedPlugin => p }.get
   private val jtagPlugin = parameter.plugins.collectFirst { case p: EmbeddedRiscvJtag => p }.get
@@ -87,32 +90,54 @@ class TileLinkVexiiRiscv(
     jtag <> jtagPlugin.logic.jtag
 
     // -----------------------------------------------------------------------
-    // Bridge CachelessBus → TileLink (read-only instruction fetch)
+    // Bridge instruction fetch → TileLink
     //
-    // CachelessBus.cmd: { valid, ready, id, address }
-    // CachelessBus.rsp: Flow { id, word, error }      (no backpressure)
-    //
-    // The transaction id is carried through a.source so the CPU can match
-    // out-of-order responses.  The fetch unit always requests exactly one
-    // word, so a.size is fixed at dataBytesLog2Up.
+    // Two variants are supported:
+    //   - Cacheless: single-word GET, Flow response (no backpressure)
+    //   - L1 cache:  cache-line GET (64 B), Stream response (multiple beats)
     // -----------------------------------------------------------------------
-    val iBusNative = fetchPlugin.logic.bus
-    iBus.a.valid := iBusNative.cmd.valid
-    iBus.a.opcode := Opcode.A.GET()
-    iBus.a.param := 0
-    iBus.a.size := parameter.iBusParam.dataBytesLog2Up
-    iBus.a.source := iBusNative.cmd.id.resized
-    iBus.a.address := iBusNative.cmd.address.resized
-    iBus.a.mask := B(parameter.iBusParam.dataBytes bits, default -> true)
-    iBus.a.data := 0
-    iBus.a.corrupt := False
-    iBusNative.cmd.ready := iBus.a.ready
+    (fetchCachelessPlugin, fetchL1Plugin) match {
+      case (Some(plugin), None) =>
+        val iBusNative = plugin.logic.bus
+        iBus.a.valid := iBusNative.cmd.valid
+        iBus.a.opcode := Opcode.A.GET()
+        iBus.a.param := 0
+        iBus.a.size := parameter.iBusParam.dataBytesLog2Up
+        iBus.a.source := iBusNative.cmd.id.resized
+        iBus.a.address := iBusNative.cmd.address.resized
+        iBus.a.mask := B(parameter.iBusParam.dataBytes bits, default -> true)
+        iBus.a.data := 0
+        iBus.a.corrupt := False
+        iBusNative.cmd.ready := iBus.a.ready
 
-    iBusNative.rsp.valid := iBus.d.valid
-    iBusNative.rsp.word := iBus.d.data
-    iBusNative.rsp.error := iBus.d.denied
-    iBusNative.rsp.id := iBus.d.source.resized
-    iBus.d.ready := True
+        iBusNative.rsp.valid := iBus.d.valid
+        iBusNative.rsp.word := iBus.d.data
+        iBusNative.rsp.error := iBus.d.denied
+        iBusNative.rsp.id := iBus.d.source.resized
+        iBus.d.ready := True
+
+      case (None, Some(plugin)) =>
+        val iBusNative = plugin.logic.bus
+        iBus.a.valid := iBusNative.cmd.valid
+        iBus.a.opcode := Opcode.A.GET()
+        iBus.a.param := 0
+        iBus.a.size := log2Up(iBusNative.p.lineSize)
+        iBus.a.source := iBusNative.cmd.id.resized
+        iBus.a.address := iBusNative.cmd.address.resized
+        iBus.a.mask := B(parameter.iBusParam.dataBytes bits, default -> true)
+        iBus.a.data := 0
+        iBus.a.corrupt := False
+        iBusNative.cmd.ready := iBus.a.ready
+
+        iBusNative.rsp.valid := iBus.d.valid
+        iBusNative.rsp.data := iBus.d.data
+        iBusNative.rsp.error := iBus.d.denied || iBus.d.corrupt
+        iBusNative.rsp.id := iBus.d.source.resized
+        iBus.d.ready := iBusNative.rsp.ready
+
+      case _ =>
+        SpinalError("VexiiRiscv must have exactly one of FetchCachelessPlugin or FetchL1Plugin")
+    }
 
     // -----------------------------------------------------------------------
     // Bridge LsuCachelessBus → TileLink (read/write data bus)

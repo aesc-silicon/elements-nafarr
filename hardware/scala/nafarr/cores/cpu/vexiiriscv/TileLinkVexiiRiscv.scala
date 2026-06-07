@@ -62,8 +62,21 @@ class TileLinkVexiiRiscv(
   private val fetchCachelessPlugin = parameter.plugins.collectFirst {
     case p: FetchCachelessPlugin => p
   }
-  private val fetchL1Plugin = parameter.plugins.collectFirst { case p: FetchL1Plugin => p }
+  val fetchL1Plugin = parameter.plugins.collectFirst { case p: FetchL1Plugin => p }
   private val lsuPlugin = parameter.plugins.collectFirst { case p: LsuCachelessPlugin => p }.get
+
+  /** I-cache bank RAMs, available after generateVerilog (post-blackboxing).
+    * Searches the VexiiRiscv component tree for blackboxed Mem components
+    * matching the cache bank memories by name.
+    */
+  def iCacheRams: Seq[Component] = {
+    val memNames = fetchL1Plugin.map(_.logic.banks.map(_.mem.getName())).getOrElse(Nil).toSet
+    val result = scala.collection.mutable.ArrayBuffer[Component]()
+    fiber.vexii.walkComponents { c =>
+      if (memNames.contains(c.getName())) result += c
+    }
+    result.toSeq
+  }
   private val privPlugin = parameter.plugins.collectFirst { case p: PrivilegedPlugin => p }.get
   private val jtagPlugin = parameter.plugins.collectFirst { case p: EmbeddedRiscvJtag => p }.get
 
@@ -75,7 +88,7 @@ class TileLinkVexiiRiscv(
   // thread holds the SpinalHDL elaboration lock while plugin threads need it
   // to create signals.
   val fiber = Fiber setup new Area {
-    systemCd {
+    val vexii = systemCd {
       VexiiRiscv(parameter.plugins)
     }
     Fiber.awaitBuild()

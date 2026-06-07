@@ -21,7 +21,8 @@ object VexiiRiscvCoreParameter {
       resetAddress: BigInt,
       iCacheSets: Int = 0,
       withMul: Boolean = false,
-      withCompressed: Boolean = false
+      withCompressed: Boolean = false,
+      withBarrelShifter: Boolean = false
   ): VexiiRiscvCoreParameter = {
     val param = new ParamSimple()
 
@@ -57,8 +58,9 @@ object VexiiRiscvCoreParameter {
     // Async register file: shallower pipeline, smaller area
     param.regFileSync = false
 
-    // Iterative shifter: saves area at cost of multi-cycle shifts
-    param.withIterativeShift = true
+    // Barrel shifter: single-cycle shifts, more area
+    // Iterative shifter: multi-cycle shifts, less area
+    param.withIterativeShift = !withBarrelShifter
 
     // Relaxed branch/shift: better timing closure, still fully deterministic
     param.relaxedBranch = true

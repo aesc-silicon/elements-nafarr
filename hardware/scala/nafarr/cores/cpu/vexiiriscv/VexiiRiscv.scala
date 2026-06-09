@@ -19,7 +19,7 @@ case class VexiiRiscvCoreParameter(
 object VexiiRiscvCoreParameter {
   def realtime(
       resetAddress: BigInt,
-      iCacheSets: Int = 0,
+      iCacheSize: BigInt = 0,
       withMul: Boolean = false,
       withCompressed: Boolean = false,
       withBarrelShifter: Boolean = false
@@ -33,10 +33,12 @@ object VexiiRiscvCoreParameter {
     if (withMul) param.addISA("m")
     if (withCompressed) param.addISA("c")
 
-    // Instruction cache: 1-way, disabled when iCacheSets = 0
-    param.fetchL1Enable = iCacheSets > 0
-    if (iCacheSets > 0) {
-      param.fetchL1Sets = iCacheSets
+    // Instruction cache: 1-way with 64 B lines, disabled when iCacheSize = 0
+    val lineSize = 64
+    param.fetchL1Enable = iCacheSize > 0
+    if (iCacheSize > 0) {
+      require(iCacheSize % lineSize == 0, s"iCacheSize must be a multiple of $lineSize")
+      param.fetchL1Sets = (iCacheSize / lineSize).toInt
       param.fetchL1Ways = 1
     }
 
@@ -72,7 +74,7 @@ object VexiiRiscvCoreParameter {
 
     // TileLink params: sizeBytes must match across iBus/dBus for the shared
     // decoder in the platform. Cache line size (64 B) when enabled, else 4 B.
-    val sizeBytes = if (iCacheSets > 0) 64 else 4
+    val sizeBytes = if (iCacheSize > 0) 64 else 4
     val iBusTlParam = TileLinkParameter.simple(32, 32, sizeBytes, 1)
     val dBusTlParam = TileLinkParameter.simple(32, 32, sizeBytes, 1)
 

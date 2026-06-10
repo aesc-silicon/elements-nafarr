@@ -7,7 +7,10 @@ package nafarr.blackboxes.ihp.common
 import spinal.core._
 
 object PowerIoCellType extends Enumeration {
-  val iovss, iovdd, vss, vdd = Value
+  val iovss = Value("IO Ground")
+  val iovdd = Value("IO Power 3.3V")
+  val vss = Value("Ground")
+  val vdd = Value("Power 1.2V")
 }
 
 case class PowerIoCell(name: String, cellType: PowerIoCellType.Value)
@@ -38,7 +41,7 @@ object IhpPowerIo {
   def apply(edge: Edge.Value, number: Int, cell: PowerIoCell) =
     new IhpPowerIo(edge, number, cell)
 
-  class IhpPowerIo(val edge: Edge.Value, val number: Int, cell: PowerIoCell) extends BlackBox {
+  class IhpPowerIo(val edge: Edge.Value, val number: Int, val cell: PowerIoCell) extends BlackBox {
     setDefinitionName(cell.name)
     addAttribute("keep")
     setName(cell.name + "_inst" + this.getName())

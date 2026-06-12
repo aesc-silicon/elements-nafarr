@@ -45,19 +45,21 @@ case class ClockDividerController(
 }
 
 class ClockControllerTest extends AnyFunSuite {
+  val inputClock = ClockParameter("input", 100 MHz)
+
   test("Apb3GpioParameters") {
     generationShouldPass(Apb3ClockController(ClockControllerCtrl.Parameter(List(
       ClockParameter("a", 100 MHz),
       ClockParameter("b", 50 MHz, synchronousWith="b"),
       ClockParameter("c", 25 MHz)
-    ))))
+    ), inputClock)))
     generationShouldFail(Apb3ClockController(ClockControllerCtrl.Parameter(List(
-    ))))
+    ), inputClock)))
     generationShouldFail(Apb3ClockController(ClockControllerCtrl.Parameter(List(
       ClockParameter("a", 100 MHz),
       ClockParameter("b", 50 MHz, synchronousWith="d"),
       ClockParameter("c", 25 MHz)
-    ))))
+    ), inputClock)))
   }
 
   test("TileLinkGpioParameters") {
@@ -65,14 +67,14 @@ class ClockControllerTest extends AnyFunSuite {
       ClockParameter("a", 100 MHz),
       ClockParameter("b", 50 MHz, synchronousWith="b"),
       ClockParameter("c", 25 MHz)
-    ))))
+    ), inputClock)))
     generationShouldFail(TileLinkClockController(ClockControllerCtrl.Parameter(List(
-    ))))
+    ), inputClock)))
     generationShouldFail(TileLinkClockController(ClockControllerCtrl.Parameter(List(
       ClockParameter("a", 100 MHz),
       ClockParameter("b", 50 MHz, synchronousWith="d"),
       ClockParameter("c", 25 MHz)
-    ))))
+    ), inputClock)))
   }
 
   test("WishboneGpioParameters") {
@@ -80,14 +82,14 @@ class ClockControllerTest extends AnyFunSuite {
       ClockParameter("a", 100 MHz),
       ClockParameter("b", 50 MHz, synchronousWith="b"),
       ClockParameter("c", 25 MHz)
-    ))))
+    ), inputClock)))
     generationShouldFail(WishboneClockController(ClockControllerCtrl.Parameter(List(
-    ))))
+    ), inputClock)))
     generationShouldFail(WishboneClockController(ClockControllerCtrl.Parameter(List(
       ClockParameter("a", 100 MHz),
       ClockParameter("b", 50 MHz, synchronousWith="d"),
       ClockParameter("c", 25 MHz)
-    ))))
+    ), inputClock)))
   }
 
   private def initBase(bus: Apb3, cd: ClockDomain, idCtrlLength: BigInt): (Apb3Driver, ClockControllerCtrl.Regs) = {
@@ -125,7 +127,7 @@ class ClockControllerTest extends AnyFunSuite {
             ClockParameter("b", 50 MHz),
             ClockParameter("c", 25 MHz),
             ClockParameter("d", 12.5 MHz)
-          )),
+          ), ClockParameter("input", 100 MHz)),
           ClockParameter("input", 100 MHz),
           List("a", "b", "c", "d")
         )
@@ -138,13 +140,22 @@ class ClockControllerTest extends AnyFunSuite {
 
       /* Check IP identification */
       IpIdentificationTest.V0.checkApi(apb, IpIdentification.Ids.Clock)
-      IpIdentificationTest.V0.checkVersion(apb, 1, 0, 0)
+      IpIdentificationTest.V0.checkVersion(apb, 1, 1, 0)
 
       /* Read domains */
       SimTest.readField(apb, regs.domains, 7, 0, 4,  "Reset domains")
 
-      /* All domains are enabled */
-      SimTest.readField(apb, regs.enable, 7, 0, BigInt("f", 16),  "Domains enabled")
+      /* Per-domain CTRL: enabled (bit 31) and locked (bit 30) out of reset. */
+      for (index <- 0 until 4) {
+        SimTest.readField(apb, regs.control(index), 31, 30, 3, s"Domain $index ctrl")
+      }
+
+      /* Per-domain RATIO: mult (31:16) = 1, div (15:0) = 100 MHz / domain. */
+      val expectedDiv = List(1, 2, 4, 8)
+      for ((div, index) <- expectedDiv.zipWithIndex) {
+        SimTest.readField(apb, regs.ratio(index), 31, 16, 1, s"Domain $index mult")
+        SimTest.readField(apb, regs.ratio(index), 15, 0, div, s"Domain $index div")
+      }
     }
 
     compiled.doSim("clock output") { dut =>
@@ -234,7 +245,9 @@ class ClockControllerTest extends AnyFunSuite {
         SimTest.checkPins(dut.io.outputs.toBigInt, BigInt("0000", 2), "Found running clock")
       }
 
-      apb.write(regs.enable, BigInt("0101", 2))
+      /* Disable domains b and d via their CTRL enable bit; a and c stay on. */
+      apb.write(regs.control(1), 0)
+      apb.write(regs.control(3), 0)
       dut.io.mainReset #= true
 
       for (_ <- 0 until 4) {
@@ -298,5 +311,47 @@ class ClockControllerTest extends AnyFunSuite {
       dut.clockDomain.waitFallingEdge(10)
     }
 
+  }
+
+  test("ClockDividerController - non-gateable") {
+    val compiled = SimConfig.withWave.addSimulatorFlag("--x-initial 0").compile {
+      val cd = ClockDomain.current.copy(frequency = FixedFrequency(100 MHz))
+      val area = new ClockingArea(cd) {
+        val dut = ClockDividerController(
+          ClockControllerCtrl.Parameter(List(
+            ClockParameter("a", 100 MHz, gateable = false),
+            ClockParameter("b", 50 MHz)
+          ), ClockParameter("input", 100 MHz)),
+          ClockParameter("input", 100 MHz),
+          List("a", "b")
+        )
+      }
+      area.dut
+    }
+
+    compiled.doSim("non-gateable ignores disable") { dut =>
+      val (apb, regs) = init(dut)
+
+      /* Attempt to gate the non-gateable domain a and gate the normal domain b. */
+      apb.write(regs.control(0), 0)
+      apb.write(regs.control(1), 0)
+
+      /* a stays enabled in hardware, b is disabled. */
+      SimTest.readField(apb, regs.control(0), 31, 31, 1, "Domain a stays enabled")
+      SimTest.readField(apb, regs.control(1), 31, 31, 0, "Domain b disabled")
+
+      dut.io.mainReset #= true
+
+      for (_ <- 0 until 4) {
+        dut.clockDomain.waitRisingEdge()
+        sleep(1)
+        SimTest.checkPins(dut.io.outputs.toBigInt, BigInt("01", 2), "Domain a keeps running")
+        dut.clockDomain.waitFallingEdge()
+        sleep(1)
+        SimTest.checkPins(dut.io.outputs.toBigInt, BigInt("00", 2), "Domain a keeps running")
+      }
+
+      dut.clockDomain.waitFallingEdge(10)
+    }
   }
 }

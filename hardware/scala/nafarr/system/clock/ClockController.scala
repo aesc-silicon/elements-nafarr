@@ -24,7 +24,8 @@ case class ClockParameter(
     reset: String = "",
     resetConfig: ClockDomainConfig =
       ClockDomainConfig(resetKind = spinal.core.SYNC, resetActiveLevel = LOW),
-    synchronousWith: String = ""
+    synchronousWith: String = "",
+    gateable: Boolean = true
 )
 
 object ClockController {
@@ -39,13 +40,30 @@ object ClockController {
     }
     val busCtrl = factory(io.bus)
 
-    val idCtrl = IpIdentification(IpIdentification.Ids.Clock, 1, 0, 0)
+    val idCtrl = IpIdentification(IpIdentification.Ids.Clock, 1, 1, 0)
     idCtrl.driveFrom(busCtrl)
     val regs = ClockControllerCtrl.Regs(idCtrl.length)
 
     busCtrl.read(B(p.domains.length, 8 bits), regs.domains)
 
-    busCtrl.driveAndRead(io.config.enable, regs.enable).init(U((0 until p.domains.length) -> true))
+    for ((domain, index) <- p.domains.zipWithIndex) {
+      val domainArea = new Area {
+        val (mult, div) = p.ratioOf(domain)
+
+        /* CTRL: enable at bit 31 (only writable bit), lock status at bit 30. */
+        if (domain.gateable) {
+          busCtrl.driveAndRead(io.config.enable(index), regs.control(index), 31).init(True)
+        } else {
+          io.config.enable(index) := True
+          busCtrl.read(True, regs.control(index), 31)
+        }
+        busCtrl.read(True, regs.control(index), 30)
+
+        /* RATIO: rate = reference * MULT / DIV. */
+        busCtrl.read(B(div, 16 bits), regs.ratio(index), 0)
+        busCtrl.read(B(mult, 16 bits), regs.ratio(index), 16)
+      }.setName(s"domain_${domain.name}")
+    }
 
     override def sysconFeatures = Some(List(Feature.Clock))
 

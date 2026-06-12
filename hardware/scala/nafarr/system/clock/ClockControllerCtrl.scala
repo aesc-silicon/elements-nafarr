@@ -21,10 +21,12 @@ object ClockControllerCtrl {
 
   class Regs(base: BigInt) {
     val domains = base + 0x00
-    val enable = base + 0x04
+    /* Per-domain block, stride 8: CTRL (enable + status) then RATIO (mult/div). */
+    def control(index: Int) = base + 0x08 + index * 0x08
+    def ratio(index: Int) = base + 0x0c + index * 0x08
   }
 
-  case class Parameter(domains: List[ClockParameter]) {
+  case class Parameter(domains: List[ClockParameter], inputClock: ClockParameter) {
     require(domains.length > 0, "At least one domain is required")
     val domainNames = domains.map(_.name).toSet
     for (domain <- domains if domain.synchronousWith.nonEmpty)
@@ -32,6 +34,23 @@ object ClockControllerCtrl {
         domainNames.contains(domain.synchronousWith),
         s"Clock '${domain.name}': synchronousWith '${domain.synchronousWith}' is not a known domain name."
       )
+
+    /** Reduced (multiplier, divider) of a domain relative to the input/reference
+      * clock, so software recovers the rate as `reference * mult / div`. For a
+      * pure divider design mult is always 1; PLL controllers report mult > 1.
+      */
+    def ratioOf(domain: ClockParameter): (Int, Int) = {
+      val refHz = BigInt(inputClock.frequency.toLong)
+      val domHz = BigInt(domain.frequency.toLong)
+      val g = refHz.gcd(domHz)
+      val mult = domHz / g
+      val div = refHz / g
+      require(
+        mult <= 0xffff && div <= 0xffff,
+        s"Clock '${domain.name}': ratio $mult/$div does not fit in 16-bit register fields"
+      )
+      (mult.toInt, div.toInt)
+    }
 
     def getDomainByName(name: String): (Int, ClockParameter) = {
       val domain = domains.find(_.name.equals(name)).get
@@ -85,6 +104,10 @@ object ClockControllerCtrl {
       inputClock: ClockParameter,
       clocks: List[String]
   ) extends ClockControllerBase(parameter) {
+    require(
+      inputClock.frequency.toLong == parameter.inputClock.frequency.toLong,
+      s"ClockDividerController input clock ${inputClock.frequency} must match parameter.inputClock ${parameter.inputClock.frequency}"
+    )
     val inputHz = inputClock.frequency.toDouble
 
     val clockCtrlClockDomain = ClockDomain(
@@ -146,6 +169,10 @@ object ClockControllerCtrl {
       clocks: List[String],
       clockVco: HertzNumber = 400 MHz
   ) extends ClockControllerBase(parameter) {
+    require(
+      inputClock.frequency.toLong == parameter.inputClock.frequency.toLong,
+      s"LatticeECP5PllController input clock ${inputClock.frequency} must match parameter.inputClock ${parameter.inputClock.frequency}"
+    )
     val clockFrequency = inputClock.frequency
     val clockPair = (clockFrequency.toDouble / 1e6, clockVco.toDouble / 1e6)
 
@@ -198,6 +225,10 @@ object ClockControllerCtrl {
       clocks: List[String],
       multiply: Int
   ) extends ClockControllerBase(parameter) {
+    require(
+      inputClock.frequency.toLong == parameter.inputClock.frequency.toLong,
+      s"XilinxPllController input clock ${inputClock.frequency} must match parameter.inputClock ${parameter.inputClock.frequency}"
+    )
     val clockFrequency = inputClock.frequency
 
     val clockCtrlClockDomain = ClockDomain(

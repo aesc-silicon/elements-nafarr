@@ -25,7 +25,10 @@ case class ClockParameter(
     resetConfig: ClockDomainConfig =
       ClockDomainConfig(resetKind = spinal.core.SYNC, resetActiveLevel = LOW),
     synchronousWith: String = "",
-    gateable: Boolean = true
+    // Opt-in: when true, software can stop this domain via the clock controller.
+    // Left false for critical domains (e.g. system, debug) so the CPU/debug
+    // clock cannot be gated and brick the chip.
+    gateable: Boolean = false
 )
 
 object ClockController {

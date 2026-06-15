@@ -123,10 +123,10 @@ class ClockControllerTest extends AnyFunSuite {
       val area = new ClockingArea(cd) {
         val dut = ClockDividerController(
           ClockControllerCtrl.Parameter(List(
-            ClockParameter("a", 100 MHz),
-            ClockParameter("b", 50 MHz),
-            ClockParameter("c", 25 MHz),
-            ClockParameter("d", 12.5 MHz)
+            ClockParameter("a", 100 MHz, gateable = true),
+            ClockParameter("b", 50 MHz, gateable = true),
+            ClockParameter("c", 25 MHz, gateable = true),
+            ClockParameter("d", 12.5 MHz, gateable = true)
           ), ClockParameter("input", 100 MHz)),
           ClockParameter("input", 100 MHz),
           List("a", "b", "c", "d")
@@ -320,7 +320,7 @@ class ClockControllerTest extends AnyFunSuite {
         val dut = ClockDividerController(
           ClockControllerCtrl.Parameter(List(
             ClockParameter("a", 100 MHz, gateable = false),
-            ClockParameter("b", 50 MHz)
+            ClockParameter("b", 50 MHz, gateable = true)
           ), ClockParameter("input", 100 MHz)),
           ClockParameter("input", 100 MHz),
           List("a", "b")

@@ -4,7 +4,7 @@
 //
 // Renode model of the Nafarr PRNG (nafarr.crypto.prng.PrngCtrl), mirroring PrngCtrl.scala.
 // Register-accurate: the output is a software xorshift32 (seeded via the seed register) so
-// reads return a varying stream — it does NOT reproduce the RTL LFSR sequence (use co-sim for
+// reads return a varying stream - it does NOT reproduce the RTL LFSR sequence (use co-sim for
 // that). The error path feeds the ESM in hardware; here it is just register state.
 //
 // Register map (offsets from base; Regs base = IpIdentification.length = 8):

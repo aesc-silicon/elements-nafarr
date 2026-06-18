@@ -15,7 +15,7 @@ Features
 * Per-channel clock divider for independent frequency scaling
 * Two alignment modes per channel: edge-aligned (asymmetric) and center-aligned (symmetric)
 * Waveform defined by ``risingEdge`` and ``fallingEdge`` thresholds for flexible duty cycle
-* Shadow-buffered waveform registers — updates take effect glitch-free at the next period boundary
+* Shadow-buffered waveform registers - updates take effect glitch-free at the next period boundary
 * Complementary output with programmable dead-time blanking (shoot-through protection)
 * Phase offset: counters start at a configurable offset on enable or ``syncIn``
 * N-shot mode: run a precise number of complete periods then freeze
@@ -79,10 +79,10 @@ The counter counts **down** from ``period`` to 0 and then reloads:
 
 .. code-block:: text
 
-   period ─┐           ┌─ period
-           │           │
-           └───────────┘
-           ↑           ↑
+   period -+           +- period
+           |           |
+           +-----------+
+           ^           ^
         syncOut      syncOut   (pulses at counter wrap = 0)
 
 The ``syncOut`` pulse is emitted when the counter wraps to ``period``. This mode produces
@@ -97,11 +97,11 @@ The counter counts **up** from 0 to ``period``, then back down to 0 (triangular)
 .. code-block:: text
 
         syncOut
-          ↓
+          v
    period /\
          /  \
         /    \
-   0 ──/      \──
+   0 --/      \--
 
 The ``syncOut`` pulse is emitted when the counter reaches ``period`` (the peak). This mode
 produces a symmetric (center-aligned) waveform and is commonly used in motor drives.
@@ -128,9 +128,9 @@ H-bridge topologies (shoot-through):
 
 .. code-block:: text
 
-   output     ───┐  ···  ┌─────
-   compOutput ───┘  ···  └─────
-                  ← dt →
+   output     ---+  ***  +-----
+   compOutput ---+  ***  +-----
+                  <- dt ->
 
 Dead-time is applied symmetrically on both the rising and falling edges of ``output``.
 Setting ``deadTime = 0`` disables dead-time insertion.

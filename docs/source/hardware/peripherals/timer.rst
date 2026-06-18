@@ -8,15 +8,15 @@ generation, and compare-match events. Multiple independent timer instances can
 be instantiated in a single IP block, each with its own prescaler, counter, and
 compare channels.
 
-All timer logic is bus-driven. There are no external IO signals — the IP is
+All timer logic is bus-driven. There are no external IO signals - the IP is
 purely internal.
 
 Features
 ********
 
-* Configurable number of independent timer instances (``count``, 1–16)
-* Configurable compare channels per timer (``channelCount``, 1–8)
-* Configurable counter width (``width``, 1–32 bits)
+* Configurable number of independent timer instances (``count``, 1-16)
+* Configurable compare channels per timer (``channelCount``, 1-8)
+* Configurable counter width (``width``, 1-32 bits)
 * Optional clock prescaler per timer (``prescalerWidth``, 0 = no prescaler)
 * Three operating modes: free-run, periodic (auto-reload), one-shot
 * Counter preload: software can write the counter register while stopped
@@ -53,13 +53,13 @@ Parameters
      - Description
    * - ``count``
      - ``1``
-     - Number of independent timer instances (1–16)
+     - Number of independent timer instances (1-16)
    * - ``channelCount``
      - ``1``
-     - Compare channels per timer instance (1–8)
+     - Compare channels per timer instance (1-8)
    * - ``width``
      - ``32``
-     - Counter and compare register width in bits (1–32)
+     - Counter and compare register width in bits (1-32)
    * - ``prescalerWidth``
      - ``16``
      - Prescaler counter width in bits. 0 disables the prescaler (counter ticks every clock cycle).
@@ -85,27 +85,27 @@ Register Map
      - Compile-time parameters (read-only, see below)
    * - 0x00C
      - ``irq_pending``
-     - Interrupt pending bits — sticky W1C, one bit per source
+     - Interrupt pending bits - sticky W1C, one bit per source
    * - 0x010
      - ``irq_mask``
-     - Interrupt mask — 1 enables the corresponding source
-   * - 0x014 + t × stride
+     - Interrupt mask - 1 enables the corresponding source
+   * - 0x014 + t x stride
      - ``control[t]``
      - Per-timer control register (see below)
-   * - 0x018 + t × stride
+   * - 0x018 + t x stride
      - ``prescaler[t]``
      - Prescaler reload value. Counter decrements; tick fires when it reaches 0 and reloads.
-   * - 0x01C + t × stride
+   * - 0x01C + t x stride
      - ``counter[t]``
      - Current counter value (R/W; write preloads the counter while stopped)
-   * - 0x020 + t × stride
+   * - 0x020 + t x stride
      - ``reload[t]``
      - Auto-reload value used by periodic and one-shot modes
-   * - 0x024 + t × stride + ch × 4
+   * - 0x024 + t x stride + ch x 4
      - ``compare[t][ch]``
      - Compare value for channel ``ch``
 
-``stride = 0x10 + channelCount × 4``
+``stride = 0x10 + channelCount x 4``
 
 Info Register (0x008)
 =====================

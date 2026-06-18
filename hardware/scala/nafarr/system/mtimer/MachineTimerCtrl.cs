@@ -12,7 +12,7 @@
 //
 // Behavioral notes:
 //   * The counter is "locked" (frozen) after reset and only starts incrementing
-//     once the firmware writes a compare register — matching the RTL's lock/clear logic.
+//     once the firmware writes a compare register - matching the RTL's lock/clear logic.
 //   * The interrupt (MTIP) asserts when counter >= compare and is cleared by writing
 //     a compare register. Wire IRQ to the CPU machine-timer line, e.g. `-> cpu@7`.
 //

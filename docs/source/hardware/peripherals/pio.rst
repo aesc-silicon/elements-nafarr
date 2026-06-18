@@ -38,7 +38,7 @@ The state machine reads instructions from program memory and executes them in se
 
 4. **Toggle (TOGGLE)**
 
-   * Toggles the direction of the selected pin (output ↔ input).
+   * Toggles the direction of the selected pin (output <-> input).
    * Command value: 0x6
 
 5. **Wait (WAIT)**
@@ -65,7 +65,7 @@ The state machine reads instructions from program memory and executes them in se
    * The ``data`` field of a READ instruction is ignored.
    * Command value: 0xB
 
-**Multi-pin commands** use the ``data`` field as a bitmask — each bit corresponds to one IO pin:
+**Multi-pin commands** use the ``data`` field as a bitmask - each bit corresponds to one IO pin:
 
 9. **Signal High Set (HIGH_SET)**
 
@@ -164,7 +164,7 @@ Usage
 
 .. code-block:: c
 
-   // Program is running an endless LOOP — stopping with stopAtLoop:
+   // Program is running an endless LOOP - stopping with stopAtLoop:
    //   1. Set stopAtLoop (bit 1). The state machine completes the current
    //      iteration and advances past the LOOP instruction on the next pass.
    WRITE32(PIO_ENABLE, READ32(PIO_ENABLE) | 0x2);

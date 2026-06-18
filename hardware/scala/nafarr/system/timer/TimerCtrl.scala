@@ -78,7 +78,7 @@ object TimerCtrl {
     * Contains all counter and prescaler hardware. No bus logic.
     *
     * config       : per-timer enable, mode, reload, compare values (from Mapper registers).
-    * counterLoad  : preload strobe — loads counterIn into the counter on the next edge.
+    * counterLoad  : preload strobe - loads counterIn into the counter on the next edge.
     *               Hardware update has priority; preload only takes effect when stopped.
     * counterIn    : preload value written by software.
     * prescaler    : prescaler reload value (only present when prescalerWidth > 0).
@@ -89,9 +89,9 @@ object TimerCtrl {
     * status.enableClear  : pulses one cycle on completion of a one-shot run.
     *
     * Modes (mode[1:0]):
-    *   00 free-run  — counts 0 to maxVal, wraps to 0.
-    *   01 periodic  — counts 0 to reloadVal, resets to 0; repeats.
-    *   10 one-shot  — counts 0 to reloadVal, resets to 0, asserts enableClear.
+    *   00 free-run  - counts 0 to maxVal, wraps to 0.
+    *   01 periodic  - counts 0 to reloadVal, resets to 0; repeats.
+    *   10 one-shot  - counts 0 to reloadVal, resets to 0, asserts enableClear.
     */
   case class TimerCtrl(p: Parameter) extends Component {
     val io = Io(p)

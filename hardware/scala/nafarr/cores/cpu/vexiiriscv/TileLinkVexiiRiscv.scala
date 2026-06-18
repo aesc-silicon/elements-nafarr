@@ -31,11 +31,11 @@ object TileLinkVexiiRiscv {
   * clock domain must be supplied explicitly.
   *
   * Parent responsibilities:
-  *   iBus / dBus          — connect to the TileLink memory interconnect
-  *   mtimerInterrupt      — drive from the machine timer peripheral
-  *   globalInterrupt      — drive from the PLIC
-  *   jtag                 — connect to top-level IO (slave direction)
-  *   ndmreset             — register in debug clock domain and pass to the
+  *   iBus / dBus          - connect to the TileLink memory interconnect
+  *   mtimerInterrupt      - drive from the machine timer peripheral
+  *   globalInterrupt      - drive from the PLIC
+  *   jtag                 - connect to top-level IO (slave direction)
+  *   ndmreset             - register in debug clock domain and pass to the
   *                          system reset controller
   *
   * Bus parameters are kept in the Parameter case class so that platforms can
@@ -103,7 +103,7 @@ class TileLinkVexiiRiscv(
     jtag <> jtagPlugin.logic.jtag
 
     // -----------------------------------------------------------------------
-    // Bridge instruction fetch → TileLink
+    // Bridge instruction fetch -> TileLink
     //
     // Two variants are supported:
     //   - Cacheless: single-word GET, Flow response (no backpressure)
@@ -153,12 +153,12 @@ class TileLinkVexiiRiscv(
     }
 
     // -----------------------------------------------------------------------
-    // Bridge LsuCachelessBus → TileLink (read/write data bus)
+    // Bridge LsuCachelessBus -> TileLink (read/write data bus)
     //
-    // LsuCachelessBus.cmd: Stream { id, write, address, size, data, mask, … }
+    // LsuCachelessBus.cmd: Stream { id, write, address, size, data, mask, ... }
     // LsuCachelessBus.rsp: Flow   { id, data, error }   (no backpressure)
     //
-    // cmd.size is log2(bytes) — identical encoding to TileLink a.size, no
+    // cmd.size is log2(bytes) - identical encoding to TileLink a.size, no
     // conversion needed.  PUT_FULL_DATA is correct: AddressToMask always
     // produces a mask that is "full" for the given access size (the mask
     // equals the size-aligned byte enables), which is what PUT_FULL_DATA

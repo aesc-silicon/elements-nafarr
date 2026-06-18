@@ -20,26 +20,26 @@ import nafarr.memory.hyperbus.phy.HyperBusGenericPhy
   *
   * Exposes two TileLink slave ports and a raw PHY interface:
   *
-  *  dataBus — TL-UH burst-capable memory port.  Accepts GET (burst read) and
+  *  dataBus - TL-UH burst-capable memory port.  Accepts GET (burst read) and
   *             PUT_FULL_DATA (burst write) transactions.  The number of D-beats
   *             (for reads) or A-beats (for writes) is determined by a.size.
   *             A read-only cache (TileLinkCache) may be placed in front to
   *             accelerate repeated reads.
   *
-  *  cfgBus  — TL-UL configuration port.  Mapped to the HyperBusCtrl register
+  *  cfgBus  - TL-UL configuration port.  Mapped to the HyperBusCtrl register
   *             layout (reset pulse/halt timing, latency cycles, HyperBus
   *             register access FIFO).
   *
-  *  phy     — Raw PHY command/response interface.  Connect to
+  *  phy     - Raw PHY command/response interface.  Connect to
   *             HyperBusGenericPhy or a technology-specific PHY.  For FPGA use
   *             TileLinkHyperBusGenericPhyCluster, which includes the PHY.
   *
   * Protocol mapping
   * ----------------
-  * Read  (GET):          Single A-beat accepted in idle → N controller stream
-  *                       commands → N D-channel beats.
+  * Read  (GET):          Single A-beat accepted in idle -> N controller stream
+  *                       commands -> N D-channel beats.
   * Write (PUT_FULL_DATA): N A-beats paired one-for-one with N controller stream
-  *                       commands → N frontend ACKs drained → single ACCESS_ACK.
+  *                       commands -> N frontend ACKs drained -> single ACCESS_ACK.
   *
   * @param p            HyperBus controller parameter.
   * @param busConfig    TileLink parameter for the data bus (TL-UH).
@@ -68,7 +68,7 @@ case class TileLinkHyperBus(
   HyperBusCtrl.Mapper(cfgFactory, ctrl.io, p)
 
   // -------------------------------------------------------------------------
-  // Data bus — TileLink ↔ HyperBus.ControllerInterface bridge
+  // Data bus - TileLink <-> HyperBus.ControllerInterface bridge
   // -------------------------------------------------------------------------
   private val dataBytesLog2 = busConfig.dataBytesLog2Up
 
@@ -81,7 +81,7 @@ case class TileLinkHyperBus(
   val regSize = Reg(busConfig.size())
   val regAddr = Reg(UInt(busConfig.addressWidth bits))
 
-  // Word count for the current burst — combinatorial from regSize.
+  // Word count for the current burst - combinatorial from regSize.
   val regWords = (U(1, cntWidth + 1 bits) << (regSize - dataBytesLog2)).resize(cntWidth)
 
   // Beat counters.

@@ -59,23 +59,23 @@ object WatchdogCtrl {
     * raises a window-violation event instead.
     *
     * Each watchdog has four independently maskable interrupt sources (two when not windowed):
-    *   - inputs(0): timeout → interrupt
-    *   - inputs(1): timeout → error
-    *   - inputs(2): window violation → interrupt  (windowed only)
-    *   - inputs(3): window violation → error      (windowed only)
+    *   - inputs(0): timeout -> interrupt
+    *   - inputs(1): timeout -> error
+    *   - inputs(2): window violation -> interrupt  (windowed only)
+    *   - inputs(3): window violation -> error      (windowed only)
     *
     * All masked pending bits across all watchdogs are OR-ed into the single `interrupt` output.
     *
-    * io.enable          : in  — runtime enable per watchdog; rising edge reloads the counter.
-    * io.prescalerVal    : in  — divide-by-(n+1) prescaler value per watchdog.
-    * io.timeoutVal      : in  — counter reload value per watchdog.
-    * io.windowOpenVal   : in  — kick is valid when counter <= windowOpenVal (windowed mode).
-    * io.kick            : in  — pulse reloads the counter (or raises violation when windowed).
-    * io.timeoutEvent    : out — one-cycle pulse when the counter reaches zero.
-    * io.windowViolationEvent : out — one-cycle pulse on an early kick (windowed mode).
-    * io.inWindow        : out — high while counter <= windowOpenVal and watchdog is enabled.
-    * io.interrupt       : out — combined OR of all masked pending interrupt bits.
-    * io.pendingInterrupts : in — masked pending bits per watchdog, driven by Mapper.
+    * io.enable          : in  - runtime enable per watchdog; rising edge reloads the counter.
+    * io.prescalerVal    : in  - divide-by-(n+1) prescaler value per watchdog.
+    * io.timeoutVal      : in  - counter reload value per watchdog.
+    * io.windowOpenVal   : in  - kick is valid when counter <= windowOpenVal (windowed mode).
+    * io.kick            : in  - pulse reloads the counter (or raises violation when windowed).
+    * io.timeoutEvent    : out - one-cycle pulse when the counter reaches zero.
+    * io.windowViolationEvent : out - one-cycle pulse on an early kick (windowed mode).
+    * io.inWindow        : out - high while counter <= windowOpenVal and watchdog is enabled.
+    * io.interrupt       : out - combined OR of all masked pending interrupt bits.
+    * io.pendingInterrupts : in - masked pending bits per watchdog, driven by Mapper.
     */
   case class WatchdogCtrl(p: Parameter) extends Component {
     val io = new Bundle {

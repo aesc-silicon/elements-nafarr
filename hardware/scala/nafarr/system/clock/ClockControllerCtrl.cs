@@ -4,7 +4,7 @@
 //
 // Renode model of the Nafarr clock controller (nafarr.system.clock, register mapping in
 // ClockController.scala). Register-accurate: per-domain enable is RW, the running bit and the
-// mult/div ratio are read-only. NOTE: ratios default to 1/1 (placeholder) — the real per-domain
+// mult/div ratio are read-only. NOTE: ratios default to 1/1 (placeholder) - the real per-domain
 // mult/div come from the SoC's synthesis-time clock config; use co-sim for exact rates.
 //
 // Register map (offsets from base; Regs base = IpIdentification.length = 8):

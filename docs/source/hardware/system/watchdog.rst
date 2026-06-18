@@ -18,17 +18,17 @@ Features
 * Write-once lock bit: prevents disabling and configuration changes once armed
 * Self-disclosure register exposing all compile-time parameters
 * Per-watchdog interrupt controller with four independently maskable sources (two without windowed mode)
-* Single combined interrupt output — asserted when any enabled source fires
+* Single combined interrupt output - asserted when any enabled source fires
 
 Interrupt Architecture
 **********************
 
 Each watchdog has four interrupt sources (two when ``windowed = false``):
 
-- **Bit 0**: timeout → interrupt (recoverable notification)
-- **Bit 1**: timeout → error (non-recoverable; typically routed to reset controller)
-- **Bit 2**: window violation → interrupt (windowed mode only)
-- **Bit 3**: window violation → error (windowed mode only)
+- **Bit 0**: timeout -> interrupt (recoverable notification)
+- **Bit 1**: timeout -> error (non-recoverable; typically routed to reset controller)
+- **Bit 2**: window violation -> interrupt (windowed mode only)
+- **Bit 3**: window violation -> error (windowed mode only)
 
 Bits 0 and 1 share the same underlying timeout event; bits 2 and 3 share the window
 violation event. This allows the SoC integrator to route each event independently to the
@@ -135,7 +135,7 @@ Register Mapping
      - Description
    * - :rspan:`4` 0x008
      - 31 - 26
-     - —
+     - -
      - 0
      - Rx
      - Reserved.
@@ -170,7 +170,7 @@ Register Mapping
 One set per watchdog instance. Instance 0 starts at 0x00C; stride between instances
 is 0x20.
 
-.. flat-table:: Per-Watchdog Registers (base = 0x00C + instance × 0x20)
+.. flat-table:: Per-Watchdog Registers (base = 0x00C + instance x 0x20)
    :widths: 10 10 15 10 10 45
    :header-rows: 1
 
@@ -239,7 +239,7 @@ is 0x20.
      - Interrupt pending flags. Write ``1`` to clear a bit.
        Bit 0 = timeout interrupt, bit 1 = timeout error,
        bit 2 = violation interrupt, bit 3 = violation error
-       (bits 2–3 only when ``windowed = true``).
+       (bits 2-3 only when ``windowed = true``).
    * - base + 0x18
      - irqCount - 1 downto 0
      - irq_mask
@@ -248,9 +248,9 @@ is 0x20.
      - Interrupt enable mask. Set a bit to enable the corresponding source.
        Same bit layout as ``irq_pending``.
    * - base + 0x1C
-     - —
+     - -
      - kick
-     - —
+     - -
      - xW
      - Write any value to kick the watchdog. Reloads the counter when within the
        window; raises a window violation when outside the window (windowed mode).

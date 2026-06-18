@@ -38,10 +38,10 @@ Severity Levels
      - Output
      - Typical use
    * - INFO
-     - ``infoInterrupt`` → PLIC low-priority lane
+     - ``infoInterrupt`` -> PLIC low-priority lane
      - Diagnostic events; can be polled. Examples: correctable ECC, PRNG bad seed.
    * - WARN
-     - ``warnInterrupt`` → PLIC high-priority lane
+     - ``warnInterrupt`` -> PLIC high-priority lane
      - Recoverable faults requiring prompt software response.
    * - ERROR
      - ``errorSignal`` after grace-period counter
@@ -194,7 +194,7 @@ Register Mapping
      - Description
    * - :rspan:`3` 0x008
      - 31 - 25
-     - —
+     - -
      - 0
      - Rx
      - Reserved.
@@ -232,7 +232,7 @@ Register Mapping
    * - 0x010
      - Status register (read-only): ``counterActive[0]``, ``errorSignal[1]``.
    * - 0x014
-     - Error counter — grace-period reload value. Write ignored when locked.
+     - Error counter - grace-period reload value. Write ignored when locked.
 
 .. flat-table:: Control Register (0x00C)
    :widths: 10 10 15 10 10 45

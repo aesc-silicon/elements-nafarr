@@ -46,12 +46,12 @@ object MailboxCtrl {
     * Convention: CPU A sends on channel 0 and receives on channel 1.
     *             CPU B sends on channel 1 and receives on channel 0.
     *
-    * io.push            : in  — stream of messages pushed into each channel FIFO.
-    * io.pop             : out — stream of messages popped from each channel FIFO.
-    * io.occupancy       : out — number of entries currently stored per channel.
-    * io.interrupt        : out — single interrupt, asserted when any channel has a
+    * io.push            : in  - stream of messages pushed into each channel FIFO.
+    * io.pop             : out - stream of messages popped from each channel FIFO.
+    * io.occupancy       : out - number of entries currently stored per channel.
+    * io.interrupt        : out - single interrupt, asserted when any channel has a
     *                              masked pending source (OR of all channel IRQ bits).
-    * io.pendingInterrupts: in  — masked pending interrupt bits per channel, driven by Mapper.
+    * io.pendingInterrupts: in  - masked pending interrupt bits per channel, driven by Mapper.
     */
   case class MailboxCtrl(p: Parameter) extends Component {
     val io = new Bundle {

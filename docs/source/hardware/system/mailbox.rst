@@ -16,7 +16,7 @@ Features
 * 32-bit message width matching the bus data width
 * Per-channel status flags (empty, full) and occupancy counter
 * Per-channel interrupt sources: not-empty (data arrived) and not-full (space available)
-* Single combined interrupt output — asserted when any enabled channel interrupt fires
+* Single combined interrupt output - asserted when any enabled channel interrupt fires
 
 Interrupt Architecture
 **********************
@@ -162,7 +162,7 @@ hold the empty flags and bits ``[2*channelCount-1:channelCount]`` hold the full 
 Two sets of identical registers, one per channel. Channel 0 starts at 0x010;
 channel 1 starts at 0x024. The stride between channels is 0x14.
 
-.. flat-table:: Channel Registers (per channel, base = 0x010 + channel × 0x14)
+.. flat-table:: Channel Registers (per channel, base = 0x010 + channel x 0x14)
    :widths: 10 10 15 10 10 45
    :header-rows: 1
 
@@ -175,13 +175,13 @@ channel 1 starts at 0x024. The stride between channels is 0x14.
    * - base + 0x00
      - 31 - 0
      - write
-     - —
+     - -
      - xW
      - Push a 32-bit message into the channel FIFO. Dropped silently if full.
    * - base + 0x04
      - 31 - 0
      - read
-     - —
+     - -
      - Rx
      - Pop a 32-bit message from the channel FIFO. Returns stale data if empty.
    * - base + 0x08

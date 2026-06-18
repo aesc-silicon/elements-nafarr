@@ -11,10 +11,10 @@ dedicated pads for each function.
 
 The Pinmux manages three sets of signals:
 
-- **pins** — the physical bidirectional IO pads (tri-state: write, writeEnable, read).
-- **inputs** — the full set of peripheral signals that can be routed to pins.
+- **pins** - the physical bidirectional IO pads (tri-state: write, writeEnable, read).
+- **inputs** - the full set of peripheral signals that can be routed to pins.
   Each peripheral contributes a slice of this bus.
-- **options** — one selector value per pin, choosing which peripheral input
+- **options** - one selector value per pin, choosing which peripheral input
   slice is currently connected to that pin.
 
 For each pin, the selected peripheral's ``write`` and ``writeEnable`` signals
@@ -89,8 +89,8 @@ an input index in the list determines the option value that selects it.
 .. code-block:: scala
 
    // 12 pins, each connectable to 2 peripheral inputs.
-   // Pin 0 → input 0 (option 0) or input 1 (option 1)
-   // Pin 1 → input 2 (option 0) or input 3 (option 1), etc.
+   // Pin 0 -> input 0 (option 0) or input 1 (option 1)
+   // Pin 1 -> input 2 (option 0) or input 3 (option 1), etc.
    val mapping = (0 until 12).map(i => (i, List(i * 2, i * 2 + 1))).to[ArrayBuffer]
 
    Apb3Pinmux(
@@ -100,7 +100,7 @@ an input index in the list determines the option value that selects it.
 
 .. note::
 
-   ``inputs`` does not need to equal ``width × options``. It can be smaller,
+   ``inputs`` does not need to equal ``width x options``. It can be smaller,
    and the same input index may appear in the mapping list of multiple pins.
    This allows a single peripheral signal to be reachable from more than one
    physical pin simultaneously.
@@ -181,7 +181,7 @@ by the hardware. The remaining bits are stored but ignored.
      -
      -
      -
-   * - 0x010 + pin × 0x4
+   * - 0x010 + pin x 0x4
      - 7 - 0
      - Option[pin]
      - 0x0

@@ -14,7 +14,7 @@ No write access is defined; bus writes are silently ignored.
 Features
 ********
 
-* IP Identification block (header + version at 0x000–0x007)
+* IP Identification block (header + version at 0x000-0x007)
 * 32-bit identity register: vendor, platform, product, and platform class
 * Independent silicon major/minor revision registers
 * 32-bit feature flag register: bit N set when ``Feature`` element with ordinal N is present

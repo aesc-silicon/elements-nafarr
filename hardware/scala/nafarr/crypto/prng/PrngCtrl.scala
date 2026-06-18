@@ -36,15 +36,15 @@ object PrngCtrl {
     * Advances the 32-bit state by one step per enabled clock cycle using the
     * Galois topology and maximum-period taps (x^32 + x^30 + x^26 + x^25 + 1).
     *
-    * The caller is responsible for never asserting io.reseed with a zero seed —
+    * The caller is responsible for never asserting io.reseed with a zero seed -
     * a zero state causes the LFSR to lock up permanently.
     *
-    * io.seed          : in  — new seed value; sampled when io.reseed is asserted.
-    * io.reseed        : in  — pulse to load io.seed into the state register.
-    * io.enable        : in  — advance the LFSR each clock cycle when True.
-    * io.output        : out — current LFSR state.
-    * io.error         : out — combined error signal (OR of masked pending errors).
-    * io.pendingErrors : in  — masked pending error bits driven by the Mapper.
+    * io.seed          : in  - new seed value; sampled when io.reseed is asserted.
+    * io.reseed        : in  - pulse to load io.seed into the state register.
+    * io.enable        : in  - advance the LFSR each clock cycle when True.
+    * io.output        : out - current LFSR state.
+    * io.error         : out - combined error signal (OR of masked pending errors).
+    * io.pendingErrors : in  - masked pending error bits driven by the Mapper.
     */
   case class PrngCtrl(p: Parameter) extends Component {
     val io = new Bundle {
@@ -81,7 +81,7 @@ object PrngCtrl {
     val enable = Reg(Bool()) init (True)
     busCtrl.readAndWrite(enable, regs.control)
 
-    // Error: InterruptCtrl with one source — zero seed write attempt.
+    // Error: InterruptCtrl with one source - zero seed write attempt.
     // Pending and mask registers are created at errorPending and errorMask.
     val errCtrl = new InterruptCtrl(1)
     errCtrl.driveFrom(busCtrl, regs.errorPending.toInt)

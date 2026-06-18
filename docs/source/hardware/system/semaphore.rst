@@ -22,8 +22,8 @@ Claim Protocol
 
 Read the semaphore register for slot *n*:
 
-* Returns **0** — the slot was free; the caller now holds it.
-* Returns **1** — the slot was already taken; the caller must retry.
+* Returns **0** - the slot was free; the caller now holds it.
+* Returns **1** - the slot was already taken; the caller must retry.
 
 The returned value reflects the state *before* the read. The taken flag is set
 atomically within the same transaction, so no interleaving is possible.
@@ -152,7 +152,7 @@ One 32-bit register per slot, starting at 0x010. Read to claim; write to release
      -
      -
      -
-   * - 0x010 + slot × 0x4
+   * - 0x010 + slot x 0x4
      - 0
      - SEM_n
      - 0x0

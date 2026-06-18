@@ -67,9 +67,9 @@ object Crc32Ctrl {
 
   /** CRC32 accelerator core.
     *
-    * io.cmd    : slave Flow — INIT reloads the init value; UPDATE folds one
+    * io.cmd    : slave Flow - INIT reloads the init value; UPDATE folds one
     *             32-bit word into the CRC state.
-    * io.result : out — current CRC state, without finalXor (handled by Mapper).
+    * io.result : out - current CRC state, without finalXor (handled by Mapper).
     */
   case class Crc32Ctrl(p: Parameter) extends Component {
     val cfg = config(p)

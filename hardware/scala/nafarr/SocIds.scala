@@ -28,16 +28,16 @@ object Product extends SpinalEnum(binarySequential) {
 
 /** Platform class derived from the chemistry group of the platform element.
   *
-  * NonMetal — non-metal elements (Hydrogen, Carbon, Nitrogen, Oxygen, Phosphorus, Sulfur):
+  * NonMetal - non-metal elements (Hydrogen, Carbon, Nitrogen, Oxygen, Phosphorus, Sulfur):
   *            MCU class, M-mode only, no MMU.
-  * Alkali   — alkali metal elements (Lithium, Sodium, Potassium, ...):
+  * Alkali   - alkali metal elements (Lithium, Sodium, Potassium, ...):
   *            MPU class, MMU, OS-capable.
   *
   * Never change existing ordinals.
   */
 object PlatformClass extends SpinalEnum(binarySequential) {
-  val NonMetal = newElement() // 0 — MCU (non-metal elements)
-  val Alkali = newElement() // 1 — MPU (alkali metal elements)
+  val NonMetal = newElement() // 0 - MCU (non-metal elements)
+  val Alkali = newElement() // 1 - MPU (alkali metal elements)
 }
 
 /** SoC feature flags for the syscon feature register.
@@ -46,7 +46,7 @@ object PlatformClass extends SpinalEnum(binarySequential) {
   * An IP reports its feature(s) via `sysconFeatures` on its Core class so that
   * the SoC builder can populate the syscon parameter automatically.
   *
-  * Never change existing ordinals — software depends on stable bit positions.
+  * Never change existing ordinals - software depends on stable bit positions.
   */
 object Feature extends SpinalEnum(binarySequential) {
   val I2c = newElement() // 0

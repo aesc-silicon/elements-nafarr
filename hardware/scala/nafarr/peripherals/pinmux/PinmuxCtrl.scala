@@ -44,7 +44,7 @@ object PinmuxCtrl {
 
     // Intermediate Vecs to collect combinatorial outputs with safe defaults.
     // Working directly on Bits avoids TriStateArray.apply(i) which creates a
-    // new TriState bundle each call — whose undriven `read` field causes latches.
+    // new TriState bundle each call - whose undriven `read` field causes latches.
     val pinsWrite = Vec(Bool(), p.io.width)
     val pinsWriteEnable = Vec(Bool(), p.io.width)
     val inputsRead = Vec(Bool(), p.inputs)
@@ -56,7 +56,7 @@ object PinmuxCtrl {
     // Use when() instead of muxList(): muxList() generates a switch that only
     // covers option indices 0..N-1, but io.options(pin) is log2Up(options) bits
     // wide, so uncovered values (e.g. value 3 for options=3) leave the muxList
-    // result undriven → latch.  The unconditional default below covers all gaps.
+    // result undriven -> latch.  The unconditional default below covers all gaps.
     val mappingMap = mapping.toMap
     for (pin <- 0 until p.io.width) {
       mappingMap.get(pin) match {

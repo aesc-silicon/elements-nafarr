@@ -36,16 +36,16 @@ object EsmCtrl {
   /** Register map.
     *
     * Global registers start at `base` (= IpIdentification header length = 8):
-    *   info          base + 0x00  — self-disclosure (read-only)
-    *   control       base + 0x04  — enable, lock, injectEnable
-    *   status        base + 0x08  — counterActive, errorSignal (read-only)
-    *   errorCounter  base + 0x0c  — grace-period reload value (locked)
+    *   info          base + 0x00  - self-disclosure (read-only)
+    *   control       base + 0x04  - enable, lock, injectEnable
+    *   status        base + 0x08  - counterActive, errorSignal (read-only)
+    *   errorCounter  base + 0x0c  - grace-period reload value (locked)
     *
     * Per-bank registers, stride 0x10, bank N base = base + 0x20 + N * 0x10:
-    *   enable   +0x00  — combined INFO/WARN/ERROR/FATAL routing mask
-    *   pending  +0x04  — combined INFO/WARN/ERROR/FATAL pending bits (W1C)
-    *   raw      +0x08  — active inputs for this bank (read-only)
-    *   inject   +0x0c  — injected inputs for this bank
+    *   enable   +0x00  - combined INFO/WARN/ERROR/FATAL routing mask
+    *   pending  +0x04  - combined INFO/WARN/ERROR/FATAL pending bits (W1C)
+    *   raw      +0x08  - active inputs for this bank (read-only)
+    *   inject   +0x0c  - injected inputs for this bank
     *
     * Enable/pending register layout (same for both):
     *   bits [31:24] = FATAL for inputs [7:0] of this bank
@@ -81,10 +81,10 @@ object EsmCtrl {
     * synchronised through a 2-FF chain to filter glitches and prevent metastability. The ESM
     * routes events to one of four severity levels:
     *
-    *   INFO  — masked, latched → `infoInterrupt` (low-priority PLIC lane)
-    *   WARN  — masked, latched → `warnInterrupt` (high-priority PLIC lane)
-    *   ERROR — masked, latched → `errorSignal` after a configurable grace-period counter
-    *   FATAL — masked, latched → `errorSignal` immediately, bypassing the counter
+    *   INFO  - masked, latched -> `infoInterrupt` (low-priority PLIC lane)
+    *   WARN  - masked, latched -> `warnInterrupt` (high-priority PLIC lane)
+    *   ERROR - masked, latched -> `errorSignal` after a configurable grace-period counter
+    *   FATAL - masked, latched -> `errorSignal` immediately, bypassing the counter
     *
     * An input can be assigned to multiple levels simultaneously via independent bits in the
     * combined enable register. Pending bits are pre-masked (only enabled inputs are latched)
@@ -99,20 +99,20 @@ object EsmCtrl {
     * (control bit 1) atomically clears `injectEnable` and all inject bank registers, and freezes
     * the ERROR/FATAL fields of the enable registers, `errorCounter`, and the inject registers.
     *
-    * io.inputs          : in  — raw error inputs from other IP cores.
-    * io.injectInputs    : in  — inject register values, driven by Mapper.
-    * io.injectEnable    : in  — gates inject OR path.
-    * io.errorPendingAny : in  — OR of all ERROR pending bits (from Mapper).
-    * io.fatalPendingAny : in  — OR of all FATAL pending bits (from Mapper).
-    * io.infoPendingAny  : in  — OR of all INFO pending bits (from Mapper).
-    * io.warnPendingAny  : in  — OR of all WARN pending bits (from Mapper).
-    * io.counterPreload  : in  — grace-period counter reload value (from Mapper).
-    * io.activeInputs    : out — synchronised inputs OR inject; feeds Mapper pending registers.
-    * io.counterActive   : out — high while grace-period counter is counting.
-    * io.counterExpired  : out — latched high when counter reaches zero; cleared by Mapper.
-    * io.infoInterrupt   : out — asserted while any INFO pending bit is set.
-    * io.warnInterrupt   : out — asserted while any WARN pending bit is set.
-    * io.errorSignal     : out — asserted on FATAL event or after grace-period expiry.
+    * io.inputs          : in  - raw error inputs from other IP cores.
+    * io.injectInputs    : in  - inject register values, driven by Mapper.
+    * io.injectEnable    : in  - gates inject OR path.
+    * io.errorPendingAny : in  - OR of all ERROR pending bits (from Mapper).
+    * io.fatalPendingAny : in  - OR of all FATAL pending bits (from Mapper).
+    * io.infoPendingAny  : in  - OR of all INFO pending bits (from Mapper).
+    * io.warnPendingAny  : in  - OR of all WARN pending bits (from Mapper).
+    * io.counterPreload  : in  - grace-period counter reload value (from Mapper).
+    * io.activeInputs    : out - synchronised inputs OR inject; feeds Mapper pending registers.
+    * io.counterActive   : out - high while grace-period counter is counting.
+    * io.counterExpired  : out - latched high when counter reaches zero; cleared by Mapper.
+    * io.infoInterrupt   : out - asserted while any INFO pending bit is set.
+    * io.warnInterrupt   : out - asserted while any WARN pending bit is set.
+    * io.errorSignal     : out - asserted on FATAL event or after grace-period expiry.
     */
   case class EsmCtrl(p: Parameter) extends Component {
     val io = new Bundle {

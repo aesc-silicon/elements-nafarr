@@ -21,7 +21,7 @@ Features
 * Optional runtime-writable ``xorOut`` register for the final XOR step
 * Self-disclosure ``info`` register (polynomial width, reflect flags,
   xorOut present)
-* No FIFO — DMA support is reserved for a future high-performance variant
+* No FIFO - DMA support is reserved for a future high-performance variant
 
 Configuration
 *************
@@ -116,19 +116,19 @@ Register Mapping
    * - 0x00C
      - 31 - 0
      - control
-     - —
+     - -
      - xW
      - Write any value to reset the CRC state to the polynomial ``initValue``.
    * - 0x010
      - 31 - 0
      - data
-     - —
+     - -
      - xW
      - Write a 32-bit word to fold it into the CRC state (one cycle).
    * - 0x014
      - 31 - 0
      - result
-     - —
+     - -
      - Rx
      - Current CRC state XOR ``xorOut``. Valid immediately after the write
        completes (combinational update).

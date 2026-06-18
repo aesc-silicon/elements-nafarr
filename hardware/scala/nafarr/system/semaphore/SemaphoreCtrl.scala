@@ -41,20 +41,20 @@ object SemaphoreCtrl {
     }
   }
 
-  /** Hardware semaphore controller — no bus logic.
+  /** Hardware semaphore controller - no bus logic.
     *
     * Manages `p.count` semaphore slots as a registered bitmask.  Claim and
     * release are combinatorial inputs; the state updates at every clock edge.
     * Release takes priority over simultaneous claim on the same slot.
     *
     * This component can be driven by any frontend:
-    *   - SemaphoreCtrl.Mapper  — memory-mapped register access
-    *   - A custom I2C-device frontend — claim/release via I2C commands
-    *   - Direct wiring         — software-managed from an Area
+    *   - SemaphoreCtrl.Mapper  - memory-mapped register access
+    *   - A custom I2C-device frontend - claim/release via I2C commands
+    *   - Direct wiring         - software-managed from an Area
     *
-    * io.claim   : in  — bitmask of slots to claim this cycle.
-    * io.release : in  — bitmask of slots to release this cycle.
-    * io.taken   : out — registered bitmask of currently taken slots.
+    * io.claim   : in  - bitmask of slots to claim this cycle.
+    * io.release : in  - bitmask of slots to release this cycle.
+    * io.taken   : out - registered bitmask of currently taken slots.
     */
   case class SemaphoreCtrl(p: Parameter) extends Component {
     val io = new Bundle {
@@ -88,7 +88,7 @@ object SemaphoreCtrl {
 
     busCtrl.read(B(p.count, 8 bits), regs.info)
 
-    // Intermediate signals — default to no-op; overridden per-slot below.
+    // Intermediate signals - default to no-op; overridden per-slot below.
     val claimVec = Vec(Bool(), p.count)
     val releaseVec = Vec(Bool(), p.count)
 

@@ -128,9 +128,9 @@ Register Mapping
      - Software reset trigger. Writing a ``1`` to bit *n* asserts a reset on domain
        *n*. Bits are cleared by writing to the ``acknowledge`` register.
    * - 0x014
-     - —
+     - -
      - acknowledge
-     - —
+     - -
      - W
      - Write-only. Any write to this address clears all pending software trigger bits
        in the ``trigger`` register.

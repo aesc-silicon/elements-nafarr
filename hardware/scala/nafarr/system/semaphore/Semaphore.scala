@@ -30,8 +30,8 @@ import nafarr.peripherals.PeripheralsComponent
   *   ...
   *
   * Claim protocol (read):
-  *   Returns 0 — semaphore was free; caller now holds it.
-  *   Returns 1 — semaphore was already taken; caller must retry.
+  *   Returns 0 - semaphore was free; caller now holds it.
+  *   Returns 1 - semaphore was already taken; caller must retry.
   *   The returned value reflects the state *before* the read; the claim flag
   *   is set on the same bus transaction so no other master can interleave.
   *

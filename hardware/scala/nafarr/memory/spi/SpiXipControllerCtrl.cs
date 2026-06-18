@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: CERN-OHL-W-2.0
 //
 // Renode model of the Nafarr SPI XIP controller's config bus (nafarr.memory.spi.SpiXipControllerCtrl
-// Mapper). Register-accurate config interface only — it does NOT perform SPI/XIP flash transactions
+// Mapper). Register-accurate config interface only - it does NOT perform SPI/XIP flash transactions
 // (the XIP data path is modeled by a plain flash memory in the platform). The bootrom programs this
 // to configure the flash mode/dummy-cycles; here those writes are stored and read back.
 //

@@ -6,7 +6,7 @@ Pseudo-Random Number Generator (PRNG)
 The PRNG provides a free-running 32-bit pseudo-random number stream based on a
 Galois Linear Feedback Shift Register (LFSR). The LFSR uses a maximum-period
 polynomial (x\ :sup:`32` + x\ :sup:`30` + x\ :sup:`26` + x\ :sup:`25` + 1),
-yielding a sequence of 2\ :sup:`32` − 1 unique values before repeating.
+yielding a sequence of 2\ :sup:`32` - 1 unique values before repeating.
 
 The PRNG is not suitable for cryptographic use. It is intended for non-security
 applications such as noise injection, test-pattern generation, traffic
@@ -81,7 +81,7 @@ Register Mapping
    * - 0x014
      - 31 - 0
      - seed
-     - —
+     - -
      - xW
      - Write a non-zero value to reseed the LFSR immediately. Writing zero sets
        error pending bit 0 and leaves the LFSR state unchanged.

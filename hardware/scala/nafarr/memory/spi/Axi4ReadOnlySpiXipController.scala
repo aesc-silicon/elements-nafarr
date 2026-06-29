@@ -84,5 +84,5 @@ case class Axi4ReadOnlySpiXipController(
   SpiControllerCtrl.Mapper(busSpiFactory, spiControllerCtrl.io, parameter)
 
   val busXipFactory = Apb3SlaveFactory(io.cfgXipBus)
-  SpiXipControllerCtrl.Mapper(busXipFactory, spiXipControllerCtrl.io.config, parameter)
+  SpiXipControllerCtrl.Mapper(busXipFactory, spiXipControllerCtrl.io, parameter)
 }

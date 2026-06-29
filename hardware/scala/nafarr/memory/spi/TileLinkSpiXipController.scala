@@ -130,5 +130,5 @@ case class TileLinkSpiXipController(
   SpiControllerCtrl.Mapper(cfgSpiBusFactory, spiControllerCtrl.io, parameter)
 
   val cfgXipBusFactory = new TileLinkSlaveFactory(io.cfgXipBus, false)
-  SpiXipControllerCtrl.Mapper(cfgXipBusFactory, spiXipControllerCtrl.io.config, parameter)
+  SpiXipControllerCtrl.Mapper(cfgXipBusFactory, spiXipControllerCtrl.io, parameter)
 }

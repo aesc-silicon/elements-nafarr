@@ -126,5 +126,5 @@ case class BmbSpiXipController(
   SpiControllerCtrl.Mapper(cfgSpiBusFactory, spiControllerCtrl.io, parameter)
 
   val cfgXipBusFactory = WishboneSlaveFactory(io.cfgXipBus)
-  SpiXipControllerCtrl.Mapper(cfgXipBusFactory, spiXipControllerCtrl.io.config, parameter)
+  SpiXipControllerCtrl.Mapper(cfgXipBusFactory, spiXipControllerCtrl.io, parameter)
 }

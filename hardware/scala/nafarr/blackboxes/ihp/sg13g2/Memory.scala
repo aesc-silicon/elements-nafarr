@@ -5,8 +5,14 @@
 package nafarr.blackboxes.ihp.sg13g2
 
 import spinal.core._
+import spinal.lib.blackbox.ihp.sg13g2.IhpSramMacro
 
 object Memory {
+  // Add custom SRAM macros which are not upstream in SpinalHDL yet.
+  val sramMacros: Seq[IhpSramMacro] = IhpSramMacro.defaults ++ Seq(
+    IhpSramMacro("RM_IHPSG13_2P_64x22_c2_bm_bist", 2, 64, 22)
+  )
+
   def apply(width: Int, size: Int): IHPSG13Memory = (width, size) match {
     case (8, 1024) => RM_IHPSG13_1P_1024x8_c2_bm_bist()
     case (32, 1024) => RM_IHPSG13_1P_256x32_c2_bm_bist()

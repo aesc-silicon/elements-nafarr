@@ -10,6 +10,7 @@ import spinal.lib.blackbox.ihp.sg13g2.IhpSramMacro
 object Memory {
   // Add custom SRAM macros which are not upstream in SpinalHDL yet.
   val sramMacros: Seq[IhpSramMacro] = IhpSramMacro.defaults ++ Seq(
+    IhpSramMacro("RM_IHPSG13_1P_2048x32_c2_bm_bist", 1, 2048, 32),
     IhpSramMacro("RM_IHPSG13_2P_64x22_c2_bm_bist", 2, 64, 22)
   )
 
@@ -18,6 +19,7 @@ object Memory {
     case (32, 1024) => RM_IHPSG13_1P_256x32_c2_bm_bist()
     case (32, 2048) => RM_IHPSG13_1P_512x32_c2_bm_bist()
     case (32, 4096) => RM_IHPSG13_1P_1024x32_c2_bm_bist()
+    case (32, 8192) => RM_IHPSG13_1P_2048x32_c2_bm_bist()
     case _ => throw new IllegalArgumentException(s"Unsupported width and size: $width x $size")
   }
 
@@ -110,6 +112,20 @@ object Memory {
       System.getenv(
         "NAFARR_BASE"
       ) + "/hardware/scala/nafarr/blackboxes/ihp/sg13g2/RM_IHPSG13_1P_1024x32_c2_bm_bist.v"
+    )
+  }
+
+  case class RM_IHPSG13_1P_2048x32_c2_bm_bist()
+      extends IHPSG13Memory(addrWidth = 11, dataWidth = 32) {
+    addRTLPath(
+      System.getenv(
+        "NAFARR_BASE"
+      ) + "/hardware/scala/nafarr/blackboxes/ihp/sg13g2/RM_IHPSG13_1P_core_behavioral_bm_bist.v"
+    )
+    addRTLPath(
+      System.getenv(
+        "NAFARR_BASE"
+      ) + "/hardware/scala/nafarr/blackboxes/ihp/sg13g2/RM_IHPSG13_1P_2048x32_c2_bm_bist.v"
     )
   }
 }

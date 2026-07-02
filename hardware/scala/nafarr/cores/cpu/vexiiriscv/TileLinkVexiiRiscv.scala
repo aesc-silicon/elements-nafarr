@@ -77,6 +77,19 @@ class TileLinkVexiiRiscv(
     }
     result.toSeq
   }
+
+  /** I-cache tag/way RAMs, available after generateVerilog (post-blackboxing).
+    * Companion to iCacheRams, which only covers the data bank memories: the tag
+    * memories live in the plugin's per-way areas (logic.ways) instead.
+    */
+  def iCacheTagRams: Seq[Component] = {
+    val memNames = fetchL1Plugin.map(_.logic.ways.map(_.mem.getName())).getOrElse(Nil).toSet
+    val result = scala.collection.mutable.ArrayBuffer[Component]()
+    fiber.vexii.walkComponents { c =>
+      if (memNames.contains(c.getName())) result += c
+    }
+    result.toSeq
+  }
   private val privPlugin = parameter.plugins.collectFirst { case p: PrivilegedPlugin => p }.get
   private val jtagPlugin = parameter.plugins.collectFirst { case p: EmbeddedRiscvJtag => p }.get
 

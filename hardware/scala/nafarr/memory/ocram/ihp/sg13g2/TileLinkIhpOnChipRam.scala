@@ -12,9 +12,9 @@ import nafarr.blackboxes.ihp.sg13g2._
 
 object TileLinkIhpOnChipRam {
 
-  // Largest available 32-bit macro (1024x32 = 4 kB).
+  // Largest available 32-bit macro (2048x32 = 8 kB).
   // When size exceeds this, multiple macros are banked.
-  private val bankSize = 4096
+  private val bankSize = 8192
 
   case class OnePort(p: TileLinkParameter, size: Int) extends Component {
     private val bankCount = size / bankSize

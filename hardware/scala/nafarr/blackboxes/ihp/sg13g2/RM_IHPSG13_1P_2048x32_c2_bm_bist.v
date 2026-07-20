@@ -44,7 +44,6 @@ module RM_IHPSG13_1P_2048x32_c2_bm_bist (
 // ---- Simulation-only check: A_DLY must be tied high ----------------------
 `ifndef SYNTHESIS
     initial begin
-      #0; // check at t=0 (after elaboration)
       if (A_DLY !== 1'b1) begin
         $display("%m ERROR: A_DLY must be tied to 1'b1 (saw %b) at time %0t.", A_DLY, $time);
         $stop; // use $finish if you prefer to exit completely

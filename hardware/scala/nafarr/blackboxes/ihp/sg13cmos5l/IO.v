@@ -6,7 +6,11 @@
 // type: Input
 `timescale 1ns/10ps
 `celldefine
-module sg13cmos5l_IOPadIn (pad, p2c);
+module sg13cmos5l_IOPadIn (iovdd, iovss, vdd, vss, pad, p2c);
+	inout iovdd;
+	inout iovss;
+	inout vdd;
+	inout vss;
 	inout pad;
 	output p2c;
 
@@ -23,7 +27,11 @@ endmodule
 // type: Output4mA
 `timescale 1ns/10ps
 `celldefine
-module sg13cmos5l_IOPadOut4mA (pad, c2p);
+module sg13cmos5l_IOPadOut4mA (iovdd, iovss, vdd, vss, pad, c2p);
+	inout iovdd;
+	inout iovss;
+	inout vdd;
+	inout vss;
 	inout pad;
 	input c2p;
 
@@ -40,7 +48,11 @@ endmodule
 // type: Output16mA
 `timescale 1ns/10ps
 `celldefine
-module sg13cmos5l_IOPadOut16mA (pad, c2p);
+module sg13cmos5l_IOPadOut16mA (iovdd, iovss, vdd, vss, pad, c2p);
+	inout iovdd;
+	inout iovss;
+	inout vdd;
+	inout vss;
 	inout pad;
 	input c2p;
 
@@ -57,7 +69,11 @@ endmodule
 // type: Output30mA
 `timescale 1ns/10ps
 `celldefine
-module sg13cmos5l_IOPadOut30mA (pad, c2p);
+module sg13cmos5l_IOPadOut30mA (iovdd, iovss, vdd, vss, pad, c2p);
+	inout iovdd;
+	inout iovss;
+	inout vdd;
+	inout vss;
 	inout pad;
 	input c2p;
 
@@ -74,7 +90,11 @@ endmodule
 // type: TriStateOutput4mA
 `timescale 1ns/10ps
 `celldefine
-module sg13cmos5l_IOPadTriOut4mA (pad, c2p, c2p_en);
+module sg13cmos5l_IOPadTriOut4mA (iovdd, iovss, vdd, vss, pad, c2p, c2p_en);
+	inout iovdd;
+	inout iovss;
+	inout vdd;
+	inout vss;
 	inout pad;
 	input c2p;
 	input c2p_en;
@@ -92,7 +112,11 @@ endmodule
 // type: TriStateOutput16mA
 `timescale 1ns/10ps
 `celldefine
-module sg13cmos5l_IOPadTriOut16mA (pad, c2p, c2p_en);
+module sg13cmos5l_IOPadTriOut16mA (iovdd, iovss, vdd, vss, pad, c2p, c2p_en);
+	inout iovdd;
+	inout iovss;
+	inout vdd;
+	inout vss;
 	inout pad;
 	input c2p;
 	input c2p_en;
@@ -110,7 +134,11 @@ endmodule
 // type: TriStateOutput30mA
 `timescale 1ns/10ps
 `celldefine
-module sg13cmos5l_IOPadTriOut30mA (pad, c2p, c2p_en);
+module sg13cmos5l_IOPadTriOut30mA (iovdd, iovss, vdd, vss, pad, c2p, c2p_en);
+	inout iovdd;
+	inout iovss;
+	inout vdd;
+	inout vss;
 	inout pad;
 	input c2p;
 	input c2p_en;
@@ -128,28 +156,11 @@ endmodule
 // type: InputOutput4mA
 `timescale 1ns/10ps
 `celldefine
-module sg13cmos5l_IOPadInOut4mA (pad, c2p, c2p_en, p2c);
-	inout pad;
-	input c2p;
-	input c2p_en;
-	output p2c;
-
-	// Function
-	assign pad = (c2p_en) ? c2p : 1'bz;
-	assign p2c = pad;
-
-	// Timing
-	specify
-		(pad => c2p) = 0;
-		(p2c => pad) = 0;
-	endspecify
-endmodule
-`endcelldefine
-
-// type: InputOutput4mA
-`timescale 1ns/10ps
-`celldefine
-module sg13cmos5l_IOPadInOut16mA (pad, c2p, c2p_en, p2c);
+module sg13cmos5l_IOPadInOut4mA (iovdd, iovss, vdd, vss, pad, c2p, c2p_en, p2c);
+	inout iovdd;
+	inout iovss;
+	inout vdd;
+	inout vss;
 	inout pad;
 	input c2p;
 	input c2p_en;
@@ -170,7 +181,36 @@ endmodule
 // type: InputOutput4mA
 `timescale 1ns/10ps
 `celldefine
-module sg13cmos5l_IOPadInOut30mA (pad, c2p, c2p_en, p2c);
+module sg13cmos5l_IOPadInOut16mA (iovdd, iovss, vdd, vss, pad, c2p, c2p_en, p2c);
+	inout iovdd;
+	inout iovss;
+	inout vdd;
+	inout vss;
+	inout pad;
+	input c2p;
+	input c2p_en;
+	output p2c;
+
+	// Function
+	assign pad = (c2p_en) ? c2p : 1'bz;
+	assign p2c = pad;
+
+	// Timing
+	specify
+		(pad => c2p) = 0;
+		(p2c => pad) = 0;
+	endspecify
+endmodule
+`endcelldefine
+
+// type: InputOutput4mA
+`timescale 1ns/10ps
+`celldefine
+module sg13cmos5l_IOPadInOut30mA (iovdd, iovss, vdd, vss, pad, c2p, c2p_en, p2c);
+	inout iovdd;
+	inout iovss;
+	inout vdd;
+	inout vss;
 	inout pad;
 	input c2p;
 	input c2p_en;
@@ -191,7 +231,11 @@ endmodule
 // type: Analog
 `timescale 1ns/10ps
 `celldefine
-module sg13cmos5l_IOPadAnalog (pad, padres);
+module sg13cmos5l_IOPadAnalog (iovdd, iovss, vdd, vss, pad, padres);
+	inout iovdd;
+	inout iovss;
+	inout vdd;
+	inout vss;
 	inout pad;
 	inout padres;
 
@@ -210,27 +254,43 @@ endmodule
 // type: IOVss
 `timescale 1ns/10ps
 `celldefine
-module sg13cmos5l_IOPadIOVss ();
+module sg13cmos5l_IOPadIOVss (iovdd, iovss, vdd, vss);
+	inout iovdd;
+	inout iovss;
+	inout vdd;
+	inout vss;
 endmodule
 `endcelldefine
 
 // type: IOVdd
 `timescale 1ns/10ps
 `celldefine
-module sg13cmos5l_IOPadIOVdd ();
+module sg13cmos5l_IOPadIOVdd (iovdd, iovss, vdd, vss);
+	inout iovdd;
+	inout iovss;
+	inout vdd;
+	inout vss;
 endmodule
 `endcelldefine
 
 // type: Vss
 `timescale 1ns/10ps
 `celldefine
-module sg13cmos5l_IOPadVss ();
+module sg13cmos5l_IOPadVss (iovdd, iovss, vdd, vss);
+	inout iovdd;
+	inout iovss;
+	inout vdd;
+	inout vss;
 endmodule
 `endcelldefine
 
 // type: Vdd
 `timescale 1ns/10ps
 `celldefine
-module sg13cmos5l_IOPadVdd ();
+module sg13cmos5l_IOPadVdd (iovdd, iovss, vdd, vss);
+	inout iovdd;
+	inout iovss;
+	inout vdd;
+	inout vss;
 endmodule
 `endcelldefine

@@ -5,15 +5,21 @@
 package nafarr.cores.cpu.vexiiriscv
 
 import spinal.core._
-import spinal.lib.bus.tilelink.{BusParameter => TileLinkParameter}
+import spinal.lib.bus.tilelink.{BusParameter => TileLinkParameter, M2sTransfers, SizeRange}
+import spinal.lib.bus.misc.SizeMapping
+import spinal.lib.system.tag.{PmaRegion, PmaRegionImpl}
 import spinal.lib.misc.plugin.Hostable
 
 import vexiiriscv.ParamSimple
+import vexiiriscv.memory.PmpParam
+import vexiiriscv.execute.lsu.{LsuL1Plugin, LsuL1TlPlugin}
+import vexiiriscv.prediction.GSharePlugin
 
 case class VexiiRiscvCoreParameter(
     plugins: Seq[Hostable],
     iBusTlParam: TileLinkParameter,
-    dBusTlParam: TileLinkParameter
+    dBusTlParam: TileLinkParameter,
+    dIoBusTlParam: TileLinkParameter = null
 )
 
 object VexiiRiscvCoreParameter {
@@ -29,7 +35,6 @@ object VexiiRiscvCoreParameter {
     param.xlen = 32
     param.resetVector = resetAddress.toLong
 
-    // Optional ISA extensions (base is RV32I)
     if (withMul) param.addISA("m")
     if (withCompressed) param.addISA("c")
 
@@ -79,5 +84,98 @@ object VexiiRiscvCoreParameter {
     val dBusTlParam = TileLinkParameter.simple(32, 32, sizeBytes, 1)
 
     VexiiRiscvCoreParameter(plugins, iBusTlParam, dBusTlParam)
+  }
+
+  def performance(
+      resetAddress: BigInt,
+      iCacheSize: BigInt = 4096,
+      dCacheSize: BigInt = 4096,
+      btbSets: Int = 16,
+      pmpRegions: Int = 8,
+      withCompressed: Boolean = true,
+      mainRegions: Seq[SizeMapping] = Seq(SizeMapping(0x80000000L, 0x30000000L)),
+      ioRegions: Seq[SizeMapping] = Seq(SizeMapping(0xf0000000L, 0x10000000L))
+  ): VexiiRiscvCoreParameter = {
+    val param = new ParamSimple()
+    val lineSize = 64
+
+    param.xlen = 32
+    param.resetVector = resetAddress.toLong
+
+    param.addISA("m")
+    if (withCompressed) param.addISA("c")
+    param.addISA("zicntr", "zihpm")
+    param.additionalPerformanceCounters = 4
+
+    require(iCacheSize % lineSize == 0, s"iCacheSize must be a multiple of $lineSize")
+    param.fetchL1Enable = true
+    param.fetchL1Sets = (iCacheSize / lineSize).toInt
+    param.fetchL1Ways = 1
+
+    require(dCacheSize % lineSize == 0, s"dCacheSize must be a multiple of $lineSize")
+    param.lsuL1Enable = true
+    param.lsuL1Sets = (dCacheSize / lineSize).toInt
+    param.lsuL1Ways = 1
+    // Sole bus master: write-back D$ needs no coherency machinery.
+    param.lsuL1Coherency = false
+    // A store buffer is mandatory once lsuL1 is enabled.
+    param.lsuStoreBufferSlots = 2
+    param.lsuStoreBufferOps = 32
+
+    param.withBtb = true
+    param.withGShare = true
+    param.withRas = true
+    param.btbSets = btbSets
+    param.gshareBytes = 256
+    param.bootMemClear = true
+
+    // U-mode + PMP for isolation (no supervisor/MMU at this class).
+    param.privParam.withUser = true
+    param.pmpParam = new PmpParam(
+      pmpSize = pmpRegions,
+      granularity = 4096,
+      withTor = true,
+      withNapot = true
+    )
+
+    param.allowBypassFrom = 0
+    param.regFileSync = false
+    param.withIterativeShift = false
+
+    param.privParam.withDebug = true
+    param.embeddedJtagTap = true
+
+    param.fixIsaParams()
+    val basePlugins = param.plugins()
+    basePlugins.collectFirst { case p: LsuL1Plugin => p }.foreach(_.ackIdWidth = 0)
+    basePlugins.collectFirst { case p: GSharePlugin => p }.foreach(_.counterWidth = 4)
+    val plugins = basePlugins :+ new LsuL1TlPlugin()
+    val pmaRegions: Seq[PmaRegion] =
+      mainRegions.map(m =>
+        new PmaRegionImpl(
+          mapping = m,
+          isMain = true,
+          isExecutable = true,
+          transfers = M2sTransfers(get = SizeRange.all, putFull = SizeRange.all)
+        )
+      ) ++ ioRegions.map(m =>
+        new PmaRegionImpl(
+          mapping = m,
+          isMain = false,
+          isExecutable = false,
+          transfers = M2sTransfers(
+            get = SizeRange.all,
+            putFull = SizeRange.all,
+            putPartial = SizeRange.all
+          )
+        )
+      )
+    ParamSimple.setPma(plugins, pmaRegions)
+
+    val iBusTlParam = TileLinkParameter.simple(32, 32, lineSize, 1)
+    val dBusTlParam = TileLinkParameter.simple(32, 32, lineSize, 1)
+    val dIoBusTlParam = TileLinkParameter.simple(32, 32, lineSize, 1)
+
+    VexiiRiscvCoreParameter(plugins, iBusTlParam, dBusTlParam, dIoBusTlParam)
   }
 }

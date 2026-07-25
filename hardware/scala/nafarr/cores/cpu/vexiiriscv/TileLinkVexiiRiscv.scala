@@ -13,14 +13,17 @@ import spinal.lib.misc.plugin.Hostable
 
 import vexiiriscv.VexiiRiscv
 import vexiiriscv.fetch.{FetchCachelessPlugin, FetchL1Plugin}
-import vexiiriscv.execute.lsu.LsuCachelessPlugin
+import vexiiriscv.execute.lsu.{LsuL1Plugin, LsuL1TlPlugin, LsuCachelessBusProvider, LsuCachelessBus}
 import vexiiriscv.misc.{EmbeddedRiscvJtag, PrivilegedPlugin}
+import vexiiriscv.prediction.GSharePlugin
 
 object TileLinkVexiiRiscv {
   case class Parameter(
       plugins: Seq[Hostable],
       iBusParam: TileLinkParameter,
-      dBusParam: TileLinkParameter
+      dBusParam: TileLinkParameter,
+      // Uncached/IO data bus, present only with a D$ (cached -> dBus, IO -> dIoBus).
+      dIoBusParam: TileLinkParameter = null
   )
 }
 
@@ -54,6 +57,9 @@ class TileLinkVexiiRiscv(
 
   val iBus = TileLinkBus(parameter.iBusParam)
   val dBus = TileLinkBus(parameter.dBusParam)
+  val dIoBus = TileLinkBus(
+    if (parameter.dIoBusParam != null) parameter.dIoBusParam else parameter.dBusParam
+  )
   val mtimerInterrupt = Bool()
   val globalInterrupt = Bool()
   val jtag = Jtag()
@@ -63,7 +69,11 @@ class TileLinkVexiiRiscv(
     case p: FetchCachelessPlugin => p
   }
   val fetchL1Plugin = parameter.plugins.collectFirst { case p: FetchL1Plugin => p }
-  private val lsuPlugin = parameter.plugins.collectFirst { case p: LsuCachelessPlugin => p }.get
+  val lsuL1Plugin = parameter.plugins.collectFirst { case p: LsuL1Plugin => p }
+  val gsharePlugin = parameter.plugins.collectFirst { case p: GSharePlugin => p }
+  private val lsuCachelessProvider =
+    parameter.plugins.collectFirst { case p: LsuCachelessBusProvider => p }.get
+  private val lsuL1TlPlugin = parameter.plugins.collectFirst { case p: LsuL1TlPlugin => p }
 
   /** I-cache bank RAMs, available after generateVerilog (post-blackboxing).
     * Searches the VexiiRiscv component tree for blackboxed Mem components
@@ -90,6 +100,36 @@ class TileLinkVexiiRiscv(
     }
     result.toSeq
   }
+
+  /** D-cache bank RAMs (companion to iCacheRams, sourcing the LsuL1Plugin). */
+  def dCacheRams: Seq[Component] = {
+    val memNames = lsuL1Plugin.map(_.logic.banks.map(_.mem.getName())).getOrElse(Nil).toSet
+    val result = scala.collection.mutable.ArrayBuffer[Component]()
+    fiber.vexii.walkComponents { c =>
+      if (memNames.contains(c.getName())) result += c
+    }
+    result.toSeq
+  }
+
+  /** D-cache tag/way RAMs (companion to iCacheTagRams). */
+  def dCacheTagRams: Seq[Component] = {
+    val memNames = lsuL1Plugin.map(_.logic.ways.map(_.mem.getName())).getOrElse(Nil).toSet
+    val result = scala.collection.mutable.ArrayBuffer[Component]()
+    fiber.vexii.walkComponents { c =>
+      if (memNames.contains(c.getName())) result += c
+    }
+    result.toSeq
+  }
+
+  /** GShare branch-predictor RAMs (bank mems live under logic.mem.banks). */
+  def gshareRams: Seq[Component] = {
+    val memNames = gsharePlugin.map(_.logic.mem.banks.map(_.getName()).toSeq).getOrElse(Nil).toSet
+    val result = scala.collection.mutable.ArrayBuffer[Component]()
+    fiber.vexii.walkComponents { c =>
+      if (memNames.contains(c.getName())) result += c
+    }
+    result.toSeq
+  }
   private val privPlugin = parameter.plugins.collectFirst { case p: PrivilegedPlugin => p }.get
   private val jtagPlugin = parameter.plugins.collectFirst { case p: EmbeddedRiscvJtag => p }.get
 
@@ -110,6 +150,14 @@ class TileLinkVexiiRiscv(
     privPlugin.logic.harts(0).int.m.timer := mtimerInterrupt
     privPlugin.logic.harts(0).int.m.software := False
     privPlugin.logic.harts(0).int.m.external := globalInterrupt
+
+    // Drive the time CSR (Zicntr). Free-running system-clock counter; only read
+    // when the profile enables the time CSR, otherwise pruned.
+    systemCd {
+      val rdtimeCounter = Reg(UInt(64 bits)) init 0
+      rdtimeCounter := rdtimeCounter + 1
+      privPlugin.logic.rdtime := rdtimeCounter
+    }
 
     // JTAG and non-debug-module reset (raw signals; caller handles CDC)
     ndmreset := jtagPlugin.logic.ndmreset
@@ -182,58 +230,80 @@ class TileLinkVexiiRiscv(
     // LsuCachelessBusToTilelink in VexiiRiscv and is required for correctness
     // when the LSU has more than one outstanding transaction.
     // -----------------------------------------------------------------------
-    val dBusNative = lsuPlugin.logic.bus
-    val dHashWidth = 4
-    val dCmdHash = dBusNative.cmd.address(log2Up(dBusNative.p.dataWidth / 8), dHashWidth bits)
-
-    val dTracker = new Area {
-      val pendings = List.fill(dBusNative.p.pendingMax)(new Area {
-        val valid = RegInit(False)
-        val hash = Reg(UInt(dHashWidth bits))
-        val mask = Reg(Bits(dBusNative.p.dataWidth / 8 bits))
-        val io = Reg(Bool())
-        val hazard = valid && (
-          hash === dCmdHash && (mask & dBusNative.cmd.mask).orR ||
-            io && dBusNative.cmd.io
-        )
-      })
-
-      // Release the entry when its response arrives (d.ready is always True)
-      when(dBus.d.valid) {
-        pendings.onSel(dBus.d.source) { e => e.valid := False }
-      }
-      // Claim an entry when the request fires on the A channel
-      when(dBus.a.valid && dBus.a.ready) {
-        pendings.onSel(dBusNative.cmd.id) { e =>
-          e.valid := True
-          e.hash := dCmdHash
-          e.mask := dBusNative.cmd.mask
-          e.io := dBusNative.cmd.io
+    def bridgeCacheless(native: LsuCachelessBus, target: TileLinkBus): Unit = {
+      // Hazard tracking only matters when more than one transaction can be
+      // outstanding; a single-outstanding bus can never overlap itself.
+      val hazard = if (native.p.pendingMax > 1) {
+        val hashWidth = 4
+        val cmdHash = native.cmd.address(log2Up(native.p.dataWidth / 8), hashWidth bits)
+        val pendings = List.fill(native.p.pendingMax)(new Area {
+          val valid = RegInit(False)
+          val hash = Reg(UInt(hashWidth bits))
+          val mask = Reg(Bits(native.p.dataWidth / 8 bits))
+          val io = Reg(Bool())
+          val hazard = valid && (
+            hash === cmdHash && (mask & native.cmd.mask).orR ||
+              io && native.cmd.io
+          )
+        })
+        when(target.d.valid) {
+          pendings.onSel(target.d.source) { e => e.valid := False }
         }
+        when(target.a.valid && target.a.ready) {
+          pendings.onSel(native.cmd.id) { e =>
+            e.valid := True
+            e.hash := cmdHash
+            e.mask := native.cmd.mask
+            e.io := native.cmd.io
+          }
+        }
+        pendings.map(_.hazard).orR
+      } else False
+
+      target.a.valid := native.cmd.valid && !hazard
+      when(native.cmd.write) {
+        target.a.opcode := Opcode.A.PUT_FULL_DATA()
+      } otherwise {
+        target.a.opcode := Opcode.A.GET()
       }
+      target.a.param := 0
+      target.a.size := native.cmd.size.resized
+      target.a.source := native.cmd.id.resized
+      target.a.address := native.cmd.address.resized
+      target.a.mask := native.cmd.mask
+      target.a.data := native.cmd.data
+      target.a.corrupt := False
+      native.cmd.ready := target.a.ready && !hazard
+
+      native.rsp.valid := target.d.valid
+      native.rsp.data := target.d.data
+      native.rsp.error := target.d.denied
+      native.rsp.id := target.d.source.resized
+      target.d.ready := True
     }
 
-    val dHazard = dTracker.pendings.map(_.hazard).orR
-
-    dBus.a.valid := dBusNative.cmd.valid && !dHazard
-    when(dBusNative.cmd.write) {
-      dBus.a.opcode := Opcode.A.PUT_FULL_DATA()
-    } otherwise {
-      dBus.a.opcode := Opcode.A.GET()
+    def idleTileLink(target: TileLinkBus): Unit = {
+      target.a.valid := False
+      target.a.opcode := Opcode.A.GET()
+      target.a.param := 0
+      target.a.size := 0
+      target.a.source := 0
+      target.a.address := 0
+      target.a.mask := 0
+      target.a.data := 0
+      target.a.corrupt := False
+      target.d.ready := True
     }
-    dBus.a.param := 0
-    dBus.a.size := dBusNative.cmd.size.resized
-    dBus.a.source := dBusNative.cmd.id.resized
-    dBus.a.address := dBusNative.cmd.address.resized
-    dBus.a.mask := dBusNative.cmd.mask
-    dBus.a.data := dBusNative.cmd.data
-    dBus.a.corrupt := False
-    dBusNative.cmd.ready := dBus.a.ready && !dHazard
 
-    dBusNative.rsp.valid := dBus.d.valid
-    dBusNative.rsp.data := dBus.d.data
-    dBusNative.rsp.error := dBus.d.denied
-    dBusNative.rsp.id := dBus.d.source.resized
-    dBus.d.ready := True
+    // With a D$: cached traffic -> dBus (L1 TileLink master), uncached/IO -> dIoBus.
+    // Without a D$: all data -> dBus, dIoBus idle.
+    val cachelessBus = lsuCachelessProvider.getLsuCachelessBus()
+    if (lsuL1TlPlugin.isDefined) {
+      dBus <> lsuL1TlPlugin.get.bus
+      bridgeCacheless(cachelessBus, dIoBus)
+    } else {
+      bridgeCacheless(cachelessBus, dBus)
+      idleTileLink(dIoBus)
+    }
   }
 }

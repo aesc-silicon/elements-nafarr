@@ -137,7 +137,7 @@ class PinmuxTest extends AnyFunSuite {
 
       /* Check IP identification */
       IpIdentificationTest.V0.checkApi(apb, IpIdentification.Ids.Pinmux)
-      IpIdentificationTest.V0.checkVersion(apb, 1, 0, 0)
+      IpIdentificationTest.V0.checkVersion(apb, 1, 1, 0)
 
       /* Read mux options and input pins */
       SimTest.readField(apb, regs.info, 15, 8, 2, "Number of input to output options")

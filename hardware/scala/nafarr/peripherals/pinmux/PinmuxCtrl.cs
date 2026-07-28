@@ -41,7 +41,7 @@ namespace Antmicro.Renode.Peripherals.Miscellaneous
             switch(offset)
             {
                 case HeaderOffset:  return (uint)(((Api & 0xFF) << 24) | ((Length & 0xFF) << 16) | (Id & 0xFFFF));
-                case VersionOffset: return 0x01000000; // 1.0.0
+                case VersionOffset: return 0x01010000; // 1.1.0
                 case InfoOffset:    return (uint)(((options & 0xFF) << 8) | (width & 0xFF));
             }
             if(TryPin(offset, out var pin))
@@ -92,6 +92,6 @@ namespace Antmicro.Renode.Peripherals.Miscellaneous
         private const long HeaderOffset = 0x00;
         private const long VersionOffset = 0x04;
         private const long InfoOffset = 0x08;
-        private const long OptionBaseOffset = 0x10;
+        private const long OptionBaseOffset = 0x0c;
     }
 }

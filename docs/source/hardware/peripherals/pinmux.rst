@@ -175,13 +175,7 @@ by the hardware. The remaining bits are stored but ignored.
      - 0x0
      - RW
      - Selects which peripheral input is connected to pin 1.
-   * - ...
-     -
-     -
-     -
-     -
-     -
-   * - 0x010 + pin x 0x4
+   * - 0x00c + pin x 0x4
      - 7 - 0
      - Option[pin]
      - 0x0

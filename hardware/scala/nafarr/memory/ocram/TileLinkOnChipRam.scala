@@ -6,18 +6,20 @@ package nafarr.memory.ocram
 
 import spinal.core._
 import spinal.lib._
+import spinal.lib.fsm._
 import spinal.lib.bus.tilelink.{Bus => TileLinkBus, BusParameter => TileLinkParameter, Opcode}
 
-/** Generic single-port synchronous on-chip RAM.
+/** Generic single-port synchronous on-chip RAM, TileLink burst-capable.
   *
-  * Accepts TL-UL requests (sizeBytes = dataBytes).  Read latency is one cycle
-  * (SpinalHDL synchronous Mem).  Only one request is outstanding at a time:
-  * a.ready is held low while a D-channel response is in flight.
+  * Serves multi-beat cache-line transfers up to the bus parameter's sizeBytes, so it can back a
+  * cached (D$) master - not just single-word TL-UL:
+  *   Get             : one A beat  -> N AccessAckData beats (address increments per beat)
+  *   Put{Full,Partial}: N A beats  -> one AccessAck
+  * Read latency is one cycle; one message is served at a time (a.ready is held low until the
+  * response is complete). Byte-enable writes via the A-channel mask.
   *
-  * Byte-enable writes are supported via the A-channel mask field.
-  *
-  * @param p    TileLink bus parameter (TL-UL; sizeBytes must equal dataBytes).
-  * @param size RAM size in bytes; must be a power of 2.
+  * @param p    TileLink bus parameter (sizeBytes = max transfer, dataBytes = beat width).
+  * @param size RAM size in bytes; power of 2.
   */
 case class TileLinkOnChipRam(p: TileLinkParameter, size: BigInt) extends Component {
   val io = new Bundle {
@@ -30,39 +32,106 @@ case class TileLinkOnChipRam(p: TileLinkParameter, size: BigInt) extends Compone
   val a = io.bus.a
   val d = io.bus.d
 
-  // Accept a new request only when the D channel is free (no pending response).
-  val dFree = !d.valid || d.ready
-  a.ready := dFree
+  val maxBeats = (p.sizeBytes / p.dataBytes).toInt
+  val beatCntWidth = log2Up(maxBeats + 1)
+  def beatsOf(sz: UInt): UInt = ((U(1) << sz) >> p.dataBytesLog2Up).resize(beatCntWidth)
+  def toWord(byteAddr: UInt): UInt = (byteAddr >> p.dataBytesLog2Up).resize(log2Up(words))
 
-  val aFire = a.valid && a.ready
-  val isWrite = a.opcode =/= Opcode.A.GET()
-  val wordAddr = (a.address >> p.dataBytesLog2Up).resize(log2Up(words))
+  val source = Reg(p.source())
+  val reqSize = Reg(p.size())
+  val cursor = Reg(UInt(log2Up(words) bits)) // next word to read/write
+  val issueLeft = Reg(
+    UInt(beatCntWidth bits)
+  ) // read addrs still to issue / write beats still to take
+  val emitLeft = Reg(UInt(beatCntWidth bits)) // read D beats still to emit
 
-  // Byte-masked synchronous write.
-  ram.write(wordAddr, a.data, aFire && isWrite, a.mask)
+  val wrEnable = False
+  val wrAddr = cursor.clone()
+  wrAddr := cursor
+  ram.write(wrAddr, a.data, wrEnable, a.mask)
 
-  // Register D-channel metadata to absorb the 1-cycle read latency.
-  val dValid = RegInit(False)
-  val dOpcode = Reg(Opcode.D())
-  val dSource = Reg(p.source())
-  val dSize = Reg(p.size())
+  val readCmd = Stream(UInt(log2Up(words) bits))
+  readCmd.valid := False
+  readCmd.payload := cursor
+  val readRsp = ram.streamReadSync(readCmd)
+  readRsp.ready := False
 
-  when(aFire) {
-    dValid := True
-    dOpcode := Mux(isWrite, Opcode.D.ACCESS_ACK(), Opcode.D.ACCESS_ACK_DATA())
-    dSource := a.source
-    dSize := a.size
-  } elsewhen (d.ready) {
-    dValid := False
-  }
-
-  d.valid := dValid
-  d.opcode := dOpcode
+  a.ready := False
+  d.valid := False
+  d.opcode := Opcode.D.ACCESS_ACK()
   d.param := 0
-  d.size := dSize
-  d.source := dSource
+  d.size := reqSize
+  d.source := source
   d.sink := 0
   d.denied := False
-  d.data := ram.readSync(wordAddr, enable = aFire && !isWrite)
+  d.data := readRsp.payload
   d.corrupt := False
+
+  val fsm = new StateMachine {
+    val idle: State = new State with EntryPoint
+    val read: State = new State
+    val write: State = new State
+    val writeResp: State = new State
+
+    idle.whenIsActive {
+      a.ready := True
+      when(a.fire) {
+        source := a.source
+        reqSize := a.size
+        cursor := toWord(a.address)
+        when(a.opcode === Opcode.A.GET()) {
+          issueLeft := beatsOf(a.size)
+          emitLeft := beatsOf(a.size)
+          goto(read)
+        } otherwise {
+          wrEnable := True
+          wrAddr := toWord(a.address)
+          cursor := toWord(a.address) + 1
+          issueLeft := beatsOf(a.size) - 1
+          when(beatsOf(a.size) === 1) {
+            goto(writeResp)
+          } otherwise {
+            goto(write)
+          }
+        }
+      }
+    }
+
+    read.whenIsActive {
+      readCmd.valid := issueLeft =/= 0
+      when(readCmd.fire) {
+        cursor := cursor + 1
+        issueLeft := issueLeft - 1
+      }
+      d.valid := readRsp.valid
+      d.opcode := Opcode.D.ACCESS_ACK_DATA()
+      readRsp.ready := d.ready
+      when(d.fire) {
+        emitLeft := emitLeft - 1
+        when(emitLeft === 1) {
+          goto(idle)
+        }
+      }
+    }
+
+    write.whenIsActive {
+      a.ready := True
+      when(a.fire) {
+        wrEnable := True
+        cursor := cursor + 1
+        issueLeft := issueLeft - 1
+        when(issueLeft === 1) {
+          goto(writeResp)
+        }
+      }
+    }
+
+    writeResp.whenIsActive {
+      d.valid := True
+      d.opcode := Opcode.D.ACCESS_ACK()
+      when(d.fire) {
+        goto(idle)
+      }
+    }
+  }
 }

@@ -33,7 +33,12 @@ int plic_irq_disable(struct plic_driver *driver, unsigned int number)
 	return 1;
 }
 
-int plic_irq_claim(struct plic_driver *driver, unsigned int number)
+unsigned int plic_irq_claim(struct plic_driver *driver)
+{
+	return *driver->claim;
+}
+
+int plic_irq_complete(struct plic_driver *driver, unsigned int number)
 {
 	*driver->claim = number;
 

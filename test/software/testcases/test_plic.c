@@ -21,7 +21,8 @@ int main(void)
 
 	plic_irq_enable(&driver, 1);
 	plic_irq_disable(&driver, 1);
-	plic_irq_claim(&driver, 1);
+	plic_irq_claim(&driver);
+	plic_irq_complete(&driver, 1);
 
 	return 0;
 }

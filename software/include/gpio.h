@@ -54,5 +54,6 @@ void gpio_dir_clr(struct gpio_driver *driver, unsigned int pin);
 int gpio_irq_enable(struct gpio_driver *driver, unsigned int pin, int flags);
 int gpio_irq_disable(struct gpio_driver *driver, unsigned int pin, int flags);
 int gpio_irq_ready(struct gpio_driver *driver, unsigned int pin, int flags);
+int gpio_irq_clear(struct gpio_driver *driver, unsigned int pin, int flags);
 
 #endif

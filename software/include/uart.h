@@ -49,5 +49,6 @@ int uart_getc(struct uart_driver *driver, unsigned char *c);
 int uart_irq_rx_enable(struct uart_driver *driver);
 int uart_irq_rx_disable(struct uart_driver *driver);
 int uart_irq_rx_ready(struct uart_driver *driver);
+int uart_irq_rx_clear(struct uart_driver *driver);
 
 #endif

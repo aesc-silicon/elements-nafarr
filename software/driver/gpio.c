@@ -104,3 +104,21 @@ int gpio_irq_ready(struct gpio_driver *driver, unsigned int pin, int flags)
 
 	return ret;
 }
+
+int gpio_irq_clear(struct gpio_driver *driver, unsigned int pin, int flags)
+{
+	volatile struct gpio_bank_regs *bank = &driver->regs->banks[pin / GPIO_BANK_WIDTH];
+	unsigned int bit = pin % GPIO_BANK_WIDTH;
+
+	/* W1C. Edge pending stays cleared; a level pending re-sets while held. */
+	if (flags & GPIO_IRQ_LEVEL_HIGH)
+		bank->irq_high_pending = 1 << bit;
+	if (flags & GPIO_IRQ_LEVEL_LOW)
+		bank->irq_low_pending = 1 << bit;
+	if (flags & GPIO_IRQ_RISING_EDGE)
+		bank->irq_rising_pending = 1 << bit;
+	if (flags & GPIO_IRQ_FALLING_EDGE)
+		bank->irq_falling_pending = 1 << bit;
+
+	return 1;
+}

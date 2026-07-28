@@ -73,3 +73,13 @@ int uart_irq_rx_ready(struct uart_driver *driver)
 
 	return !!(uart->irq_pending & UART_IRQ_RX);
 }
+
+int uart_irq_rx_clear(struct uart_driver *driver)
+{
+	volatile struct uart_regs *uart = driver->regs;
+
+	/* W1C; drain the RX FIFO first, else the level input re-sets it. */
+	uart->irq_pending = UART_IRQ_RX;
+
+	return 1;
+}

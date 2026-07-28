@@ -9,6 +9,9 @@ import spinal.lib._
 import spinal.lib.fsm._
 import nafarr.memory.hyperbus.{HyperBus, HyperBusCtrl}
 
+// Serial generic PHY: a pure slicer. Slices the controller-built CA and write
+// words into single bytes and clocks them out one byte per HyperBus edge, and
+// reassembles read bytes into words. The byte timing is unchanged from before.
 object HyperBusGenericPhy {
   def apply(p: HyperBusCtrl.Parameter) = HyperBusGenericPhy.Phy(p)
 
@@ -17,6 +20,8 @@ object HyperBusGenericPhy {
       val hyperbus = master(HyperBus.Io(p))
       val phy = slave(HyperBus.Phy.Interface(p))
     }
+
+    val dataBytes = p.frontend.dataWidth / 8
 
     val phyIsIdle = False
 
@@ -38,7 +43,6 @@ object HyperBusGenericPhy {
         counter := 0
         run := True
       }
-
       when(run) {
         counter := counter + 1
         when(counter === 0) {
@@ -53,21 +57,19 @@ object HyperBusGenericPhy {
           run := False
         }
       }
-
       io.hyperbus.reset := value
     }
 
     val fsm = new StateMachine {
+      val clocksPerEdge = p.phy.clockDivider / 2
+      val setupClockCount = 5 * clocksPerEdge - 1
+
       val chipSelects = Reg(Bits(p.hyperbus.supportedDevices bits))
         .init(B(p.hyperbus.supportedDevices bits, default -> True))
-      val bitCount = Reg(UInt(log2Up(6) bits))
-      val additionalLatency = RegInit(False)
       val readTransaction = Reg(Bool)
-      val setupClockCount = 5 * p.phy.clocksPerEdge - 1
+      val additionalLatency = RegInit(False)
       val latencyCycles = Reg(UInt(log2Up(6) + log2Up(p.phy.clockDivider) + 3 bits))
-      val rwds = Reg(Bool)
-
-      // TODO timeout
+      val burstLen = Reg(UInt(log2Up(p.frontend.storageDepth + 1) bits))
 
       val counter = new Area {
         val value = Reg(UInt(log2Up(p.phy.transactionWidth * p.phy.clockDivider + 50) bits)).init(0)
@@ -77,24 +79,19 @@ object HyperBusGenericPhy {
         def enableClock = enableOutput := True
         def disableClock = enableOutput := False
         def reset = value := 0
-        def clock = !value(log2Up(p.phy.clocksPerEdge)) & enableOutput
+        def clock = !value(log2Up(clocksPerEdge)) & enableOutput
 
         val states = new Area {
-          def chipSelectSetup = value === p.phy.clocksPerEdge + 1
-          def chipSelectTeardown = value === p.phy.clocksPerEdge
-
-          def addrLast = value(log2Up(p.phy.clocksPerEdge) - 1 downto 0) === U(1)
-          def readLast = value(log2Up(p.phy.clocksPerEdge) - 1 downto 0) === U(1)
-          def writeLast = value(log2Up(p.phy.clocksPerEdge) - 1 downto 0) === U(1)
-
+          def chipSelectSetup = value === clocksPerEdge + 1
+          def chipSelectTeardown = value === clocksPerEdge
+          def edgeLast = value(log2Up(clocksPerEdge) - 1 downto 0) === U(1)
+          // Fixed vs variable (2x) latency: the device raises RWDS during CA to
+          // request the doubled window.
           def latencyCount1 = setupClockCount + (latencyCycles << log2Up(p.phy.clockDivider))
           def latencyCount2 = setupClockCount + (latencyCycles << (log2Up(p.phy.clockDivider) + 1))
-          def accessReadLC1 = !additionalLatency && value > latencyCount1
-          def accessReadLC2 = additionalLatency && value > latencyCount2
-          def accessWriteLC1 =
-            !additionalLatency && value > latencyCount1 + (p.phy.clocksPerEdge / 2)
-          def accessWriteLC2 =
-            additionalLatency && value > latencyCount2 + (p.phy.clocksPerEdge / 2)
+          def latencyCount = (additionalLatency ? latencyCount2 | latencyCount1)
+          def accessRead = value > latencyCount
+          def accessWrite = value > latencyCount + (clocksPerEdge / 2)
         }
       }
 
@@ -109,59 +106,70 @@ object HyperBusGenericPhy {
         val dq = BufferCC(io.hyperbus.dq.read, bufferDepth = 2)
         val rwds = BufferCC(io.hyperbus.rwds.read, bufferDepth = 2)
       }
+      val rwdsEdge = synchronizer.rwds =/= RegNext(synchronizer.rwds)
 
       val cmdFifo = StreamFifo(HyperBus.Phy.Cmd(p), 12)
       cmdFifo.io.push << io.phy.cmd
       cmdFifo.io.pop.ready := False
 
-      val rspFifo = StreamFifo(HyperBus.Phy.Rsp(p), 12)
-      io.phy.rsp << rspFifo.io.pop
-      rspFifo.io.push.valid := False
-      rspFifo.io.push.payload.data := synchronizer.dq
-      rspFifo.io.push.payload.error := False
-      rspFifo.io.push.payload.last := False
+      val rdataFifo = StreamFifo(HyperBus.Phy.Rdata(p), p.frontend.storageDepth)
+      io.phy.rdata << rdataFifo.io.pop
+      rdataFifo.io.push.valid := False
+      rdataFifo.io.push.payload.data := 0
+      rdataFifo.io.push.payload.last := False
+      rdataFifo.io.push.payload.error := False
+      rdataFifo.io.push.payload.aborted := False
+
+      val byteIndex = Reg(UInt(3 bits))
+      val recvData = Reg(Bits(p.frontend.dataWidth bits))
+      val wordCount = Reg(UInt(log2Up(p.frontend.storageDepth + 1) bits))
 
       val init: State = new State with EntryPoint {
         whenIsActive {
           phyIsIdle := True
-          when(cmdFifo.io.pop.valid && cmdFifo.io.pop.isCs && !reset.isReset) {
+          counter.disableClock
+          when(cmdFifo.io.pop.valid && cmdFifo.io.pop.isStart && !reset.isReset) {
             cmdFifo.io.pop.ready := True
-            counter.reset
+            val s = cmdFifo.io.pop.argsStart
             if (p.hyperbus.supportedDevices == 1) {
               chipSelects(0) := False
             } else {
-              chipSelects(cmdFifo.io.pop.argsCs.index) := False
+              chipSelects(s.index) := False
             }
-            readTransaction := cmdFifo.io.pop.argsCs.read
-            latencyCycles := cmdFifo.io.pop.argsCs.latencyCycles.resized
-            bitCount := 0
-            rwds := True
+            readTransaction := s.read
+            latencyCycles := s.latency.resized
+            burstLen := s.burstLen
+            counter.reset
+            byteIndex := 0
+            wordCount := 0
+            recvData := 0
             goto(chipSelectSetup)
           }
         }
       }
+
       val chipSelectSetup: State = new State {
         whenIsActive {
           when(counter.states.chipSelectSetup) {
             counter.enableClock
-            goto(address)
+            goto(ca)
           }
         }
       }
-      val address: State = new State {
-        whenIsActive {
-          when(cmdFifo.io.pop.valid && cmdFifo.io.pop.isAddr) {
-            io.hyperbus.dq.writeEnable := default -> true
-            io.hyperbus.dq.write := cmdFifo.io.pop.argsAddr.addr
 
-            when(counter.states.addrLast) {
-              bitCount := bitCount + 1
-              cmdFifo.io.pop.ready := True
-              when(bitCount === 2) {
+      val ca: State = new State {
+        whenIsActive {
+          when(cmdFifo.io.pop.valid && cmdFifo.io.pop.isCa) {
+            io.hyperbus.dq.writeEnable := default -> true
+            io.hyperbus.dq.write := cmdFifo.io.pop.argsCa.ca.subdivideIn(8 bits)(5 - byteIndex)
+            when(counter.states.edgeLast) {
+              byteIndex := byteIndex + 1
+              when(byteIndex === 2) {
                 additionalLatency := synchronizer.rwds
               }
-              when(bitCount === 5) {
-                bitCount := 0
+              when(byteIndex === 5) {
+                cmdFifo.io.pop.ready := True
+                byteIndex := 0
                 when(readTransaction) {
                   goto(read)
                 } otherwise {
@@ -172,48 +180,57 @@ object HyperBusGenericPhy {
           }
         }
       }
+
       val read: State = new State {
         whenIsActive {
-          when(counter.states.accessReadLC1 || counter.states.accessReadLC2) {
-            when(cmdFifo.io.pop.valid && cmdFifo.io.pop.isData) {
-              when(synchronizer.rwds === rwds && counter.states.readLast) {
-                // when(counter.states.readLast) {
-                rspFifo.io.push.valid := True
-                cmdFifo.io.pop.ready := True
-                rwds := !rwds
-                when(cmdFifo.io.pop.argsData.mask) {
-                  rspFifo.io.push.payload.data := 0
-                }
-                when(cmdFifo.io.pop.argsData.last) {
-                  rspFifo.io.push.payload.last := True
-                  goto(end)
-                }
+          when(counter.states.accessRead && rwdsEdge) {
+            val assembled = Bits(p.frontend.dataWidth bits)
+            assembled := recvData
+            assembled.subdivideIn(8 bits)(byteIndex.resize(log2Up(dataBytes))) := synchronizer.dq
+            recvData := assembled
+            when(byteIndex === dataBytes - 1) {
+              byteIndex := 0
+              rdataFifo.io.push.valid := True
+              rdataFifo.io.push.payload.data := assembled
+              when(wordCount === burstLen) {
+                rdataFifo.io.push.payload.last := True
+                goto(end)
               }
+              wordCount := wordCount + 1
+            } otherwise {
+              byteIndex := byteIndex + 1
             }
           }
         }
       }
+
       val write: State = new State {
         whenIsActive {
           io.hyperbus.rwds.writeEnable := True
-          when(counter.states.accessWriteLC1 || counter.states.accessWriteLC2) {
-            when(cmdFifo.io.pop.valid && cmdFifo.io.pop.isData) {
-              io.hyperbus.rwds.write := cmdFifo.io.pop.argsData.mask
-              io.hyperbus.dq.writeEnable := default -> true
-              io.hyperbus.dq.write := cmdFifo.io.pop.argsData.data
-              rspFifo.io.push.payload.data := 0
-              when(counter.states.writeLast) {
-                rspFifo.io.push.valid := True
+          when(counter.states.accessWrite && cmdFifo.io.pop.valid && cmdFifo.io.pop.isWrite) {
+            val w = cmdFifo.io.pop.argsWrite
+            io.hyperbus.dq.writeEnable := default -> true
+            io.hyperbus.dq.write := w.data.subdivideIn(8 bits)(byteIndex.resize(log2Up(dataBytes)))
+            io.hyperbus.rwds.write := w.mask(byteIndex.resize(log2Up(dataBytes)))
+            when(counter.states.edgeLast) {
+              when(byteIndex === dataBytes - 1) {
+                byteIndex := 0
                 cmdFifo.io.pop.ready := True
-                when(cmdFifo.io.pop.argsData.last) {
-                  rspFifo.io.push.payload.last := True
+                // Ack each committed word so the write is non-posted.
+                rdataFifo.io.push.valid := True
+                rdataFifo.io.push.payload.data := 0
+                rdataFifo.io.push.payload.last := w.last
+                when(w.last) {
                   goto(end)
                 }
+              } otherwise {
+                byteIndex := byteIndex + 1
               }
             }
           }
         }
       }
+
       val end: State = new State {
         onEntry {
           chipSelects := (default -> true)

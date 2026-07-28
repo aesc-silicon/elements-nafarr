@@ -7,13 +7,37 @@ package nafarr.memory.hyperbus
 import spinal.core._
 import spinal.lib._
 import spinal.lib.fsm._
+import spinal.lib.misc.InterruptCtrl
 import spinal.lib.bus.misc.BusSlaveFactory
+
+import nafarr.IpIdentification
 
 import scala.math._
 import BigDecimal._
 
 object HyperBusCtrl {
   def apply(p: Parameter) = HyperBusCtrl(p)
+
+  object Errors {
+    val address = 0 // access outside any partition
+    val permission = 1 // read of a non-readable partition
+    val timeout = 2 // transaction exceeded the timeout window
+    val unaligned = 3 // odd-address (address(0)) access - straddle not implemented
+    val width = 4
+  }
+
+  object Regs {
+    def apply(base: BigInt) = new Regs(base)
+  }
+  class Regs(base: BigInt) {
+    val resetTrigger = base + 0x08
+    val resetPulse = base + 0x0c
+    val resetHalt = base + 0x10
+    val latency = base + 0x18
+    val register = base + 0x28
+    val fifoStatus = base + 0x2c
+    val errorPending = base + 0x38
+  }
 
   case class InitParameter(
       resetPulse: Int = 15,
@@ -33,11 +57,15 @@ object HyperBusCtrl {
       init: InitParameter
   ) {}
   object Parameter {
-    def default(partitions: List[(BigInt, Boolean)]) = Parameter(
+    def default(
+        partitions: List[(BigInt, Boolean)],
+        clockDivider: Int = 8,
+        latencyCycles: Int = 7
+    ) = Parameter(
       hyperbus = HyperBusParameter(partitions),
-      phy = PhyParameter(),
+      phy = PhyParameter(clockDivider = clockDivider),
       frontend = FrontendParameter(),
-      init = InitParameter()
+      init = InitParameter(latencyCycles = latencyCycles)
     )
   }
   case class HyperBusParameter(
@@ -53,8 +81,8 @@ object HyperBusCtrl {
   case class PhyParameter(
       resetPulseMaxWidth: TimeNumber = 1 us,
       resetHaltMaxWidth: TimeNumber = 2 us,
-      transactionMaxWidth: TimeNumber = 4 us,
-      clockDivider: Int = 8,
+      transactionMaxWidth: TimeNumber = 20 us,
+      clockDivider: Int = 2,
       synchronizerDepth: Int = 2,
       dataWidth: Int = 8
   ) {
@@ -80,14 +108,13 @@ object HyperBusCtrl {
         .intValue()
     }
 
-    val clocksPerEdge = clockDivider / 2
     require(dataWidth == 8, "HyperBus only supports 8 data bits")
   }
   case class FrontendParameter(
       addrWidth: Int = 32,
       dataWidth: Int = 32,
       idLength: Int = 6,
-      storageDepth: Int = 12
+      storageDepth: Int = 16
   ) {
     require(dataWidth % 8 == 0, "Data width has to be a multiple of 8")
   }
@@ -110,15 +137,34 @@ object HyperBusCtrl {
     val frontend = master(Stream(HyperBus.FrontendInterface(p)))
     val controller = slave(Stream(HyperBus.ControllerInterface(p)))
     val config = Config(p)
+    val error = out(Bits(Errors.width bits))
   }
 
   case class HyperBusCtrl(p: Parameter) extends Component {
     val io = Io(p)
 
+    val errorPulse = Bits(Errors.width bits)
+    errorPulse := 0
+    io.error := errorPulse
+
     io.phy.config <> io.config.phy
 
-    val frontend = StreamFifo(HyperBus.ControllerInterface(p), 12)
+    val frontend = StreamFifo(HyperBus.ControllerInterface(p), p.frontend.storageDepth)
     frontend.io.pop.ready := False
+
+    val respFifo = StreamFifo(HyperBus.FrontendInterface(p), p.frontend.storageDepth)
+    io.frontend << respFifo.io.pop
+    respFifo.io.push.valid := False
+    respFifo.io.push.payload.id := 0
+    respFifo.io.push.payload.read := False
+    respFifo.io.push.payload.data := 0
+    respFifo.io.push.payload.last := False
+    respFifo.io.push.payload.error := False
+
+    val pendingBurstsInc = False
+    val pendingBurstsDec = False
+    val pendingBursts = Reg(UInt(log2Up(p.frontend.storageDepth + 1) bits)).init(0)
+    pendingBursts := pendingBursts + pendingBurstsInc.asUInt - pendingBurstsDec.asUInt
 
     val funnel = new StateMachine {
       frontend.io.push.valid := False
@@ -170,17 +216,17 @@ object HyperBusCtrl {
       }
     }
 
-    io.phy.cmd.mode := HyperBus.Phy.CmdMode.CS
+    when(frontend.io.push.fire && frontend.io.push.payload.last) {
+      pendingBurstsInc := True
+    }
+
+    io.phy.cmd.mode := HyperBus.Phy.CmdMode.START
     io.phy.cmd.args := 0
     io.phy.cmd.valid := False
-    io.phy.rsp.ready := False
+    io.phy.rdata.ready := False
 
-    io.frontend.valid := False
-    io.frontend.payload.id := frontend.io.pop.payload.id
-    io.frontend.payload.read := frontend.io.pop.payload.read
-    io.frontend.payload.data := 0
-    io.frontend.payload.last := frontend.io.pop.payload.last
-    io.frontend.payload.error := False
+    io.config.rsp.valid := False
+    io.config.rsp.payload := 0
 
     val partitions = Vec(Reg(Partition(p)), p.hyperbus.partitions.length)
     var lowAddress = BigInt(0)
@@ -192,265 +238,257 @@ object HyperBusCtrl {
     }
 
     val fsm = new StateMachine {
-      val counter = Reg(UInt(3 bits))
       val ca = Reg(Bits(48 bits))
-      val data = Reg(Bits(32 bits))
+      val maxBurst = p.frontend.storageDepth
+      val words = Vec(Reg(Bits(p.frontend.dataWidth bits)), maxBurst)
+      val strobes = Vec(Reg(Bits(p.frontend.dataWidth / 8 bits)), maxBurst)
+      val burstLen = Reg(UInt(log2Up(maxBurst + 1) bits))
+      val baseAddr = Reg(UInt(p.frontend.addrWidth bits))
+      val sendIdx = Reg(UInt(log2Up(maxBurst + 1) bits))
+      val ackIdx = Reg(UInt(log2Up(maxBurst + 1) bits))
+      val loadIdx = Reg(UInt(log2Up(maxBurst + 1) bits))
+      val idLatch = Reg(cloneOf(frontend.io.pop.payload.id))
+      val readLatch = Reg(Bool)
+      val memoryLatch = Reg(Bool)
 
-      io.config.rsp.valid := False
-      io.config.rsp.payload := 0
+      // Build the 48-bit CA into `ca` (used next state); return the CS index and an
+      // error flag combinationally for this cycle's START.
+      def buildCa(addr: UInt, read: Bool, memory: Bool): (UInt, Bool) = {
+        ca(47) := read
+        ca(46) := !memory
+        ca(45) := True
+        val wordAddr = (addr >> 1).resize(widthOf(addr))
+        ca(44 downto 16) := wordAddr.asBits(31 downto 3)
+        ca(15 downto 3) := B(13 bits, default -> False)
+        ca(2 downto 0) := wordAddr.asBits(2 downto 0)
+
+        val addrLow = addr(log2Up(p.hyperbus.memorySpace) - 1 downto 0)
+        val index = UInt(Math.max(log2Up(p.hyperbus.supportedDevices), 1) bits)
+        val addressError = False
+        val permissionError = False
+        if (partitions.length == 1) {
+          index := 0
+          when(read && !partitions(0).readable) {
+            permissionError := True
+          }
+        } else {
+          val (inPartitions, sel) =
+            partitions.sFindFirst(x => x.low <= addrLow && addrLow < x.high)
+          index := sel.resized
+          when(!inPartitions) {
+            addressError := True
+          }
+          when(read && !partitions(sel).readable) {
+            permissionError := True
+          }
+        }
+        when(addressError) {
+          errorPulse(Errors.address) := True
+        }
+        when(permissionError) {
+          errorPulse(Errors.permission) := True
+        }
+        (index, addressError || permissionError)
+      }
+
+      // [1,0,3,2] byte lane order, self-inverse (same for write out and read in).
+      def reorder(word: Bits): Bits =
+        word(23 downto 16) ## word(31 downto 24) ## word(7 downto 0) ## word(15 downto 8)
+      def reorderMask(s: Bits): Bits =
+        ~(s(2) ## s(3) ## s(0) ## s(1))
 
       val init: State = new State with EntryPoint {
         whenIsActive {
+          when(frontend.io.pop.valid && pendingBursts =/= 0) {
+            loadIdx := 0
+            sendIdx := 0
+            idLatch := frontend.io.pop.payload.id
+            readLatch := frontend.io.pop.payload.read
+            memoryLatch := frontend.io.pop.payload.memory
+            baseAddr := frontend.io.pop.payload.addr
+            when(frontend.io.pop.payload.unaligned) {
+              errorPulse(Errors.unaligned) := True
+              goto(drainError)
+            } otherwise {
+              goto(load)
+            }
+          }
+        }
+      }
+
+      val load: State = new State {
+        whenIsActive {
           when(frontend.io.pop.valid) {
-            counter := 0
-            data := 0
-
-            ca(47) := frontend.io.pop.payload.read
-            ca(46) := !frontend.io.pop.payload.memory
-            ca(45) := True // always linear burst
-            ca(44 downto 16) := frontend.io.pop.payload.addr.asBits(31 downto 3)
-            ca(15 downto 3) := B(13 bits, default -> False)
-            ca(2 downto 0) := frontend.io.pop.payload.addr.asBits(2 downto 0)
-
-            val cmd = HyperBus.Phy.CmdCs(p)
-            val addr = frontend.io.pop.payload.addr(log2Up(p.hyperbus.memorySpace) - 1 downto 0)
-            if (partitions.length == 1) {
-              // TODO error when !inPartitions
-              // TODO error when frontend.io.pop.payload.read && !_.read
-              cmd.index := 0
-            } else {
-              val (inPartitions, index) = partitions.sFindFirst(x => x.low <= addr && addr < x.high)
-              // TODO error when !inPartitions
-              // TODO error when frontend.io.pop.payload.read && !_.read
-              // TODO split access over partition boundary
-              cmd.index := index
+            words(loadIdx.resize(log2Up(maxBurst))) := frontend.io.pop.payload.data
+            strobes(loadIdx.resize(log2Up(maxBurst))) := frontend.io.pop.payload.strobe
+            frontend.io.pop.ready := True
+            loadIdx := loadIdx + 1
+            when(frontend.io.pop.payload.last) {
+              burstLen := loadIdx + 1
+              pendingBurstsDec := True
+              goto(startCmd)
             }
-            cmd.latencyCycles := io.config.latencyCycles
-            when(!frontend.io.pop.payload.memory && !frontend.io.pop.payload.read) {
-              cmd.latencyCycles := 0
+          }
+        }
+      }
+
+      val startCmd: State = new State {
+        whenIsActive {
+          val (index, hasError) = buildCa(baseAddr, readLatch, memoryLatch)
+          when(hasError) {
+            goto(errorResp)
+          } otherwise {
+            val s = HyperBus.Phy.CmdStart(p)
+            s.index := index
+            s.read := readLatch
+            s.memory := memoryLatch
+            s.latency := io.config.latencyCycles.resized
+            when(!memoryLatch && !readLatch) {
+              s.latency := 0
             }
-            cmd.read := frontend.io.pop.payload.read
-            io.phy.cmd.args := cmd.asBits.resized
+            s.burstLen := (burstLen - 1).resized
+            io.phy.cmd.mode := HyperBus.Phy.CmdMode.START
+            io.phy.cmd.args := s.asBits.resized
             io.phy.cmd.valid := True
             when(io.phy.cmd.ready) {
-              goto(cmdAddr)
+              goto(caCmd)
             }
           }
         }
       }
 
-      val cmdAddr: State = new State {
+      val caCmd: State = new State {
         whenIsActive {
-          val cmd = HyperBus.Phy.CmdAddr(p)
-          cmd.addr := counter.mux(
-            0 -> ca(5 * 8 + 8 - 1 downto 5 * 8),
-            1 -> ca(4 * 8 + 8 - 1 downto 4 * 8),
-            2 -> ca(3 * 8 + 8 - 1 downto 3 * 8),
-            3 -> ca(2 * 8 + 8 - 1 downto 2 * 8),
-            4 -> ca(1 * 8 + 8 - 1 downto 1 * 8),
-            5 -> ca(0 * 8 + 8 - 1 downto 0 * 8),
-            default -> B(8 bits, default -> False)
-          )
-          io.phy.cmd.mode := HyperBus.Phy.CmdMode.ADDR
-          io.phy.cmd.args := cmd.asBits.resized
+          val c = HyperBus.Phy.CmdCa(p)
+          c.ca := ca
+          io.phy.cmd.mode := HyperBus.Phy.CmdMode.CA
+          io.phy.cmd.args := c.asBits.resized
           io.phy.cmd.valid := True
           when(io.phy.cmd.ready) {
-            counter := counter + 1
-            when(counter === 5) {
-              counter := 0
-              goto(write)
+            sendIdx := 0
+            ackIdx := 0
+            when(readLatch) {
+              goto(readDrain)
+            } otherwise {
+              goto(writeStream)
             }
           }
         }
       }
 
-      val write: State = new State {
+      // Non-posted write: emit the WRITE beats and, concurrently, drain the PHY's
+      // per-word acks into the response path. Draining while emitting keeps the
+      // PHY's ack FIFO from backing up. Done once every word is acked.
+      val writeStream: State = new State {
         whenIsActive {
-          val cmd = HyperBus.Phy.CmdData(p)
-          cmd.data := 0
-          cmd.mask := True
-          cmd.last := False
-
-          when(frontend.io.pop.payload.strobe === B"0001") {
-            cmd.data := frontend.io.pop.payload.data(7 downto 0)
-            when(frontend.io.pop.payload.unaligned && counter === 0) {
-              cmd.mask := False
-            }
-            when(!frontend.io.pop.payload.unaligned && counter === 1) {
-              cmd.mask := False
-            }
-            when(counter === 1) {
-              cmd.last := True
+          when(sendIdx =/= burstLen) {
+            val w = HyperBus.Phy.CmdWrite(p)
+            w.data := reorder(words(sendIdx.resize(log2Up(maxBurst))))
+            w.mask := reorderMask(strobes(sendIdx.resize(log2Up(maxBurst))))
+            w.last := sendIdx === burstLen - 1
+            io.phy.cmd.mode := HyperBus.Phy.CmdMode.WRITE
+            io.phy.cmd.args := w.asBits.resized
+            io.phy.cmd.valid := True
+            when(io.phy.cmd.ready) {
+              sendIdx := sendIdx + 1
             }
           }
-          when(frontend.io.pop.payload.strobe === B"0011") {
-            when(frontend.io.pop.payload.unaligned) {
-              cmd.data := counter.mux(
-                0 -> frontend.io.pop.payload.data(0 * 8 + 8 - 1 downto 0 * 8),
-                3 -> frontend.io.pop.payload.data(1 * 8 + 8 - 1 downto 1 * 8),
-                default -> B(8 bits, default -> False)
-              )
-              when(counter === 1 || counter === 3) {
-                cmd.mask := False
-              }
-              when(counter === 3) {
-                cmd.last := True
+          when(io.phy.rdata.valid) {
+            when(memoryLatch) {
+              respFifo.io.push.payload.id := idLatch
+              respFifo.io.push.payload.read := False
+              respFifo.io.push.payload.last := (ackIdx === burstLen - 1)
+              respFifo.io.push.valid := True
+              io.phy.rdata.ready := respFifo.io.push.ready
+              when(respFifo.io.push.fire) {
+                ackIdx := ackIdx + 1
+                when(ackIdx === burstLen - 1) {
+                  goto(init)
+                }
               }
             } otherwise {
-              cmd.data := counter.mux(
-                0 -> frontend.io.pop.payload.data(1 * 8 + 8 - 1 downto 1 * 8),
-                1 -> frontend.io.pop.payload.data(0 * 8 + 8 - 1 downto 0 * 8),
-                default -> B(8 bits, default -> False)
-              )
-              cmd.mask := False
-              when(counter === 1) {
-                cmd.last := True
-              }
-            }
-          }
-          when(frontend.io.pop.payload.strobe === B"1111") {
-            when(!frontend.io.pop.payload.unaligned) {
-              cmd.data := counter.mux(
-                0 -> frontend.io.pop.payload.data(1 * 8 + 8 - 1 downto 1 * 8),
-                1 -> frontend.io.pop.payload.data(0 * 8 + 8 - 1 downto 0 * 8),
-                2 -> frontend.io.pop.payload.data(3 * 8 + 8 - 1 downto 3 * 8),
-                3 -> frontend.io.pop.payload.data(2 * 8 + 8 - 1 downto 2 * 8),
-                default -> B(8 bits, default -> False)
-              )
-              cmd.mask := False
-              when(counter === 3) {
-                cmd.last := True
-              }
-            } otherwise {
-              cmd.data := counter.mux(
-                0 -> frontend.io.pop.payload.data(0 * 8 + 8 - 1 downto 0 * 8),
-                2 -> frontend.io.pop.payload.data(2 * 8 + 8 - 1 downto 2 * 8),
-                3 -> frontend.io.pop.payload.data(1 * 8 + 8 - 1 downto 1 * 8),
-                5 -> frontend.io.pop.payload.data(3 * 8 + 8 - 1 downto 3 * 8),
-                default -> B(8 bits, default -> False)
-              )
-              when(counter === 1 || counter === 2 || counter === 3 || counter === 5) {
-                cmd.mask := False
-              }
-              when(counter === 3) {
-                cmd.last := True
-              }
-            }
-          }
-
-          io.phy.cmd.mode := HyperBus.Phy.CmdMode.DATA
-          io.phy.cmd.args := cmd.asBits.resized
-          io.phy.cmd.valid := True
-          when(io.phy.cmd.ready) {
-            counter := counter + 1
-            when(frontend.io.pop.memory && cmd.last) {
-              counter := 0
-              goto(read)
-            }
-            when(!frontend.io.pop.memory && counter === 1) {
-              counter := 0
-              goto(read)
-            }
-          }
-        }
-      }
-
-      val read: State = new State {
-        whenIsActive {
-          when(io.phy.rsp.valid) {
-            val result = io.phy.rsp.payload.data
-
-            when(frontend.io.pop.payload.strobe === B"0001") {
-              when(frontend.io.pop.payload.unaligned && counter === 0) {
-                data(7 downto 0) := result
-              }
-              when(!frontend.io.pop.payload.unaligned && counter === 1) {
-                data(7 downto 0) := result
-              }
-            }
-            when(frontend.io.pop.payload.strobe === B"0011") {
-              when(frontend.io.pop.payload.unaligned) {
-                data := counter.mux(
-                  0 -> data(31 downto 8) ## result,
-                  3 -> data(31 downto 16) ## result ## data(7 downto 0),
-                  default -> data
-                )
-              } otherwise {
-                data := counter.mux(
-                  0 -> data(31 downto 16) ## result ## data(7 downto 0),
-                  1 -> data(31 downto 8) ## result,
-                  default -> data
-                )
-              }
-            }
-            when(frontend.io.pop.payload.strobe === B"1111") {
-              when(frontend.io.pop.payload.unaligned) {
-                data := counter.mux(
-                  0 -> data(31 downto 8) ## result,
-                  2 -> data(31 downto 24) ## result ## data(15 downto 0),
-                  3 -> data(31 downto 16) ## result ## data(7 downto 0),
-                  5 -> result ## data(23 downto 0),
-                  default -> data
-                )
-              } otherwise {
-                data := counter.mux(
-                  0 -> data(31 downto 16) ## result ## data(7 downto 0),
-                  1 -> data(31 downto 8) ## result,
-                  2 -> result ## data(23 downto 0),
-                  3 -> data(31 downto 24) ## result ## data(15 downto 0),
-                  default -> data
-                )
-              }
-            }
-
-            io.phy.rsp.ready := True
-            counter := counter + 1
-            when(io.phy.rsp.payload.last) {
-              counter := 0
-              goto(response)
-            }
-          }
-        }
-      }
-      val response: State = new State {
-        whenIsActive {
-          when(frontend.io.pop.memory) {
-            io.frontend.payload.data := data
-            when(!frontend.io.pop.payload.read) {
-              io.frontend.payload.data := 0
-            }
-            io.frontend.valid := True
-            when(io.frontend.fire) {
-              frontend.io.pop.ready := True
-              goto(init)
-            }
-          } otherwise {
-            io.config.rsp.payload := False ## data(15 downto 0)
-            when(!frontend.io.pop.payload.read) {
               io.config.rsp.payload := 0
+              io.config.rsp.valid := True
+              io.phy.rdata.ready := io.config.rsp.ready
+              when(io.config.rsp.fire) {
+                ackIdx := ackIdx + 1
+                when(ackIdx === burstLen - 1) {
+                  goto(init)
+                }
+              }
             }
+          }
+        }
+      }
+
+      val readDrain: State = new State {
+        whenIsActive {
+          when(io.phy.rdata.valid) {
+            val word = reorder(io.phy.rdata.payload.data)
+            when(io.phy.rdata.payload.error) {
+              io.phy.rdata.ready := True
+              errorPulse(Errors.timeout) := True
+              goto(errorResp)
+            } elsewhen (memoryLatch) {
+              respFifo.io.push.payload.id := idLatch
+              respFifo.io.push.payload.read := True
+              respFifo.io.push.payload.data := word
+              respFifo.io.push.payload.last := io.phy.rdata.payload.last
+              respFifo.io.push.valid := True
+              io.phy.rdata.ready := respFifo.io.push.ready
+              when(respFifo.io.push.fire && io.phy.rdata.payload.last) {
+                goto(init)
+              }
+            } otherwise {
+              io.config.rsp.payload := False ## word(15 downto 0)
+              io.config.rsp.valid := True
+              io.phy.rdata.ready := io.config.rsp.ready
+              when(io.config.rsp.fire && io.phy.rdata.payload.last) {
+                goto(init)
+              }
+            }
+          }
+        }
+      }
+
+      val errorResp: State = new State {
+        whenIsActive {
+          when(memoryLatch) {
+            respFifo.io.push.payload.id := idLatch
+            respFifo.io.push.payload.read := readLatch
+            respFifo.io.push.payload.error := True
+            respFifo.io.push.payload.last := True
+            respFifo.io.push.valid := True
+            when(respFifo.io.push.fire) {
+              goto(init)
+            }
+          } otherwise {
+            io.config.rsp.payload := True ## B(16 bits, default -> False)
             io.config.rsp.valid := True
             when(io.config.rsp.fire) {
-              frontend.io.pop.ready := True
               goto(init)
             }
           }
         }
       }
-      val error: State = new State {
+
+      val drainError: State = new State {
         whenIsActive {
-          when(frontend.io.pop.memory) {
-            io.frontend.error := True
-            io.frontend.valid := True
-            when(io.frontend.fire) {
-              frontend.io.pop.ready := True
-              goto(init)
+          when(frontend.io.pop.valid) {
+            when(frontend.io.pop.payload.memory) {
+              respFifo.io.push.payload.id := frontend.io.pop.payload.id
+              respFifo.io.push.payload.read := frontend.io.pop.payload.read
+              respFifo.io.push.payload.error := True
+              respFifo.io.push.payload.last := frontend.io.pop.payload.last
+              respFifo.io.push.valid := True
+              frontend.io.pop.ready := respFifo.io.push.ready
+            } otherwise {
+              io.config.rsp.payload := True ## B(16 bits, default -> False)
+              io.config.rsp.valid := True
+              frontend.io.pop.ready := io.config.rsp.ready
             }
-          } otherwise {
-            io.config.rsp.payload := True ## data(15 downto 0)
-            io.config.rsp.valid := True
-            when(io.config.rsp.fire) {
-              frontend.io.pop.ready := True
+            when(frontend.io.pop.fire && frontend.io.pop.payload.last) {
+              pendingBurstsDec := True
               goto(init)
             }
           }
@@ -464,11 +502,13 @@ object HyperBusCtrl {
       ctrl: Io,
       p: Parameter
   ) extends Area {
-    // 0x000x IP information
+    val idCtrl = IpIdentification(IpIdentification.Ids.Hyperbus, 1, 0, 0)
+    idCtrl.driveFrom(busCtrl)
+    val regs = Regs(idCtrl.length)
 
-    // 0x001x RESET
+    // RESET
     ctrl.config.phy.reset.trigger := False
-    busCtrl.onWrite(0x10) {
+    busCtrl.onWrite(regs.resetTrigger) {
       ctrl.config.phy.reset.trigger := True
     }
     val resetPulse = Reg(ctrl.config.phy.reset.pulse)
@@ -478,25 +518,26 @@ object HyperBusCtrl {
     if (p.init != null && p.init.resetHalt != 0)
       resetHalt.init(U(p.init.resetHalt, widthOf(ctrl.config.phy.reset.halt) bit))
 
-    busCtrl.readAndWrite(resetPulse, 0x14)
-    busCtrl.readAndWrite(resetHalt, 0x18)
+    busCtrl.readAndWrite(resetPulse, regs.resetPulse)
+    busCtrl.readAndWrite(resetHalt, regs.resetHalt)
     ctrl.config.phy.reset.pulse := resetPulse
     ctrl.config.phy.reset.halt := resetHalt
 
-    // 0x002x TIMINGS
+    // TIMINGS
     val latencyCycles = Reg(ctrl.config.latencyCycles)
     if (p.init != null && p.init.latencyCycles != 0)
       latencyCycles.init(U(p.init.latencyCycles, widthOf(ctrl.config.latencyCycles) bit))
-    busCtrl.readAndWrite(latencyCycles, 0x20)
+    busCtrl.readAndWrite(latencyCycles, regs.latency)
     ctrl.config.latencyCycles := latencyCycles
 
-    // 0x003x REGISTER
+    // REGISTER access
     val cmdLogic = new Area {
-      val streamUnbuffered = busCtrl.createAndDriveFlow(Bits(32 bits), address = 0x30).toStream
+      val streamUnbuffered =
+        busCtrl.createAndDriveFlow(Bits(32 bits), address = regs.register).toStream
       val (stream, fifoAvailability) =
         streamUnbuffered.queueWithAvailability(p.hyperbus.registerCmdFifoDepth)
       ctrl.config.cmd << stream
-      busCtrl.read(fifoAvailability, address = 0x34, 16)
+      busCtrl.read(fifoAvailability, address = regs.fifoStatus, 16)
     }
 
     val rspLogic = new Area {
@@ -504,11 +545,18 @@ object HyperBusCtrl {
         ctrl.config.rsp.queueWithOccupancy(p.hyperbus.registerRspFifoDepth)
       busCtrl.readStreamNonBlocking(
         stream,
-        address = 0x30,
+        address = regs.register,
         validBitOffset = 31,
         payloadBitOffset = 0
       )
-      busCtrl.read(fifoOccupancy, address = 0x34, 0)
+      busCtrl.read(fifoOccupancy, address = regs.fifoStatus, 0)
     }
+
+    // ERROR controller: an InterruptCtrl latches the address/permission/timeout
+    // faults; the combined masked output drives io.error out to the ESM.
+    val errorCtrl = InterruptCtrl(Errors.width)
+    errorCtrl.io.inputs := ctrl.error
+    errorCtrl.driveFrom(busCtrl, regs.errorPending.toInt)
+    val error = errorCtrl.io.pendings.orR
   }
 }

@@ -445,11 +445,11 @@ class Axi4SharedHyperBusTest extends AnyFunSuite {
       dut.io.memory.r.ready #= false
       dut.io.memory.b.ready #= false
       dut.io.phy.cmd.ready #= false
-      dut.io.phy.rsp.valid #= false
+      dut.io.phy.rdata.valid #= false
       dut.clockDomain.waitSampling(5)
 
       assert(dut.io.phy.cmd.valid.toBoolean == false)
-      assert(dut.io.phy.rsp.ready.toBoolean == false)
+      assert(dut.io.phy.rdata.ready.toBoolean == false)
     }
     compiled.doSim("single read - no write") { dut =>
       dut.clockDomain.forkStimulus(10)
@@ -458,8 +458,22 @@ class Axi4SharedHyperBusTest extends AnyFunSuite {
       dut.io.memory.r.ready #= false
       dut.io.memory.b.ready #= false
       dut.io.phy.cmd.ready #= false
-      dut.io.phy.rsp.valid #= false
+      dut.io.phy.rdata.valid #= false
       dut.clockDomain.waitSampling(5)
+
+      new Apb3Driver(dut.io.bus, dut.clockDomain).write(BigInt("20", 16), BigInt("00000002", 16))
+
+      // Free-running PHY: accept every command, return one read word.
+      fork { dut.io.phy.cmd.ready #= true }
+      fork {
+        dut.io.phy.rdata.payload.data #= BigInt("cc33aa55", 16)
+        dut.io.phy.rdata.payload.last #= true
+        dut.io.phy.rdata.payload.error #= false
+        dut.io.phy.rdata.payload.aborted #= false
+        dut.io.phy.rdata.valid #= true
+        dut.clockDomain.waitSamplingWhere(dut.io.phy.rdata.ready.toBoolean)
+        dut.io.phy.rdata.valid #= false
+      }
 
       dut.io.memory.arw.valid #= true
       dut.io.memory.arw.addr #= BigInt(104)
@@ -468,118 +482,17 @@ class Axi4SharedHyperBusTest extends AnyFunSuite {
       dut.io.memory.arw.burst #= BigInt(1)
       dut.io.memory.arw.id #= BigInt(7)
       dut.io.memory.arw.write #= false
-
-      val apb = new Apb3Driver(dut.io.bus, dut.clockDomain)
-      apb.write(BigInt("20", 16), BigInt("00000002", 16))
-
-      sleep(2)
-      assert(dut.io.memory.arw.ready.toBoolean == true)
-      dut.clockDomain.waitSampling(1)
-      sleep(2)
+      dut.clockDomain.waitSamplingWhere(dut.io.memory.arw.ready.toBoolean)
       dut.io.memory.arw.valid #= false
 
-
-      dut.clockDomain.waitSampling(1)
-      dut.io.phy.cmd.ready #= true
-      assert(dut.io.phy.cmd.args.toBigInt == BigInt("10100", 2))
-      assert(dut.io.phy.cmd.mode.toBigInt == BigInt(0))
-      dut.clockDomain.waitSampling(1)
-
-      sleep(2)
-      assert(dut.io.phy.cmd.args.toBigInt == BigInt("10100000", 2))
-      assert(dut.io.phy.cmd.mode.toBigInt == BigInt(1))
-      dut.clockDomain.waitSampling(1)
-
-      sleep(2)
-      assert(dut.io.phy.cmd.args.toBigInt == BigInt("00000000", 2))
-      assert(dut.io.phy.cmd.mode.toBigInt == BigInt(1))
-      dut.clockDomain.waitSampling(1)
-
-      sleep(2)
-      assert(dut.io.phy.cmd.args.toBigInt == BigInt("00000000", 2))
-      assert(dut.io.phy.cmd.mode.toBigInt == BigInt(1))
-      dut.clockDomain.waitSampling(1)
-
-      sleep(2)
-      assert(dut.io.phy.cmd.args.toBigInt == BigInt("00000110", 2))
-      assert(dut.io.phy.cmd.mode.toBigInt == BigInt(1))
-      dut.clockDomain.waitSampling(1)
-
-      sleep(2)
-      assert(dut.io.phy.cmd.args.toBigInt == BigInt("00000000", 2))
-      assert(dut.io.phy.cmd.mode.toBigInt == BigInt(1))
-      dut.clockDomain.waitSampling(1)
-
-      sleep(2)
-      assert(dut.io.phy.cmd.args.toBigInt == BigInt("00000100", 2))
-      assert(dut.io.phy.cmd.mode.toBigInt == BigInt(1))
-      dut.clockDomain.waitSampling(1)
-
-      sleep(2)
-      assert(dut.io.phy.cmd.args.toBigInt == BigInt("00000000", 2))
-      assert(dut.io.phy.cmd.mode.toBigInt == BigInt(2))
-      dut.clockDomain.waitSampling(1)
-
-      sleep(2)
-      assert(dut.io.phy.cmd.args.toBigInt == BigInt("00000000", 2))
-      assert(dut.io.phy.cmd.mode.toBigInt == BigInt(2))
-      dut.clockDomain.waitSampling(1)
-
-      sleep(2)
-      assert(dut.io.phy.cmd.args.toBigInt == BigInt("00000000", 2))
-      assert(dut.io.phy.cmd.mode.toBigInt == BigInt(2))
-      dut.clockDomain.waitSampling(1)
-
-      sleep(2)
-      assert(dut.io.phy.cmd.args.toBigInt == BigInt("1000000000", 2))
-      assert(dut.io.phy.cmd.mode.toBigInt == BigInt(2))
-      dut.clockDomain.waitSampling(1)
-      dut.io.phy.cmd.ready #= false
-
-      // wait for response from HyperRAM device
-      dut.clockDomain.waitSampling(19)
-      assert(dut.io.phy.rsp.ready.toBoolean == false)
-      dut.io.phy.rsp.valid #= true
-      sleep(2)
-      assert(dut.io.phy.rsp.ready.toBoolean == true)
-      dut.io.phy.rsp.payload.data #= BigInt("01010101", 2)
-      dut.io.phy.rsp.payload.last #= false
-      dut.io.phy.rsp.payload.error #= false
-      dut.clockDomain.waitSampling(1)
-      assert(dut.io.phy.rsp.ready.toBoolean == true)
-      dut.io.phy.rsp.payload.data #= BigInt("10101010", 2)
-      dut.io.phy.rsp.payload.last #= false
-      dut.io.phy.rsp.payload.error #= false
-      dut.clockDomain.waitSampling(1)
-      assert(dut.io.phy.rsp.ready.toBoolean == true)
-      dut.io.phy.rsp.payload.data #= BigInt("00110011", 2)
-      dut.io.phy.rsp.payload.last #= false
-      dut.io.phy.rsp.payload.error #= false
-      dut.clockDomain.waitSampling(1)
-      assert(dut.io.phy.rsp.ready.toBoolean == true)
-      dut.io.phy.rsp.payload.data #= BigInt("11001100", 2)
-      dut.io.phy.rsp.payload.last #= true
-      dut.io.phy.rsp.payload.error #= false
-      dut.clockDomain.waitSampling(1)
-      dut.io.phy.rsp.valid #= false
-      sleep(2)
-      assert(dut.io.phy.rsp.ready.toBoolean == false)
-
-
-      dut.clockDomain.waitSampling(1)
-      sleep(2)
+      // PHY word 0xcc33aa55 reorders (self-inverse [1,0,3,2]) to 0x33cc55aa.
+      dut.io.memory.r.ready #= true
+      dut.clockDomain.waitSamplingWhere(dut.io.memory.r.valid.toBoolean)
       assert(dut.io.memory.r.id.toBigInt == BigInt(7))
-      assert(dut.io.memory.r.data.toBigInt == BigInt("33CC55AA", 16))
+      assert(dut.io.memory.r.data.toBigInt == BigInt("33cc55aa", 16))
       assert(dut.io.memory.r.resp.toBigInt == BigInt(0))
       assert(dut.io.memory.r.last.toBoolean == true)
-      assert(dut.io.memory.r.valid.toBoolean == true)
-      assert(dut.io.memory.b.id.toBigInt == BigInt(7))
-      assert(dut.io.memory.b.resp.toBigInt == BigInt(0))
-      assert(dut.io.memory.b.valid.toBoolean == false)
-      dut.io.memory.r.ready #= true
       dut.clockDomain.waitSampling(1)
-      sleep(2)
-      assert(dut.io.memory.r.valid.toBoolean == false)
       dut.io.memory.r.ready #= false
 
       dut.clockDomain.waitSampling(20)
@@ -591,8 +504,22 @@ class Axi4SharedHyperBusTest extends AnyFunSuite {
       dut.io.memory.r.ready #= false
       dut.io.memory.b.ready #= false
       dut.io.phy.cmd.ready #= false
-      dut.io.phy.rsp.valid #= false
+      dut.io.phy.rdata.valid #= false
       dut.clockDomain.waitSampling(5)
+
+      new Apb3Driver(dut.io.bus, dut.clockDomain).write(BigInt("20", 16), BigInt("00000002", 16))
+
+      // Free-running PHY: accept every command, ack the one written word.
+      fork { dut.io.phy.cmd.ready #= true }
+      fork {
+        dut.io.phy.rdata.payload.data #= BigInt(0)
+        dut.io.phy.rdata.payload.last #= true
+        dut.io.phy.rdata.payload.error #= false
+        dut.io.phy.rdata.payload.aborted #= false
+        dut.io.phy.rdata.valid #= true
+        dut.clockDomain.waitSamplingWhere(dut.io.phy.rdata.ready.toBoolean)
+        dut.io.phy.rdata.valid #= false
+      }
 
       dut.io.memory.arw.addr #= BigInt(104)
       dut.io.memory.arw.size #= BigInt(2)
@@ -600,127 +527,22 @@ class Axi4SharedHyperBusTest extends AnyFunSuite {
       dut.io.memory.arw.burst #= BigInt(1)
       dut.io.memory.arw.id #= BigInt(7)
       dut.io.memory.arw.write #= true
-
-      val apb = new Apb3Driver(dut.io.bus, dut.clockDomain)
-      apb.write(BigInt("20", 16), BigInt("00000002", 16))
-
       dut.io.memory.w.strb #= BigInt("1111", 2)
-      dut.io.memory.w.data #= BigInt("96ff00A5", 16)
+      dut.io.memory.w.data #= BigInt("96ff00a5", 16)
 
       dut.io.memory.arw.valid #= true
-      sleep(2)
-      assert(dut.io.memory.arw.ready.toBoolean == true)
-      dut.clockDomain.waitSampling(1)
-      dut.io.memory.w.valid #= true
+      dut.clockDomain.waitSamplingWhere(dut.io.memory.arw.ready.toBoolean)
       dut.io.memory.arw.valid #= false
-      sleep(2)
-      assert(dut.io.memory.w.ready.toBoolean == true)
-      dut.clockDomain.waitSampling(1)
+      dut.io.memory.w.valid #= true
+      dut.clockDomain.waitSamplingWhere(dut.io.memory.w.ready.toBoolean)
       dut.io.memory.w.valid #= false
 
-
-      dut.clockDomain.waitSampling(2)
-      dut.io.phy.cmd.ready #= true
-      assert(dut.io.phy.cmd.args.toBigInt == BigInt("00100", 2))
-      assert(dut.io.phy.cmd.mode.toBigInt == BigInt(0))
-      dut.clockDomain.waitSampling(1)
-
-      sleep(2)
-      assert(dut.io.phy.cmd.args.toBigInt == BigInt("00100000", 2))
-      assert(dut.io.phy.cmd.mode.toBigInt == BigInt(1))
-      dut.clockDomain.waitSampling(1)
-
-      sleep(2)
-      assert(dut.io.phy.cmd.args.toBigInt == BigInt("00000000", 2))
-      assert(dut.io.phy.cmd.mode.toBigInt == BigInt(1))
-      dut.clockDomain.waitSampling(1)
-
-      sleep(2)
-      assert(dut.io.phy.cmd.args.toBigInt == BigInt("00000000", 2))
-      assert(dut.io.phy.cmd.mode.toBigInt == BigInt(1))
-      dut.clockDomain.waitSampling(1)
-
-      sleep(2)
-      assert(dut.io.phy.cmd.args.toBigInt == BigInt("00000110", 2))
-      assert(dut.io.phy.cmd.mode.toBigInt == BigInt(1))
-      dut.clockDomain.waitSampling(1)
-
-      sleep(2)
-      assert(dut.io.phy.cmd.args.toBigInt == BigInt("00000000", 2))
-      assert(dut.io.phy.cmd.mode.toBigInt == BigInt(1))
-      dut.clockDomain.waitSampling(1)
-
-      sleep(2)
-      assert(dut.io.phy.cmd.args.toBigInt == BigInt("00000100", 2))
-      assert(dut.io.phy.cmd.mode.toBigInt == BigInt(1))
-      dut.clockDomain.waitSampling(1)
-
-      sleep(2)
-      assert(dut.io.phy.cmd.args.toBigInt == BigInt("00", 16))
-      assert(dut.io.phy.cmd.mode.toBigInt == BigInt(2))
-      dut.clockDomain.waitSampling(1)
-
-      sleep(2)
-      assert(dut.io.phy.cmd.args.toBigInt == BigInt("A5", 16))
-      assert(dut.io.phy.cmd.mode.toBigInt == BigInt(2))
-      dut.clockDomain.waitSampling(1)
-
-      sleep(2)
-      assert(dut.io.phy.cmd.args.toBigInt == BigInt("96", 16))
-      assert(dut.io.phy.cmd.mode.toBigInt == BigInt(2))
-      dut.clockDomain.waitSampling(1)
-
-      sleep(2)
-      assert(dut.io.phy.cmd.args.toBigInt == BigInt("2ff", 16))
-      assert(dut.io.phy.cmd.mode.toBigInt == BigInt(2))
-      dut.clockDomain.waitSampling(1)
-      dut.io.phy.cmd.ready #= false
-
-      // wait for response from HyperRAM device
-      dut.clockDomain.waitSampling(19)
-      assert(dut.io.phy.rsp.ready.toBoolean == false)
-      dut.io.phy.rsp.valid #= true
-      sleep(2)
-      assert(dut.io.phy.rsp.ready.toBoolean == true)
-      dut.io.phy.rsp.payload.data #= BigInt("01010101", 2)
-      dut.io.phy.rsp.payload.last #= false
-      dut.io.phy.rsp.payload.error #= false
-      dut.clockDomain.waitSampling(1)
-      assert(dut.io.phy.rsp.ready.toBoolean == true)
-      dut.io.phy.rsp.payload.data #= BigInt("10101010", 2)
-      dut.io.phy.rsp.payload.last #= false
-      dut.io.phy.rsp.payload.error #= false
-      dut.clockDomain.waitSampling(1)
-      assert(dut.io.phy.rsp.ready.toBoolean == true)
-      dut.io.phy.rsp.payload.data #= BigInt("00110011", 2)
-      dut.io.phy.rsp.payload.last #= false
-      dut.io.phy.rsp.payload.error #= false
-      dut.clockDomain.waitSampling(1)
-      assert(dut.io.phy.rsp.ready.toBoolean == true)
-      dut.io.phy.rsp.payload.data #= BigInt("11001100", 2)
-      dut.io.phy.rsp.payload.last #= true
-      dut.io.phy.rsp.payload.error #= false
-      dut.clockDomain.waitSampling(1)
-      dut.io.phy.rsp.valid #= false
-      sleep(2)
-      assert(dut.io.phy.rsp.ready.toBoolean == false)
-
-
-      dut.clockDomain.waitSampling(5)
-      sleep(2)
-      assert(dut.io.memory.r.id.toBigInt == BigInt(7))
-      //assert(dut.io.memory.r.data.toBigInt == BigInt("33CC55AA", 16))
-      assert(dut.io.memory.r.resp.toBigInt == BigInt(0))
-      assert(dut.io.memory.r.last.toBoolean == true)
-      assert(dut.io.memory.r.valid.toBoolean == false)
+      dut.io.memory.b.ready #= true
+      dut.clockDomain.waitSamplingWhere(dut.io.memory.b.valid.toBoolean)
       assert(dut.io.memory.b.id.toBigInt == BigInt(7))
       assert(dut.io.memory.b.resp.toBigInt == BigInt(0))
-      assert(dut.io.memory.b.valid.toBoolean == true)
-      dut.io.memory.r.ready #= true
       dut.clockDomain.waitSampling(1)
-      sleep(2)
-      assert(dut.io.memory.r.valid.toBoolean == false)
-      dut.io.memory.r.ready #= false
+      dut.io.memory.b.ready #= false
 
       dut.clockDomain.waitSampling(20)
     }

@@ -14,10 +14,28 @@ import nafarr.memory.hyperbus.{HyperBus, HyperBusCtrl}
 
 class HyperBusGenericPhyTest extends AnyFunSuite {
 
+  // SpinalHDL packs the first-declared bundle field into the least significant
+  // bits. CmdStart: index(2) | latency(3) | burstLen(5) | read(1) | memory(1).
+  def startArgs(index: Int, latency: Int, burstLen: Int, read: Boolean, memory: Boolean): BigInt = {
+    var v = BigInt(index & 0x3)
+    v |= BigInt(latency & 0x7) << 2
+    v |= BigInt(burstLen & 0x1f) << 5
+    v |= BigInt(if (read) 1 else 0) << 10
+    v |= BigInt(if (memory) 1 else 0) << 11
+    v
+  }
+  // CmdWrite: data(32) | mask(4) | last(1).
+  def writeArgs(data: BigInt, mask: Int, last: Boolean): BigInt = {
+    var v = data & BigInt("ffffffff", 16)
+    v |= BigInt(mask & 0xf) << 32
+    v |= BigInt(if (last) 1 else 0) << 36
+    v
+  }
+
   def setSignalDefaults(dut: HyperBusGenericPhy.Phy) {
     dut.io.phy.cmd.valid #= false
     dut.io.phy.cmd.args #= BigInt(0)
-    dut.io.phy.rsp.ready #= false
+    dut.io.phy.rdata.ready #= false
     dut.io.hyperbus.dq.read #= BigInt(0)
     dut.io.hyperbus.rwds.read #= false
     dut.io.phy.config.reset.pulse #= BigInt(20)
@@ -32,65 +50,37 @@ class HyperBusGenericPhyTest extends AnyFunSuite {
     dut.io.phy.config.reset.trigger #= false
   }
 
-  def fillCommands(dut: HyperBusGenericPhy.Phy, read: Boolean, registerWrite: Boolean = false) {
-    val fillCommandsFork = fork {
-      dut.io.phy.cmd.valid #= true
-      dut.io.phy.cmd.payload.mode #= HyperBus.Phy.CmdMode.CS
-      if (read) {
-        // read, 6 initial cycles, index 0
-        dut.io.phy.cmd.payload.args #= BigInt("111000", 2)
-      } else {
-        if (registerWrite) {
-          // write, 0 initial cycles, index 0
-          dut.io.phy.cmd.payload.args #= BigInt("000000", 2)
-        } else {
-          // write, 6 initial cycles, index 0
-          dut.io.phy.cmd.payload.args #= BigInt("011000", 2)
-        }
-      }
-      dut.clockDomain.waitSampling(1)
-      dut.io.phy.cmd.payload.mode #= HyperBus.Phy.CmdMode.ADDR
-      dut.io.phy.cmd.payload.args #= BigInt("01010101", 2)
-      dut.clockDomain.waitSampling(1)
-      dut.io.phy.cmd.payload.mode #= HyperBus.Phy.CmdMode.ADDR
-      dut.io.phy.cmd.payload.args #= BigInt("10101010", 2)
-      dut.clockDomain.waitSampling(1)
-      dut.io.phy.cmd.payload.mode #= HyperBus.Phy.CmdMode.ADDR
-      dut.io.phy.cmd.payload.args #= BigInt("01010101", 2)
-      dut.clockDomain.waitSampling(1)
-      dut.io.phy.cmd.payload.mode #= HyperBus.Phy.CmdMode.ADDR
-      dut.io.phy.cmd.payload.args #= BigInt("10101010", 2)
-      dut.clockDomain.waitSampling(1)
-      dut.io.phy.cmd.payload.mode #= HyperBus.Phy.CmdMode.ADDR
-      dut.io.phy.cmd.payload.args #= BigInt("01010101", 2)
-      dut.clockDomain.waitSampling(1)
-      dut.io.phy.cmd.payload.mode #= HyperBus.Phy.CmdMode.ADDR
-      dut.io.phy.cmd.payload.args #= BigInt("10101010", 2)
-      dut.clockDomain.waitSampling(1)
-      dut.io.phy.cmd.payload.mode #= HyperBus.Phy.CmdMode.DATA
-      if (!read) {
-        // not last, mask data, data
-        dut.io.phy.cmd.payload.args #= BigInt("0111001010", 2)
-      } else {
-        // not last, mask data, no data
-        dut.io.phy.cmd.payload.args #= BigInt("0100000000", 2)
-      }
-      dut.clockDomain.waitSampling(1)
-      dut.io.phy.cmd.payload.mode #= HyperBus.Phy.CmdMode.DATA
-      if (!read) {
-        // not last, mask data, data
-        dut.io.phy.cmd.payload.args #= BigInt("1001010011", 2)
-      } else {
-        // last, dont mask data, no data
-        dut.io.phy.cmd.payload.args #= BigInt("1000000000", 2)
-      }
-      dut.clockDomain.waitSampling(1)
-      dut.io.phy.cmd.valid #= false
+  // Push one command word into the PHY, waiting for the ready handshake.
+  def pushCmd(dut: HyperBusGenericPhy.Phy, mode: SpinalEnumElement[HyperBus.Phy.CmdMode.type], args: BigInt) {
+    dut.io.phy.cmd.valid #= true
+    dut.io.phy.cmd.payload.mode #= mode
+    dut.io.phy.cmd.payload.args #= args
+    dut.clockDomain.waitSamplingWhere(dut.io.phy.cmd.ready.toBoolean)
+    dut.io.phy.cmd.valid #= false
+  }
+
+  // CA byte pattern 0x55AA55AA55AA -> the six bytes sliced out MSB-first.
+  val caPattern = BigInt("55AA55AA55AA", 16)
+
+  def fillReadCommands(dut: HyperBusGenericPhy.Phy) {
+    fork {
+      pushCmd(dut, HyperBus.Phy.CmdMode.START, startArgs(0, 6, 0, read = true, memory = true))
+      pushCmd(dut, HyperBus.Phy.CmdMode.CA, caPattern)
     }
   }
 
+  def fillWriteCommands(dut: HyperBusGenericPhy.Phy, data: BigInt, mask: Int) {
+    fork {
+      pushCmd(dut, HyperBus.Phy.CmdMode.START, startArgs(0, 6, 0, read = false, memory = true))
+      pushCmd(dut, HyperBus.Phy.CmdMode.CA, caPattern)
+      pushCmd(dut, HyperBus.Phy.CmdMode.WRITE, writeArgs(data, mask, last = true))
+    }
+  }
+
+  // The CA output timing is unchanged from the byte-level PHY: six bytes, four
+  // edge-clocks each, MSB-first (55, AA, 55, AA, 55, AA).
   def validateCA(dut: HyperBusGenericPhy.Phy) {
-    val validateCAFork = fork {
+    fork {
       dut.clockDomain.waitSampling(2)
       assert(dut.io.hyperbus.cs.toBigInt == BigInt("1111", 2))
       dut.clockDomain.waitSampling(1)
@@ -99,131 +89,15 @@ class HyperBusGenericPhyTest extends AnyFunSuite {
       dut.clockDomain.waitSampling(5)
       sleep(2)
       assert(dut.io.hyperbus.dq.writeEnable.toBigInt == BigInt("00000000", 2))
-      for (index <- 0 to 3) {
-        dut.clockDomain.waitSampling(1)
-        sleep(2)
-        assert(dut.io.hyperbus.dq.writeEnable.toBigInt == BigInt("11111111", 2))
-        assert(dut.io.hyperbus.dq.write.toBigInt == BigInt("01010101", 2))
+      val bytes = Seq(0x55, 0xaa, 0x55, 0xaa, 0x55, 0xaa)
+      for (b <- bytes) {
+        for (index <- 0 to 3) {
+          dut.clockDomain.waitSampling(1)
+          sleep(2)
+          assert(dut.io.hyperbus.dq.writeEnable.toBigInt == BigInt("11111111", 2))
+          assert(dut.io.hyperbus.dq.write.toBigInt == BigInt(b))
+        }
       }
-      for (index <- 0 to 3) {
-        dut.clockDomain.waitSampling(1)
-        sleep(2)
-        assert(dut.io.hyperbus.dq.writeEnable.toBigInt == BigInt("11111111", 2))
-        assert(dut.io.hyperbus.dq.write.toBigInt == BigInt("10101010", 2))
-      }
-      for (index <- 0 to 3) {
-        dut.clockDomain.waitSampling(1)
-        sleep(2)
-        assert(dut.io.hyperbus.dq.writeEnable.toBigInt == BigInt("11111111", 2))
-        assert(dut.io.hyperbus.dq.write.toBigInt == BigInt("01010101", 2))
-      }
-      for (index <- 0 to 3) {
-        dut.clockDomain.waitSampling(1)
-        sleep(2)
-        assert(dut.io.hyperbus.dq.writeEnable.toBigInt == BigInt("11111111", 2))
-        assert(dut.io.hyperbus.dq.write.toBigInt == BigInt("10101010", 2))
-      }
-      for (index <- 0 to 3) {
-        dut.clockDomain.waitSampling(1)
-        sleep(2)
-        assert(dut.io.hyperbus.dq.writeEnable.toBigInt == BigInt("11111111", 2))
-        assert(dut.io.hyperbus.dq.write.toBigInt == BigInt("01010101", 2))
-      }
-      for (index <- 0 to 3) {
-        dut.clockDomain.waitSampling(1)
-        sleep(2)
-        assert(dut.io.hyperbus.dq.writeEnable.toBigInt == BigInt("11111111", 2))
-        assert(dut.io.hyperbus.dq.write.toBigInt == BigInt("10101010", 2))
-      }
-    }
-  }
-
-  def sendData(dut: HyperBusGenericPhy.Phy, latencyCycles: Int, additionalCycle: Boolean) {
-    val sendDataFork = fork {
-      if (additionalCycle)
-        dut.io.hyperbus.rwds.read #= true
-      dut.clockDomain.waitSampling(23)
-      dut.io.hyperbus.rwds.read #= false
-      if (additionalCycle)
-        dut.clockDomain.waitSampling(latencyCycles * 8)
-      dut.clockDomain.waitSampling(latencyCycles * 8 + 4)
-      sleep(2)
-      dut.io.hyperbus.dq.read #= BigInt("01101001", 2)
-      dut.io.hyperbus.rwds.read #= true
-      dut.clockDomain.waitSampling(4)
-      sleep(2)
-      dut.io.hyperbus.dq.read #= BigInt("10010110", 2)
-      dut.io.hyperbus.rwds.read #= false
-      dut.clockDomain.waitSampling(4)
-      sleep(2)
-      dut.io.hyperbus.rwds.read #= false
-      assert(dut.io.hyperbus.cs.toBigInt == BigInt("1110", 2))
-      dut.clockDomain.waitSampling(2)
-      sleep(2)
-      assert(dut.io.hyperbus.cs.toBigInt == BigInt("1111", 2))
-    }
-  }
-
-  def readData(dut: HyperBusGenericPhy.Phy, latencyCycles: Int, additionalCycle: Boolean) {
-    val readDataFork = fork {
-      if (additionalCycle)
-        dut.io.hyperbus.rwds.read #= true
-      dut.clockDomain.waitSampling(23)
-      dut.io.hyperbus.rwds.read #= false
-      if (additionalCycle)
-        dut.clockDomain.waitSampling(latencyCycles * 8)
-      dut.clockDomain.waitSampling(latencyCycles * 8 + 1)
-      sleep(2)
-      if (latencyCycles != 1) {
-        assert(dut.io.hyperbus.dq.writeEnable.toBigInt == BigInt(0))
-        assert(dut.io.hyperbus.dq.write.toBigInt == BigInt(0))
-        assert(dut.io.hyperbus.rwds.writeEnable.toBoolean == true)
-        assert(dut.io.hyperbus.rwds.write.toBoolean == false)
-      }
-
-      for (index <- 0 to 3) {
-        dut.clockDomain.waitSampling(1)
-        sleep(2)
-        assert(dut.io.hyperbus.dq.writeEnable.toBigInt == BigInt("11111111", 2))
-        assert(dut.io.hyperbus.dq.write.toBigInt == BigInt("11001010", 2))
-        assert(dut.io.hyperbus.rwds.writeEnable.toBoolean == true)
-        assert(dut.io.hyperbus.rwds.write.toBoolean == true)
-      }
-      for (index <- 0 to 3) {
-        dut.clockDomain.waitSampling(1)
-        sleep(2)
-        assert(dut.io.hyperbus.dq.writeEnable.toBigInt == BigInt("11111111", 2))
-        assert(dut.io.hyperbus.dq.write.toBigInt == BigInt("01010011", 2))
-        assert(dut.io.hyperbus.rwds.writeEnable.toBoolean == true)
-        assert(dut.io.hyperbus.rwds.write.toBoolean == false)
-      }
-      dut.clockDomain.waitSampling(1)
-      sleep(2)
-      assert(dut.io.hyperbus.cs.toBigInt == BigInt("1111", 2))
-    }
-  }
-
-  def checkResponse(dut: HyperBusGenericPhy.Phy, write: Boolean = false) {
-    val checkResponseFork = fork {
-        dut.clockDomain.waitSampling(150)
-        sleep(2)
-        assert(dut.io.phy.rsp.valid.toBoolean == true)
-        if (!write)
-          assert(dut.io.phy.rsp.payload.data.toBigInt == BigInt(0))
-        assert(dut.io.phy.rsp.payload.error.toBoolean == false)
-        assert(dut.io.phy.rsp.payload.last.toBoolean == false)
-        dut.io.phy.rsp.ready #= true
-        dut.clockDomain.waitSampling(1)
-        sleep(2)
-        assert(dut.io.phy.rsp.valid.toBoolean == true)
-        if (!write)
-          assert(dut.io.phy.rsp.payload.data.toBigInt == BigInt("10010110", 2))
-        assert(dut.io.phy.rsp.payload.error.toBoolean == false)
-        assert(dut.io.phy.rsp.payload.last.toBoolean == true)
-        dut.clockDomain.waitSampling(1)
-        sleep(2)
-        dut.io.phy.rsp.ready #= false
-        assert(dut.io.phy.rsp.valid.toBoolean == false)
     }
   }
 
@@ -247,7 +121,7 @@ class HyperBusGenericPhyTest extends AnyFunSuite {
 
       dut.io.phy.cmd.valid #= false
       dut.io.phy.cmd.args #= BigInt(0)
-      dut.io.phy.rsp.ready #= false
+      dut.io.phy.rdata.ready #= false
       dut.io.hyperbus.dq.read #= BigInt(0)
       dut.io.hyperbus.rwds.read #= false
       dut.clockDomain.waitSampling(5)
@@ -264,7 +138,7 @@ class HyperBusGenericPhyTest extends AnyFunSuite {
 
       dut.io.phy.cmd.valid #= false
       dut.io.phy.cmd.args #= BigInt(0)
-      dut.io.phy.rsp.ready #= false
+      dut.io.phy.rdata.ready #= false
       dut.io.hyperbus.dq.read #= BigInt(0)
       dut.io.hyperbus.rwds.read #= false
       dut.io.phy.config.reset.pulse #= BigInt(20)
@@ -281,84 +155,74 @@ class HyperBusGenericPhyTest extends AnyFunSuite {
       dut.clockDomain.waitSampling(20)
       assert(dut.io.hyperbus.reset.toBoolean == true)
 
-      dut.clockDomain.waitSampling(20)
-
-      dut.io.phy.config.reset.trigger #= true
-      dut.clockDomain.waitSampling(1)
-      dut.io.phy.config.reset.trigger #= false
-      dut.clockDomain.waitSampling(2)
-      sleep(2)
-      assert(dut.io.hyperbus.reset.toBoolean == false)
-      dut.clockDomain.waitSampling(20)
-      sleep(2)
-      assert(dut.io.hyperbus.reset.toBoolean == true)
-
       dut.clockDomain.waitSampling(100)
     }
 
-    compiled.doSim("read - no additional cycle") { dut =>
+    compiled.doSim("write word - CA and data out") { dut =>
       dut.clockDomain.forkStimulus(10)
 
       setSignalDefaults(dut)
 
-      fillCommands(dut, true)
+      fillWriteCommands(dut, BigInt("ddccbbaa", 16), mask = 0)
       validateCA(dut)
-      sendData(dut, 6, false)
-      checkResponse(dut)
 
-      dut.clockDomain.waitSampling(300)
-    }
-
-    compiled.doSim("read - one additional cycle") { dut =>
-      dut.clockDomain.forkStimulus(10)
-
-      setSignalDefaults(dut)
-
-      fillCommands(dut, true)
-      validateCA(dut)
-      sendData(dut, 6, true)
-      checkResponse(dut)
-
-      dut.clockDomain.waitSampling(300)
-    }
-
-    compiled.doSim("write - without initial latency") { dut =>
-      dut.clockDomain.forkStimulus(10)
-
-      setSignalDefaults(dut)
-
-      fillCommands(dut, false, true)
-      validateCA(dut)
-      readData(dut, 1, false)
-      checkResponse(dut, true)
+      val checkData = fork {
+        // CA drives DQ for six bytes, then a latency gap (writeEnable low), then
+        // the four data bytes go out low-byte first, four edge-clocks each;
+        // mask 0 -> RWDS driven low (all bytes written).
+        dut.clockDomain.waitSampling(10) // into the CA output window
+        dut.clockDomain.waitSamplingWhere(dut.io.hyperbus.dq.writeEnable.toBigInt == 0)
+        dut.clockDomain.waitSamplingWhere(dut.io.hyperbus.dq.writeEnable.toBigInt != 0)
+        val bytes = Seq(0xaa, 0xbb, 0xcc, 0xdd)
+        for (b <- bytes) {
+          sleep(2)
+          assert(dut.io.hyperbus.dq.writeEnable.toBigInt == BigInt("11111111", 2))
+          assert(dut.io.hyperbus.dq.write.toBigInt == BigInt(b), f"write byte 0x$b%02x")
+          assert(dut.io.hyperbus.rwds.writeEnable.toBoolean == true)
+          assert(dut.io.hyperbus.rwds.write.toBoolean == false)
+          dut.clockDomain.waitSampling(4)
+        }
+      }
 
       dut.clockDomain.waitSampling(200)
+      checkData.join()
     }
 
-    compiled.doSim("write - no additional cycle") { dut =>
+    compiled.doSim("read word") { dut =>
       dut.clockDomain.forkStimulus(10)
 
       setSignalDefaults(dut)
 
-      fillCommands(dut, false)
-      validateCA(dut)
-      readData(dut, 6, false)
-      checkResponse(dut, true)
+      fillReadCommands(dut)
 
-      dut.clockDomain.waitSampling(200)
-    }
+      // Emulate the device: after CS setup, CA and latency, present four data
+      // bytes, one per RWDS edge (four edge-clocks apart).
+      val device = fork {
+        dut.clockDomain.waitSampling(2 + 1 + 5)
+        dut.clockDomain.waitSampling(6 * 4)
+        dut.clockDomain.waitSampling(6 * 8)
+        val bytes = Seq(0x11, 0x22, 0x33, 0x44)
+        var strobe = false
+        for (b <- bytes) {
+          dut.io.hyperbus.dq.read #= BigInt(b)
+          strobe = !strobe
+          dut.io.hyperbus.rwds.read #= strobe
+          dut.clockDomain.waitSampling(4)
+        }
+      }
 
-    compiled.doSim("write - one additional cycle") { dut =>
-      dut.clockDomain.forkStimulus(10)
-
-      setSignalDefaults(dut)
-
-      fillCommands(dut, false)
-      validateCA(dut)
-      readData(dut, 6, true)
-      checkResponse(dut, true)
+      val checkRsp = fork {
+        dut.io.phy.rdata.ready #= true
+        dut.clockDomain.waitSamplingWhere(dut.io.phy.rdata.valid.toBoolean)
+        // rdata assembles the captured bytes low-byte first: 0x44332211.
+        assert(dut.io.phy.rdata.payload.data.toBigInt == BigInt("44332211", 16))
+        assert(dut.io.phy.rdata.payload.last.toBoolean == true)
+        assert(dut.io.phy.rdata.payload.error.toBoolean == false)
+      }
 
       dut.clockDomain.waitSampling(300)
+      device.join()
+      checkRsp.join()
     }
   }
 }

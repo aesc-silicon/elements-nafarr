@@ -18,53 +18,58 @@ object HyperBus {
 
   object Phy {
     object CmdMode extends SpinalEnum(binarySequential) {
-      val CS, ADDR, DATA = newElement()
+      val START, CA, WRITE = newElement()
     }
 
-    case class CmdCs(p: HyperBusCtrl.Parameter) extends Bundle {
+    case class CmdStart(p: HyperBusCtrl.Parameter) extends Bundle {
       val index = UInt(Math.max(log2Up(p.hyperbus.supportedDevices), 1) bits)
-      val latencyCycles = UInt(log2Up(6) bits)
+      val latency = UInt(log2Up(8) bits)
+      val burstLen = UInt(log2Up(p.frontend.storageDepth + 1) bits) // read word count - 1
       val read = Bool
+      val memory = Bool
     }
 
-    case class CmdAddr(p: HyperBusCtrl.Parameter) extends Bundle {
-      val addr = Bits(p.hyperbus.dataWidth bits)
+    case class CmdCa(p: HyperBusCtrl.Parameter) extends Bundle {
+      val ca = Bits(48 bits)
     }
 
-    case class CmdData(p: HyperBusCtrl.Parameter) extends Bundle {
-      val data = Bits(p.hyperbus.dataWidth bits)
-      val mask = Bool()
-      val last = Bool()
+    case class CmdWrite(p: HyperBusCtrl.Parameter) extends Bundle {
+      val data = Bits(p.frontend.dataWidth bits)
+      val mask = Bits(p.frontend.dataWidth / 8 bits)
+      val last = Bool
     }
 
     case class Cmd(p: HyperBusCtrl.Parameter) extends Bundle {
       val mode = CmdMode()
-      val args = Bits(Math.max(widthOf(CmdData(p)), widthOf(CmdCs(p))) bits)
+      val args = Bits(
+        Math.max(widthOf(CmdStart(p)), Math.max(widthOf(CmdCa(p)), widthOf(CmdWrite(p)))) bits
+      )
 
-      def isCs = mode === CmdMode.CS
-      def isAddr = mode === CmdMode.ADDR
-      def isData = mode === CmdMode.DATA
-      def argsCs = {
-        val ret = CmdCs(p)
+      def isStart = mode === CmdMode.START
+      def isCa = mode === CmdMode.CA
+      def isWrite = mode === CmdMode.WRITE
+      def argsStart = {
+        val ret = CmdStart(p)
         ret.assignFromBits(args)
         ret
       }
-      def argsAddr = {
-        val ret = CmdAddr(p)
+      def argsCa = {
+        val ret = CmdCa(p)
         ret.assignFromBits(args)
         ret
       }
-      def argsData = {
-        val ret = CmdData(p)
+      def argsWrite = {
+        val ret = CmdWrite(p)
         ret.assignFromBits(args)
         ret
       }
     }
 
-    case class Rsp(p: HyperBusCtrl.Parameter) extends Bundle {
-      val data = Bits(p.hyperbus.dataWidth bits)
+    case class Rdata(p: HyperBusCtrl.Parameter) extends Bundle {
+      val data = Bits(p.frontend.dataWidth bits)
       val last = Bool
       val error = Bool
+      val aborted = Bool // starvation abort (controller not draining) -> retry
     }
 
     case class Config(p: HyperBusCtrl.Parameter) extends Bundle with IMasterSlave {
@@ -84,17 +89,17 @@ object HyperBus {
 
     case class Interface(p: HyperBusCtrl.Parameter) extends Bundle with IMasterSlave {
       val cmd = Stream(HyperBus.Phy.Cmd(p))
-      val rsp = Stream(HyperBus.Phy.Rsp(p))
+      val rdata = Stream(HyperBus.Phy.Rdata(p))
       val config = HyperBus.Phy.Config(p)
 
       override def asMaster(): Unit = {
         master(cmd)
-        slave(rsp)
+        slave(rdata)
         master(config)
       }
       override def asSlave(): Unit = {
         slave(cmd)
-        master(rsp)
+        master(rdata)
         slave(config)
       }
     }
@@ -152,6 +157,7 @@ object HyperBus {
       val phy = master(Phy.Interface(p))
       val frontend = master(Stream(FrontendInterface(p)))
       val controller = slave(Stream(ControllerInterface(p)))
+      val error = out Bool ()
     }
 
     val ctrl = HyperBusCtrl(p)
@@ -160,7 +166,9 @@ object HyperBus {
     ctrl.io.controller <> io.controller
 
     val mapper = HyperBusCtrl.Mapper(factory(io.bus), ctrl.io, p)
+    io.error := mapper.error
 
+    override def getError = Some(io.error)
     override def sysconFeatures = Some(List(Feature.Hyperbus))
 
     override def headerBareMetal(name: String, address: BigInt, size: BigInt) = {

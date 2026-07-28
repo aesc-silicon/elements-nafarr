@@ -14,7 +14,7 @@ import spinal.lib.bus.tilelink.{
   SlaveFactory => TileLinkSlaveFactory
 }
 
-import nafarr.memory.hyperbus.phy.HyperBusGenericPhy
+import nafarr.memory.hyperbus.phy.{HyperBusGenericPhy, HyperBusGenericDdrPhy}
 
 /** TileLink wrapper for the HyperBus controller.
   *
@@ -56,6 +56,7 @@ case class TileLinkHyperBus(
     val dataBus = slave(TileLinkBus(busConfig))
     val cfgBus = slave(TileLinkBus(cfgBusConfig))
     val phy = master(HyperBus.Phy.Interface(p))
+    val error = out Bool ()
   }
 
   // -------------------------------------------------------------------------
@@ -65,7 +66,8 @@ case class TileLinkHyperBus(
   io.phy <> ctrl.io.phy
 
   val cfgFactory = new TileLinkSlaveFactory(io.cfgBus, false)
-  HyperBusCtrl.Mapper(cfgFactory, ctrl.io, p)
+  val mapper = HyperBusCtrl.Mapper(cfgFactory, ctrl.io, p)
+  io.error := mapper.error
 
   // -------------------------------------------------------------------------
   // Data bus - TileLink <-> HyperBus.ControllerInterface bridge
@@ -182,6 +184,11 @@ case class TileLinkHyperBus(
         io.dataBus.a.ready := ctrl.io.controller.ready
         ctrl.io.controller.valid := io.dataBus.a.valid
         ctrl.io.controller.payload.read := False
+        // PUT_FULL_DATA implies every byte lane is active; a compliant master may
+        // leave a_mask at 0. Only PUT_PARTIAL_DATA carries meaningful byte enables.
+        when(io.dataBus.a.opcode === Opcode.A.PUT_FULL_DATA()) {
+          ctrl.io.controller.payload.strobe := B(busConfig.dataBytes bits, default -> true)
+        }
         when(io.dataBus.a.valid && ctrl.io.controller.ready) {
           cmdCounter := cmdCounter + 1
           when(cmdCounter === (regWords - 1).resized) {
@@ -228,17 +235,24 @@ case class TileLinkHyperBus(
   * @param busConfig    TileLink parameter for the data bus (TL-UH).
   * @param cfgBusConfig TileLink parameter for the configuration bus (TL-UL).
   */
-case class TileLinkHyperBusGenericPhyCluster(
+abstract class TileLinkHyperBusCluster(
     p: HyperBusCtrl.Parameter,
     busConfig: TileLinkParameter,
-    cfgBusConfig: TileLinkParameter = TileLinkParameter.simple(10, 32, 4, 1)
+    cfgBusConfig: TileLinkParameter
 ) extends Component {
-
   val io = new Bundle {
     val dataBus = slave(TileLinkBus(busConfig))
     val cfgBus = slave(TileLinkBus(cfgBusConfig))
     val hyperbus = master(HyperBus.Io(p))
+    val error = out Bool ()
   }
+}
+
+case class TileLinkHyperBusGenericPhyCluster(
+    p: HyperBusCtrl.Parameter,
+    busConfig: TileLinkParameter,
+    cfgBusConfig: TileLinkParameter = TileLinkParameter.simple(10, 32, 4, 1)
+) extends TileLinkHyperBusCluster(p, busConfig, cfgBusConfig) {
 
   val ctrl = TileLinkHyperBus(p, busConfig, cfgBusConfig)
   val phy = HyperBusGenericPhy(p)
@@ -247,4 +261,26 @@ case class TileLinkHyperBusGenericPhyCluster(
   ctrl.io.cfgBus <> io.cfgBus
   ctrl.io.phy <> phy.io.phy
   io.hyperbus <> phy.io.hyperbus
+  io.error := ctrl.io.error
+}
+
+/** TileLinkHyperBus bundled with the full-rate DDR PHY (ck at the domain clock
+  * via SoftDdr, two bytes/cycle, no clock divider). Drop-in alternative to
+  * TileLinkHyperBusGenericPhyCluster, selectable through the platform's
+  * hyperBusLogic lambda.
+  */
+case class TileLinkHyperBusGenericDdrPhyCluster(
+    p: HyperBusCtrl.Parameter,
+    busConfig: TileLinkParameter,
+    cfgBusConfig: TileLinkParameter = TileLinkParameter.simple(10, 32, 4, 1)
+) extends TileLinkHyperBusCluster(p, busConfig, cfgBusConfig) {
+
+  val ctrl = TileLinkHyperBus(p, busConfig, cfgBusConfig)
+  val phy = HyperBusGenericDdrPhy(p)
+
+  ctrl.io.dataBus <> io.dataBus
+  ctrl.io.cfgBus <> io.cfgBus
+  ctrl.io.phy <> phy.io.phy
+  io.hyperbus <> phy.io.hyperbus
+  io.error := ctrl.io.error
 }

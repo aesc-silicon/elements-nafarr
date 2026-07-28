@@ -83,14 +83,15 @@ object MT25Q {
       val command = Reg(UInt(8 bits)).init(0)
       val address = Reg(UInt(24 bits)).init(0)
       val counter = CounterFreeRun(8)
-      val cycles = Reg(UInt(8 bits)).init(7)
+      val cycles = UInt(8 bits)
+      when(command === U(0x61) || deviceManagement.protocol === B(2)) {
+        cycles := 1
+      } otherwise {
+        cycles := 7
+      }
 
       when(command === U(0x61)) {
         deviceManagement.protocol := B(2)
-        cycles := 1
-      }
-      when(deviceManagement.protocol === B(2)) {
-        cycles := 1
       }
 
       val samplesSingles = History(
@@ -157,10 +158,11 @@ object MT25Q {
       val counter = Counter(8)
       val data = Mem(UInt(8 bits), 16 MB)
       val output = Reg(Bits(4 bits)).init(0)
-      val cycles = Reg(UInt(8 bits)).init(7)
-
+      val cycles = UInt(8 bits)
       when(deviceManagement.protocol === B(2)) {
         cycles := 1
+      } otherwise {
+        cycles := 7
       }
       for (index <- 0 until io.dqOut.length) {
         io.dqOut(index) := output(index)

@@ -8,4 +8,5 @@ The following list offers an overview of all available IP cores.
 
    peripherals/index.rst
    system/index.rst
+   memory/index.rst
    crypto/index.rst

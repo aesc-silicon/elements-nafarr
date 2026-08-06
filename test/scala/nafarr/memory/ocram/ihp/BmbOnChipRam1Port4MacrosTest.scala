@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: CERN-OHL-W-2.0
 
-package nafarr.memory.ocram.ihp.sg13g2
+package nafarr.memory.ocram.ihp
 
 
 import org.scalatest.funsuite.AnyFunSuite

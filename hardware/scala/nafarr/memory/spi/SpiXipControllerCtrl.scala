@@ -45,6 +45,7 @@ object SpiXipControllerCtrl {
     val start = base + 0x14
     val txData = base + 0x18
     val status = base + 0x1c
+    val cacheControl = base + 0x20
   }
 
   case class Config(p: SpiControllerCtrl.Parameter) extends Bundle {
@@ -60,6 +61,7 @@ object SpiXipControllerCtrl {
     val needsWren = Bool()
     val needsPoll = Bool()
     val start = Bool()
+    val cacheInvalidate = Bool()
   }
 
   case class Status(p: SpiControllerCtrl.Parameter, txFifoDepth: Int) extends Bundle {
@@ -76,6 +78,7 @@ object SpiXipControllerCtrl {
     val busRsp = master(Stream(SpiXipController.GenericInterface.Rsp()))
     val cmd = master(Stream(SpiController.Cmd(p)))
     val rsp = slave(Flow(Bits(p.dataWidth bits)))
+    val cacheInvalidate = out(Bool())
   }
 
   case class SpiXipControllerCtrl(
@@ -115,6 +118,8 @@ object SpiXipControllerCtrl {
       cfgPending := True
       pendingIsEvcr := False
     }
+
+    io.cacheInvalidate := io.config.start || io.config.configure || io.config.cacheInvalidate
 
     val busy = RegInit(False)
     io.status.busy := busy
@@ -501,9 +506,10 @@ object SpiXipControllerCtrl {
   case class Mapper(
       busCtrl: BusSlaveFactory,
       io: Io,
-      p: SpiControllerCtrl.Parameter
+      p: SpiControllerCtrl.Parameter,
+      cacheWords: Int = 0
   ) extends Area {
-    val idCtrl = IpIdentification(IpIdentification.Ids.SpiXipController, 1, 1, 0)
+    val idCtrl = IpIdentification(IpIdentification.Ids.SpiXipController, 1, 2, 0)
     idCtrl.driveFrom(busCtrl)
     val regs = Regs(idCtrl.length)
 
@@ -550,6 +556,12 @@ object SpiXipControllerCtrl {
     busCtrl.onWrite(regs.start) {
       io.config.start := True
     }
+
+    io.config.cacheInvalidate := False
+    busCtrl.onWrite(regs.cacheControl) {
+      io.config.cacheInvalidate := True
+    }
+    busCtrl.read(B(cacheWords, 8 bits), regs.cacheControl)
 
     io.txData.valid := False
     busCtrl.onWrite(regs.txData) {

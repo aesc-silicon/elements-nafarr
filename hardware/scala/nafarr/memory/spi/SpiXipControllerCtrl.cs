@@ -38,7 +38,7 @@ namespace Antmicro.Renode.Peripherals.Miscellaneous
             switch(offset)
             {
                 case HeaderOffset:    return (uint)(((Api & 0xFF) << 24) | ((Length & 0xFF) << 16) | (Id & 0xFFFF));
-                case VersionOffset:   return 0x01000000; // 1.0.0
+                case VersionOffset:   return 0x01020000; // 1.2.0
                 case ConfigureOffset: return 0;          // write-only trigger
                 case ConfigOffset:    return (uint)(((evcr & 0xFF) << 16) | ((dummyCycles & 0xFF) << 8) | (mode & 0xFF));
                 default:

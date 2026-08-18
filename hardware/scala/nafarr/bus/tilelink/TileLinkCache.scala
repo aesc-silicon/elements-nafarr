@@ -40,6 +40,7 @@ object TileLinkCache {
     val io = new Bundle {
       val inner = slave(TileLinkBus(p))
       val outer = master(TileLinkBus(outerP))
+      val invalidate = in(Bool())
     }
 
     // -----------------------------------------------------------------------
@@ -160,6 +161,10 @@ object TileLinkCache {
           }
         }
       }
+    }
+
+    when(io.invalidate) {
+      valid := False
     }
   }
 }

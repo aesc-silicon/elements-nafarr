@@ -13,6 +13,7 @@ import spinal.lib.bus.tilelink.{
   SlaveFactory => TileLinkSlaveFactory
 }
 
+import nafarr.bus.tilelink.TileLinkCache
 import nafarr.peripherals.com.spi.{Spi, SpiControllerCtrl}
 
 /** XIP (execute-in-place) SPI flash controller with a TileLink-UH (burst) data
@@ -27,13 +28,14 @@ import nafarr.peripherals.com.spi.{Spi, SpiControllerCtrl}
   * compatible with the existing `SpiControllerCtrl.Mapper` /
   * `SpiXipControllerCtrl.Mapper` register layouts.
   *
-  * Cache placement: connect `TileLinkCache.Cache` between the CPU and this
-  * controller on the outer (memory-side) TileLink port.
+  * A read-only line cache is instantiated internally when `cacheWords > 0` and
+  * is invalidated by every command-engine operation.
   */
 case class TileLinkSpiXipController(
     parameter: SpiControllerCtrl.Parameter,
     busConfig: TileLinkParameter,
-    cfgBusConfig: TileLinkParameter = TileLinkParameter.simple(10, 32, 4, 1)
+    cfgBusConfig: TileLinkParameter = TileLinkParameter.simple(10, 32, 4, 1),
+    cacheWords: Int = 0
 ) extends Component {
   val io = new Bundle {
     val bus = slave(TileLinkBus(busConfig))
@@ -56,41 +58,48 @@ case class TileLinkSpiXipController(
   spiXipControllerCtrl.io.rsp << spiControllerCtrl.io.rsp
   spiXipControllerCtrl.io.busRsp.ready := False
 
+  val cache = if (cacheWords > 0) TileLinkCache.Cache(busConfig, cacheWords) else null
+  val busPort = if (cache != null) {
+    cache.io.inner <> io.bus
+    cache.io.invalidate := spiXipControllerCtrl.io.cacheInvalidate
+    cache.io.outer
+  } else io.bus
+
   // Register A-channel metadata when the request is accepted (a.ready high).
-  val dSource = RegNextWhen(io.bus.a.source, io.bus.a.ready)
-  val dSize = RegNextWhen(io.bus.a.size, io.bus.a.ready)
+  val dSource = RegNextWhen(busPort.a.source, busPort.a.ready)
+  val dSize = RegNextWhen(busPort.a.size, busPort.a.ready)
 
   // Build the SPI command from the accepted A-channel fields.
   // count encodes "words to fetch - 1": words = 1 << (size - dataBytesLog2Up).
   val spiCmd = SpiXipController.GenericInterface.Cmd()
-  spiCmd.addr := RegNextWhen(io.bus.a.address.resize(24), io.bus.a.ready)
+  spiCmd.addr := RegNextWhen(busPort.a.address.resize(24), busPort.a.ready)
   spiCmd.count := RegNextWhen(
-    ((U(1, 9 bits) |<< (io.bus.a.size - busConfig.dataBytesLog2Up)) - 1)
+    ((U(1, 9 bits) |<< (busPort.a.size - busPort.p.dataBytesLog2Up)) - 1)
       .resize(widthOf(spiCmd.count)),
-    io.bus.a.ready
+    busPort.a.ready
   )
   spiXipControllerCtrl.io.busCmd.payload := spiCmd
   spiXipControllerCtrl.io.busCmd.valid := False
 
   // D-channel defaults (overridden per state below).
-  io.bus.a.ready := False
-  io.bus.d.valid := False
-  io.bus.d.opcode := Opcode.D.ACCESS_ACK_DATA()
-  io.bus.d.param := 0
-  io.bus.d.size := dSize
-  io.bus.d.source := dSource
-  io.bus.d.sink := 0
-  io.bus.d.denied := False
-  io.bus.d.data := spiXipControllerCtrl.io.busRsp.payload.data
-  io.bus.d.corrupt := False
+  busPort.a.ready := False
+  busPort.d.valid := False
+  busPort.d.opcode := Opcode.D.ACCESS_ACK_DATA()
+  busPort.d.param := 0
+  busPort.d.size := dSize
+  busPort.d.source := dSource
+  busPort.d.sink := 0
+  busPort.d.denied := False
+  busPort.d.data := spiXipControllerCtrl.io.busRsp.payload.data
+  busPort.d.corrupt := False
 
   val stateMachine = new Area {
     val state = RegInit(RspState.IDLE)
     switch(state) {
       is(RspState.IDLE) {
-        when(io.bus.a.valid) {
-          io.bus.a.ready := True
-          when(io.bus.a.opcode === Opcode.A.GET()) {
+        when(busPort.a.valid) {
+          busPort.a.ready := True
+          when(busPort.a.opcode === Opcode.A.GET()) {
             state := RspState.CMD
           } otherwise {
             // Write to a read-only flash controller: deny immediately.
@@ -99,10 +108,10 @@ case class TileLinkSpiXipController(
         }
       }
       is(RspState.ERROR) {
-        io.bus.d.opcode := Opcode.D.ACCESS_ACK()
-        io.bus.d.denied := True
-        io.bus.d.valid := True
-        when(io.bus.d.ready) {
+        busPort.d.opcode := Opcode.D.ACCESS_ACK()
+        busPort.d.denied := True
+        busPort.d.valid := True
+        when(busPort.d.ready) {
           state := RspState.IDLE
         }
       }
@@ -114,8 +123,8 @@ case class TileLinkSpiXipController(
       }
       is(RspState.RESPONSE) {
         when(spiXipControllerCtrl.io.busRsp.valid) {
-          io.bus.d.valid := True
-          when(io.bus.d.ready) {
+          busPort.d.valid := True
+          when(busPort.d.ready) {
             spiXipControllerCtrl.io.busRsp.ready := True
             when(spiXipControllerCtrl.io.busRsp.payload.last) {
               state := RspState.IDLE
@@ -130,5 +139,5 @@ case class TileLinkSpiXipController(
   SpiControllerCtrl.Mapper(cfgSpiBusFactory, spiControllerCtrl.io, parameter)
 
   val cfgXipBusFactory = new TileLinkSlaveFactory(io.cfgXipBus, false)
-  SpiXipControllerCtrl.Mapper(cfgXipBusFactory, spiXipControllerCtrl.io, parameter)
+  SpiXipControllerCtrl.Mapper(cfgXipBusFactory, spiXipControllerCtrl.io, parameter, cacheWords)
 }

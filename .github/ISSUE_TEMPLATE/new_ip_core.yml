@@ -1,0 +1,72 @@
+# SPDX-FileCopyrightText: 2026 aesc silicon
+#
+# SPDX-License-Identifier: CERN-OHL-W-2.0
+
+name: New IP core or feature
+description: Propose a new IP core, or a new capability for an existing one.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A complete IP core in Nafarr has RTL, tests, documentation, a bare-metal
+        driver and ideally a Renode model. You do not have to deliver all of that
+        at once, but it is worth knowing the target shape before starting — see
+        [CONTRIBUTING.md](https://github.com/aesc-silicon/elements-nafarr/blob/main/CONTRIBUTING.md).
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What is this?
+      options:
+        - A new IP core
+        - A new feature for an existing core
+        - A new bus wrapper for an existing core
+        - A Renode model for an existing core
+        - A bare-metal driver for an existing core
+    validations:
+      required: true
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What should it do?
+      description: >-
+        Describe the function and the interface. If it implements a standard —
+        a bus protocol, a peripheral specification — please link it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: use-case
+    attributes:
+      label: What do you need it for?
+      description: >-
+        The use case shapes the parameters. A core sized for a small
+        microcontroller and one sized for a high-throughput design look very
+        different, and knowing which you need avoids a redesign later.
+    validations:
+      required: true
+
+  - type: textarea
+    id: parameters
+    attributes:
+      label: Configurability
+      description: >-
+        What should be a `Parameter`? FIFO depths, data widths, channel counts,
+        optional features. Nafarr cores are expected to be reusable, so anything
+        a different design might want to change belongs here.
+
+  - type: dropdown
+    id: contributing
+    attributes:
+      label: Would you like to implement it?
+      description: >-
+        Either answer is fine. We ask because it changes how much detail the
+        ticket needs.
+      options:
+        - "Yes, I would like to work on this"
+        - "Yes, with some guidance"
+        - "No, I am suggesting it"
+    validations:
+      required: true

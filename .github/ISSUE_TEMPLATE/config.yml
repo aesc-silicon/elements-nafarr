@@ -1,0 +1,15 @@
+# SPDX-FileCopyrightText: 2026 aesc silicon
+#
+# SPDX-License-Identifier: CERN-OHL-W-2.0
+
+blank_issues_enabled: false
+contact_links:
+  - name: Question or idea
+    url: https://github.com/aesc-silicon/elements-nafarr/discussions
+    about: Ask about the library, propose a new IP core, or find a place to start.
+  - name: Contribution guide
+    url: https://github.com/aesc-silicon/elements-nafarr/blob/main/CONTRIBUTING.md
+    about: Setting up the workspace, running the tests, and what a complete IP core needs.
+  - name: Documentation
+    url: https://aesc-silicon.github.io/elements-nafarr/
+    about: IP core documentation, register maps and the getting started guide.

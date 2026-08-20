@@ -1,0 +1,92 @@
+# SPDX-FileCopyrightText: 2026 aesc silicon
+#
+# SPDX-License-Identifier: CERN-OHL-W-2.0
+
+name: Bug report
+description: An IP core, driver or test does not behave the way it should.
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What you expected, and what you got instead.
+    validations:
+      required: true
+
+  - type: input
+    id: core
+    attributes:
+      label: Which IP core?
+      description: >-
+        The core, or the file if you are not sure of the name.
+      placeholder: "I2C controller (peripherals/com/i2c)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: bus
+    attributes:
+      label: Which bus wrapper?
+      options:
+        - TileLink
+        - APB3
+        - Wishbone
+        - Not bus specific
+        - "Not applicable — driver, test or documentation"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where did you see it?
+      description: >-
+        This matters: a mismatch in simulation and a mismatch on silicon usually
+        have very different causes.
+      options:
+        - SpinalHDL simulation (sbt test)
+        - Bare-metal driver test (make run)
+        - Verilog/VHDL export
+        - Synthesis or place-and-route
+        - Renode emulation
+        - FPGA or silicon
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How do we reproduce it?
+      description: The exact commands, or a minimal parameter set for the core.
+      placeholder: |
+        export NAFARR_BASE=$PWD
+        sbt "testOnly *I2cControllerTest"
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Output
+      description: >-
+        Test output, simulation transcript or synthesis log. Paste text rather
+        than a screenshot where you can.
+      render: text
+
+  - type: input
+    id: commit
+    attributes:
+      label: Commit
+      description: Output of `git rev-parse --short HEAD`.
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else?
+      description: >-
+        SpinalHDL and Verilator versions, the core's `Parameter` if you changed it
+        from a default, or anything else you think is relevant.

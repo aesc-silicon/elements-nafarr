@@ -1,6 +1,23 @@
 Getting Started
 ###############
 
+Clone the Repository
+********************
+
+Nafarr depends on two external projects, SpinalCrypto and VexiiRiscv, which are vendored as git submodules under ``ext/``. Clone the repository recursively so they are checked out as well:
+
+.. code-block:: bash
+
+   git clone --recurse-submodules https://github.com/aesc-silicon/elements-nafarr.git nafarr
+
+If you already have a checkout, or cloned without ``--recurse-submodules``, fetch the submodules afterwards:
+
+.. code-block:: bash
+
+   git submodule update --init --recursive
+
+The ``--recursive`` flag is required because VexiiRiscv carries its own submodules. Without them, sbt cannot load the build. Both submodules are pinned to a known-good commit, so you get the same versions CI does. To build against your own checkouts instead, point ``SPINALCRYPTO_PATH`` and ``VEXIIRISCV_PATH`` at them.
+
 Install sbt
 ***********
 
@@ -10,6 +27,7 @@ To ensure sbt is installed correctly, you can compile all Scala modules by runni
 
 .. code-block:: bash
 
+    cd nafarr
     sbt compile
 
 .. _Scala homepage: https://www.scala-lang.org/download/

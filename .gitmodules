@@ -1,0 +1,10 @@
+# SPDX-FileCopyrightText: 2026 aesc silicon
+#
+# SPDX-License-Identifier: CERN-OHL-W-2.0
+
+[submodule "ext/SpinalCrypto"]
+	path = ext/SpinalCrypto
+	url = https://github.com/aesc-silicon/SpinalCrypto.git
+[submodule "ext/VexiiRiscv"]
+	path = ext/VexiiRiscv
+	url = https://github.com/SpinalHDL/VexiiRiscv.git

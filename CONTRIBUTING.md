@@ -31,20 +31,25 @@ are good contributions on their own — see "Good first contributions" below.
 
 ## Setting up
 
-You need Java 11, sbt, and a recent Verilator. Nafarr also depends on two sibling
-repositories, which is the step most easily missed: `build.sbt` refers to
-`../SpinalCrypto` by relative path, and VexiiRiscv is consumed as a locally
-published artifact.
+You need Java 11, sbt, and a recent Verilator. Nafarr depends on two external
+projects, SpinalCrypto and VexiiRiscv, which are vendored as git submodules under
+`ext/`. Clone recursively so they come along:
 
 ```bash
-# All three repositories must sit next to each other in the same directory.
-git clone https://github.com/aesc-silicon/elements-nafarr.git nafarr
-git clone https://github.com/SpinalHDL/SpinalCrypto.git SpinalCrypto
-git clone --recurse-submodules -b dev https://github.com/SpinalHDL/VexiiRiscv.git VexiiRiscv
-
-# VexiiRiscv is resolved from the local ivy cache, so publish it once.
-cd VexiiRiscv && sbt publishLocal && cd ..
+git clone --recurse-submodules https://github.com/aesc-silicon/elements-nafarr.git nafarr
 ```
+
+If you already have a checkout, or cloned without `--recurse-submodules`, fetch
+them afterwards:
+
+```bash
+git submodule update --init --recursive
+```
+
+`--recursive` is not optional: VexiiRiscv carries its own submodules, and sbt
+cannot load the build without them. Both submodules are pinned to a known-good
+commit, so you get the same versions CI does. To work against your own checkouts
+instead, point `SPINALCRYPTO_PATH` and `VEXIIRISCV_PATH` at them.
 
 SpinalHDL's simulator needs a newer Verilator than most distributions ship. Use
 the OSS CAD Suite:

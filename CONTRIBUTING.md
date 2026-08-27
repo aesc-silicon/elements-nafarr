@@ -63,13 +63,9 @@ export PATH=$PWD/oss-cad-suite/bin/:$PATH
 Then, from the Nafarr checkout:
 
 ```bash
-export NAFARR_BASE=$PWD   # some blackboxes resolve their Verilog through this
 sbt compile
 sbt test
 ```
-
-`NAFARR_BASE` is required: the Lattice and Xilinx blackboxes build absolute paths
-to their `.v` files from it, and tests touching them fail without it.
 
 The [Getting Started guide](https://aesc-silicon.github.io/elements-nafarr/getting-started/)
 covers the same ground plus building the documentation.

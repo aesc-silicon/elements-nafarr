@@ -60,7 +60,6 @@ body:
       label: How do we reproduce it?
       description: The exact commands, or a minimal parameter set for the core.
       placeholder: |
-        export NAFARR_BASE=$PWD
         sbt "testOnly *I2cControllerTest"
       render: shell
     validations:

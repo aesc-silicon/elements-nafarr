@@ -20,7 +20,7 @@ If a change is only simulated, say so. That is normal.
 
 ## Checklist
 
-- [ ] `sbt test` passes (`NAFARR_BASE` exported)
+- [ ] `sbt test` passes
 - [ ] `cd test/software && make run` passes, if a driver changed
 - [ ] `sbt scalafmtCheck` passes
 - [ ] `reuse lint` passes — SPDX headers on new files

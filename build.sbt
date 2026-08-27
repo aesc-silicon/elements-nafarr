@@ -18,6 +18,7 @@ lazy val root = (project in file("."))
     ),
     Compile / scalaSource := baseDirectory.value / "hardware" / "scala",
     Test / scalaSource := baseDirectory.value / "test" / "scala",
+    Test / parallelExecution := false,
     scalacOptions += s"-Xplugin:${(spinalHdlIdslPlugin / Compile / packageBin).value.getAbsolutePath}",
     scalacOptions += "-Xplugin-require:idsl-plugin",
     envVars += ("NAFARR_BASE" -> baseDirectory.value.getAbsolutePath)

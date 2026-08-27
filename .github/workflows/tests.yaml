@@ -22,11 +22,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
-          path: nafarr
+          submodules: recursive
 
       - name: Build and run software driver tests
         run: |
-          cd nafarr/test/software
+          cd test/software
           make run
 
   build:
@@ -36,7 +36,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
-          path: nafarr
+          submodules: recursive
 
       - name: Setup Java 11
         uses: actions/setup-java@v4
@@ -65,32 +65,10 @@ jobs:
         with:
           version: '2024-01-01'
 
-      - name: Checkout SpinalCrypto
-        uses: actions/checkout@v6
-        with:
-          repository: SpinalHDL/SpinalCrypto
-          ref: master
-          path: SpinalCrypto
-
-      - name: Checkout VexiiRiscv
-        uses: actions/checkout@v6
-        with:
-          repository: SpinalHDL/VexiiRiscv
-          ref: dev
-          path: VexiiRiscv
-          submodules: true
-
-      - name: Publish VexiiRiscv
-        run: |
-          cd VexiiRiscv
-          sbt publishLocal
-
       - name: Compile
         run: |
-          cd nafarr
           sbt compile
 
       - name: Run tests
         run: |
-          cd nafarr
           NAFARR_BASE=$PWD sbt test

@@ -62,6 +62,8 @@ object VexiiRiscvCoreParameter {
 
     // JTAG debug (clock domain set later by the platform via setDebugCd)
     param.privParam.withDebug = true
+    param.privParam.debugTriggers = 2
+    param.privParam.debugTriggersLsu = true
     param.embeddedJtagTap = true
 
     // Async register file: shallower pipeline, smaller area
@@ -166,6 +168,8 @@ object VexiiRiscvCoreParameter {
     param.withIterativeShift = false
 
     param.privParam.withDebug = true
+    param.privParam.debugTriggers = 2
+    param.privParam.debugTriggersLsu = true
     param.embeddedJtagTap = true
 
     param.fixIsaParams()

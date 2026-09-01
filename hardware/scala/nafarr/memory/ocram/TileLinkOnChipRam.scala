@@ -21,7 +21,8 @@ import spinal.lib.bus.tilelink.{Bus => TileLinkBus, BusParameter => TileLinkPara
   * @param p    TileLink bus parameter (sizeBytes = max transfer, dataBytes = beat width).
   * @param size RAM size in bytes; power of 2.
   */
-case class TileLinkOnChipRam(p: TileLinkParameter, size: BigInt) extends Component {
+case class TileLinkOnChipRam(p: TileLinkParameter, size: BigInt, singlePort: Boolean = true)
+    extends Component {
   val io = new Bundle {
     val bus = slave(TileLinkBus(p))
   }
@@ -55,14 +56,35 @@ case class TileLinkOnChipRam(p: TileLinkParameter, size: BigInt) extends Compone
   val emitLeft = Reg(UInt(beatCntWidth bits)) // read D beats still to emit
 
   val wrEnable = False
-  val wrAddr = cursor.clone()
-  wrAddr := cursor
-  ram.write(wrAddr, a.data, wrEnable, a.mask)
+  val rwAddr = cursor.clone()
+  rwAddr := cursor
 
   val readCmd = Stream(UInt(log2Up(words) bits))
   readCmd.valid := False
   readCmd.payload := cursor
-  val readRsp = ram.streamReadSync(readCmd)
+
+  // Read and write never overlap, so a single port suffices and maps onto 1P
+  // SRAM macros. The two-port variant needs a matching 2P macro.
+  val readRsp = if (singlePort) {
+    val rsp = Stream(Bits(p.dataWidth bits))
+    val hold = Reg(Bits(p.dataWidth bits))
+    val holdValid = RegInit(False)
+    readCmd.ready := !holdValid || rsp.ready
+    val issued = RegNext(readCmd.fire) init (False)
+    val rdData = ram.readWriteSync(rwAddr, a.data, wrEnable || readCmd.fire, wrEnable, a.mask)
+    when(issued) {
+      hold := rdData
+      holdValid := True
+    } elsewhen (rsp.ready) {
+      holdValid := False
+    }
+    rsp.valid := holdValid
+    rsp.payload := hold
+    rsp
+  } else {
+    ram.write(rwAddr, a.data, wrEnable, a.mask)
+    ram.streamReadSync(readCmd)
+  }
   readRsp.ready := False
 
   a.ready := False
@@ -94,7 +116,7 @@ case class TileLinkOnChipRam(p: TileLinkParameter, size: BigInt) extends Compone
           goto(read)
         } otherwise {
           wrEnable := True
-          wrAddr := toWord(a.address)
+          rwAddr := toWord(a.address)
           cursor := toWord(a.address) + 1
           issueLeft := beatsOf(a.size) - 1
           when(beatsOf(a.size) === 1) {

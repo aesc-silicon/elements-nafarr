@@ -28,7 +28,9 @@ object VexiiRiscvCoreParameter {
       iCacheSize: BigInt = 0,
       withMul: Boolean = false,
       withCompressed: Boolean = false,
-      withBarrelShifter: Boolean = false
+      withBarrelShifter: Boolean = false,
+      mainRegions: Seq[SizeMapping] = Seq(SizeMapping(0x80000000L, 0x30000000L)),
+      ioRegions: Seq[SizeMapping] = Seq(SizeMapping(0xf0000000L, 0x10000000L))
   ): VexiiRiscvCoreParameter = {
     val param = new ParamSimple()
 
@@ -75,7 +77,28 @@ object VexiiRiscvCoreParameter {
 
     param.fixIsaParams()
     val plugins = param.plugins()
-    ParamSimple.setPma(plugins)
+
+    val pmaRegions: Seq[PmaRegion] =
+      mainRegions.map(m =>
+        new PmaRegionImpl(
+          mapping = m,
+          isMain = true,
+          isExecutable = true,
+          transfers = M2sTransfers(get = SizeRange.all, putFull = SizeRange.all)
+        )
+      ) ++ ioRegions.map(m =>
+        new PmaRegionImpl(
+          mapping = m,
+          isMain = false,
+          isExecutable = false,
+          transfers = M2sTransfers(
+            get = SizeRange.all,
+            putFull = SizeRange.all,
+            putPartial = SizeRange.all
+          )
+        )
+      )
+    ParamSimple.setPma(plugins, pmaRegions)
 
     // TileLink params: sizeBytes must match across iBus/dBus for the shared
     // decoder in the platform. Cache line size (64 B) when enabled, else 4 B.

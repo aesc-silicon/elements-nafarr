@@ -29,6 +29,14 @@ case class TileLinkOnChipRam(p: TileLinkParameter, size: BigInt) extends Compone
   val words = (size / p.dataBytes).toInt
   val ram = Mem(Bits(p.dataWidth bits), words)
 
+  def rams: Seq[Component] = {
+    val result = scala.collection.mutable.ArrayBuffer[Component]()
+    this.walkComponents { c =>
+      if (c.getName() == ram.getName()) result += c
+    }
+    result.toSeq
+  }
+
   val a = io.bus.a
   val d = io.bus.d
 

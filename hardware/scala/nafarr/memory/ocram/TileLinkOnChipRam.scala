@@ -34,7 +34,8 @@ case class TileLinkOnChipRam(p: TileLinkParameter, size: BigInt) extends Compone
 
   val maxBeats = (p.sizeBytes / p.dataBytes).toInt
   val beatCntWidth = log2Up(maxBeats + 1)
-  def beatsOf(sz: UInt): UInt = ((U(1) << sz) >> p.dataBytesLog2Up).resize(beatCntWidth)
+  def beatsOf(sz: UInt): UInt =
+    (((U(1, 10 bits) |<< sz) + (p.dataBytes - 1)) >> p.dataBytesLog2Up).resize(beatCntWidth)
   def toWord(byteAddr: UInt): UInt = (byteAddr >> p.dataBytesLog2Up).resize(log2Up(words))
 
   val source = Reg(p.source())

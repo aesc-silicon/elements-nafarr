@@ -65,17 +65,17 @@ case class TileLinkSpiXipController(
     cache.io.outer
   } else io.bus
 
-  // Register A-channel metadata when the request is accepted (a.ready high).
   val dSource = RegNextWhen(busPort.a.source, busPort.a.ready)
   val dSize = RegNextWhen(busPort.a.size, busPort.a.ready)
 
-  // Build the SPI command from the accepted A-channel fields.
-  // count encodes "words to fetch - 1": words = 1 << (size - dataBytesLog2Up).
   val spiCmd = SpiXipController.GenericInterface.Cmd()
-  spiCmd.addr := RegNextWhen(busPort.a.address.resize(24), busPort.a.ready)
+  val aWords =
+    ((U(1, 10 bits) |<< busPort.a.size) + (busPort.p.dataBytes - 1)) >> busPort.p.dataBytesLog2Up
+  val alignedAddr =
+    (busPort.a.address >> busPort.p.dataBytesLog2Up) @@ U(0, busPort.p.dataBytesLog2Up bits)
+  spiCmd.addr := RegNextWhen(alignedAddr.resize(24), busPort.a.ready)
   spiCmd.count := RegNextWhen(
-    ((U(1, 9 bits) |<< (busPort.a.size - busPort.p.dataBytesLog2Up)) - 1)
-      .resize(widthOf(spiCmd.count)),
+    (aWords - 1).resize(widthOf(spiCmd.count)),
     busPort.a.ready
   )
   spiXipControllerCtrl.io.busCmd.payload := spiCmd

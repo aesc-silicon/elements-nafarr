@@ -84,7 +84,8 @@ case class TileLinkHyperBus(
   val regAddr = Reg(UInt(busConfig.addressWidth bits))
 
   // Word count for the current burst - combinatorial from regSize.
-  val regWords = (U(1, cntWidth + 1 bits) << (regSize - dataBytesLog2)).resize(cntWidth)
+  val regWords =
+    (((U(1, 10 bits) |<< regSize) + (busConfig.dataBytes - 1)) >> dataBytesLog2).resize(cntWidth)
 
   // Beat counters.
   val cmdCounter = Reg(UInt(cntWidth bits)) init 0 // controller commands issued
@@ -130,7 +131,7 @@ case class TileLinkHyperBus(
         when(io.dataBus.a.valid) {
           regSource := io.dataBus.a.source
           regSize := io.dataBus.a.size
-          regAddr := io.dataBus.a.address
+          regAddr := (io.dataBus.a.address >> dataBytesLog2) @@ U(0, dataBytesLog2 bits)
           cmdCounter := 0
           rspCounter := 0
           when(io.dataBus.a.opcode === Opcode.A.GET()) {

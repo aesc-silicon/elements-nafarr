@@ -26,6 +26,7 @@ object VexiiRiscvCoreParameter {
   def realtime(
       resetAddress: BigInt,
       iCacheSize: BigInt = 0,
+      debugTriggers: BigInt = 0,
       withMul: Boolean = false,
       withCompressed: Boolean = false,
       withBarrelShifter: Boolean = false,
@@ -62,9 +63,11 @@ object VexiiRiscvCoreParameter {
 
     // JTAG debug (clock domain set later by the platform via setDebugCd)
     param.privParam.withDebug = true
-    param.privParam.debugTriggers = 2
-    param.privParam.debugTriggersLsu = true
     param.embeddedJtagTap = true
+    if (debugTriggers > 0) {
+      param.privParam.debugTriggers = debugTriggers.toInt
+      param.privParam.debugTriggersLsu = true
+    }
 
     // Async register file: shallower pipeline, smaller area
     param.regFileSync = false
@@ -115,6 +118,7 @@ object VexiiRiscvCoreParameter {
       resetAddress: BigInt,
       iCacheSize: BigInt = 4096,
       dCacheSize: BigInt = 4096,
+      debugTriggers: BigInt = 0,
       btbSets: Int = 16,
       pmpRegions: Int = 8,
       withCompressed: Boolean = true,
@@ -168,9 +172,11 @@ object VexiiRiscvCoreParameter {
     param.withIterativeShift = false
 
     param.privParam.withDebug = true
-    param.privParam.debugTriggers = 2
-    param.privParam.debugTriggersLsu = true
     param.embeddedJtagTap = true
+    if (debugTriggers > 0) {
+      param.privParam.debugTriggers = debugTriggers.toInt
+      param.privParam.debugTriggersLsu = true
+    }
 
     param.fixIsaParams()
     val basePlugins = param.plugins()

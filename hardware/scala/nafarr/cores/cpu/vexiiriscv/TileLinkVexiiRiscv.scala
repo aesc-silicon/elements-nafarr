@@ -9,6 +9,7 @@ import spinal.lib._
 import spinal.core.fiber._
 import spinal.lib.bus.tilelink.{Bus => TileLinkBus, BusParameter => TileLinkParameter, Opcode}
 import spinal.lib.com.jtag.Jtag
+import spinal.lib.com.swd.Swd
 import spinal.lib.misc.plugin.Hostable
 
 import vexiiriscv.VexiiRiscv
@@ -37,7 +38,9 @@ object TileLinkVexiiRiscv {
   *   iBus / dBus          - connect to the TileLink memory interconnect
   *   mtimerInterrupt      - drive from the machine timer peripheral
   *   globalInterrupt      - drive from the PLIC
-  *   jtag                 - connect to top-level IO (slave direction)
+  *   jtag or swd          - connect to top-level IO (slave direction); only the
+  *                          one matching VexiiRiscvCoreParameter's debugTransport
+  *                          exists (debugSwd tells which)
   *   ndmreset             - register in debug clock domain and pass to the
   *                          system reset controller
   *
@@ -62,7 +65,13 @@ class TileLinkVexiiRiscv(
   )
   val mtimerInterrupt = Bool()
   val globalInterrupt = Bool()
-  val jtag = Jtag()
+  // Exactly one debug port exists, matching the transport the plugins were built with.
+  val debugSwd = parameter.plugins.exists {
+    case p: EmbeddedRiscvJtag => p.withSwd
+    case _ => false
+  }
+  val jtag = !debugSwd generate Jtag()
+  val swd = debugSwd generate Swd()
   val ndmreset = Bool()
 
   private val fetchCachelessPlugin = parameter.plugins.collectFirst {
@@ -159,9 +168,13 @@ class TileLinkVexiiRiscv(
       privPlugin.logic.rdtime := rdtimeCounter
     }
 
-    // JTAG and non-debug-module reset (raw signals; caller handles CDC)
+    // Debug transport (JTAG or SWD) and non-debug-module reset (raw signals; caller handles CDC)
     ndmreset := jtagPlugin.logic.ndmreset
-    jtag <> jtagPlugin.logic.jtag
+    if (debugSwd) {
+      swd <> jtagPlugin.logic.swd
+    } else {
+      jtag <> jtagPlugin.logic.jtag
+    }
 
     // -----------------------------------------------------------------------
     // Bridge instruction fetch -> TileLink

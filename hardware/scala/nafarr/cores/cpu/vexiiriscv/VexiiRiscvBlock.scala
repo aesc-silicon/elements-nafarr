@@ -7,6 +7,7 @@ package nafarr.cores.cpu.vexiiriscv
 import spinal.core._
 import spinal.lib._
 import spinal.lib.com.jtag.Jtag
+import spinal.lib.com.swd.Swd
 import spinal.lib.bus.tilelink.{Bus => TileLinkBus}
 
 // Component boundary around the VexiiRiscv core so it can be hardened as a
@@ -24,7 +25,8 @@ class VexiiRiscvBlock(
   val dIoBus = master(TileLinkBus(if (p.dIoBusParam != null) p.dIoBusParam else p.dBusParam))
   val mtimerInterrupt = in Bool ()
   val globalInterrupt = in Bool ()
-  val jtag = slave(Jtag())
+  val jtag = !cpu.debugSwd generate slave(Jtag())
+  val swd = cpu.debugSwd generate slave(Swd())
   val ndmreset = out Bool ()
 
   iBus <> cpu.iBus
@@ -32,7 +34,11 @@ class VexiiRiscvBlock(
   dIoBus <> cpu.dIoBus
   cpu.mtimerInterrupt := mtimerInterrupt
   cpu.globalInterrupt := globalInterrupt
-  jtag <> cpu.jtag
+  if (cpu.debugSwd) {
+    swd <> cpu.swd
+  } else {
+    jtag <> cpu.jtag
+  }
   ndmreset := cpu.ndmreset
 
   def iCacheRams = cpu.iCacheRams

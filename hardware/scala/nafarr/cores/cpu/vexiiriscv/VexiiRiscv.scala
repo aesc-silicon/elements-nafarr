@@ -15,6 +15,19 @@ import vexiiriscv.memory.PmpParam
 import vexiiriscv.execute.lsu.{LsuL1Plugin, LsuL1TlPlugin}
 import vexiiriscv.prediction.GSharePlugin
 
+/** Transport between the debugger and the RISC-V Debug Module embedded in the core. */
+sealed trait DebugTransport
+object DebugTransport {
+
+  /** JTAG TAP on dedicated pins: the JTAG DTM of the RISC-V Debug Specification (Ch. 6). */
+  case object Jtag extends DebugTransport
+
+  /** SWD (SWCLK/SWDIO) through an ARM SW-DP. This is a custom DTM, so a design using it
+    * conforms to the RISC-V Debug Specification "with custom DTM".
+    */
+  case object Swd extends DebugTransport
+}
+
 case class VexiiRiscvCoreParameter(
     plugins: Seq[Hostable],
     iBusTlParam: TileLinkParameter,
@@ -23,6 +36,12 @@ case class VexiiRiscvCoreParameter(
 )
 
 object VexiiRiscvCoreParameter {
+  private def setDebugTransport(param: ParamSimple, transport: DebugTransport): Unit =
+    transport match {
+      case DebugTransport.Jtag => param.embeddedJtagTap = true
+      case DebugTransport.Swd => param.embeddedSwd = true
+    }
+
   def realtime(
       resetAddress: BigInt,
       iCacheSize: BigInt = 0,
@@ -31,7 +50,8 @@ object VexiiRiscvCoreParameter {
       withCompressed: Boolean = false,
       withBarrelShifter: Boolean = false,
       mainRegions: Seq[SizeMapping] = Seq(SizeMapping(0x80000000L, 0x30000000L)),
-      ioRegions: Seq[SizeMapping] = Seq(SizeMapping(0xf0000000L, 0x10000000L))
+      ioRegions: Seq[SizeMapping] = Seq(SizeMapping(0xf0000000L, 0x10000000L)),
+      debugTransport: DebugTransport = DebugTransport.Jtag
   ): VexiiRiscvCoreParameter = {
     val param = new ParamSimple()
 
@@ -61,9 +81,9 @@ object VexiiRiscvCoreParameter {
     // Full forwarding bypass: reduces stalls without sacrificing determinism
     param.allowBypassFrom = 0
 
-    // JTAG debug (clock domain set later by the platform via setDebugCd)
+    // Debug module (clock domain set later by the platform via setDebugCd)
     param.privParam.withDebug = true
-    param.embeddedJtagTap = true
+    setDebugTransport(param, debugTransport)
     if (debugTriggers > 0) {
       param.privParam.debugTriggers = debugTriggers.toInt
       param.privParam.debugTriggersLsu = true
@@ -123,7 +143,8 @@ object VexiiRiscvCoreParameter {
       pmpRegions: Int = 8,
       withCompressed: Boolean = true,
       mainRegions: Seq[SizeMapping] = Seq(SizeMapping(0x80000000L, 0x30000000L)),
-      ioRegions: Seq[SizeMapping] = Seq(SizeMapping(0xf0000000L, 0x10000000L))
+      ioRegions: Seq[SizeMapping] = Seq(SizeMapping(0xf0000000L, 0x10000000L)),
+      debugTransport: DebugTransport = DebugTransport.Jtag
   ): VexiiRiscvCoreParameter = {
     val param = new ParamSimple()
     val lineSize = 64
@@ -172,7 +193,7 @@ object VexiiRiscvCoreParameter {
     param.withIterativeShift = false
 
     param.privParam.withDebug = true
-    param.embeddedJtagTap = true
+    setDebugTransport(param, debugTransport)
     if (debugTriggers > 0) {
       param.privParam.debugTriggers = debugTriggers.toInt
       param.privParam.debugTriggersLsu = true

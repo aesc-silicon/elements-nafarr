@@ -17,6 +17,7 @@ import spinal.lib.bus.wishbone._
 
 import nafarr.Feature
 import nafarr.peripherals.PeripheralsComponent
+import nafarr.system.dma.DmaRequest
 
 object Mailbox {
 
@@ -28,13 +29,18 @@ object Mailbox {
     val io = new Bundle {
       val bus = slave(busType())
       val interrupt = out(Bool())
+      val dmaRequest = Vec.fill(p.channelCount)(master(DmaRequest()))
     }
     val busCtrl = factory(io.bus)
     val ctrl = MailboxCtrl(p)
     val mapper = MailboxCtrl.Mapper(busCtrl, ctrl, p)
     io.interrupt := ctrl.io.interrupt
+    for (ch <- 0 until p.channelCount) {
+      io.dmaRequest(ch).drive(ctrl.io.push(ch).ready, ctrl.io.pop(ch).valid)
+    }
 
     override def getInterrupt = Some(io.interrupt)
+    override def getDmaRequests = io.dmaRequest.toSeq
     override def sysconFeatures = Some(List(Feature.Mailbox))
 
     override def headerBareMetal(name: String, address: BigInt, size: BigInt) = {

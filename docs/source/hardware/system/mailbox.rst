@@ -17,6 +17,8 @@ Features
 * Per-channel status flags (empty, full) and occupancy counter
 * Per-channel interrupt sources: not-empty (data arrived) and not-full (space available)
 * Single combined interrupt output - asserted when any enabled channel interrupt fires
+* Per-channel DMA request handshakes: ``tx`` while the channel has space, ``rx`` while it holds
+  a message (see :ref:`hardware-system-dma`)
 
 Interrupt Architecture
 **********************

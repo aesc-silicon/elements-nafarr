@@ -17,6 +17,7 @@ import nafarr.CheckTester._
 import nafarr.IpIdentification
 import nafarr.IpIdentificationTest
 import nafarr.SimTest
+import nafarr.system.dma.DmaHandshakeSim
 
 class MailboxTest extends AnyFunSuite {
   test("Apb3Parameter") {
@@ -92,6 +93,7 @@ class MailboxTest extends AnyFunSuite {
 
   test("Channel 0 - push and pop") {
     SimConfig.withWave.compile(Apb3Mailbox(MailboxCtrl.Parameter.medium())).doSim { dut =>
+      DmaHandshakeSim.release(dut.io.dmaRequest: _*)
       val (driver, regs) = init(dut)
       dut.clockDomain.waitSampling(2)
 
@@ -100,15 +102,21 @@ class MailboxTest extends AnyFunSuite {
 
       SimTest.readField(driver, regs.status, 0, 0, 0, "Channel 0 not empty after push")
       SimTest.readField(driver, regs.occupancy(0), 31, 0, 1, "Channel 0 occupancy is 1")
+      assert(dut.io.dmaRequest(0).rx.req.toBoolean, "DMA rx request low with data in channel 0")
+      assert(dut.io.dmaRequest(0).tx.req.toBoolean, "DMA tx request low with space in channel 0")
+      assert(!dut.io.dmaRequest(1).rx.req.toBoolean, "DMA rx request high on empty channel 1")
+      DmaHandshakeSim.checkAck(dut.io.dmaRequest(0).rx, dut.clockDomain, "Mailbox rx")
       SimTest.read(driver, regs.read(0), 0xdeadbeefL, "Channel 0 pop value")
       dut.clockDomain.waitSampling(2)
 
       SimTest.readField(driver, regs.status, 0, 0, 1, "Channel 0 empty after pop")
+      assert(!dut.io.dmaRequest(0).rx.req.toBoolean, "DMA rx request high after pop")
     }
   }
 
   test("Channel 1 - push and pop") {
     SimConfig.withWave.compile(Apb3Mailbox(MailboxCtrl.Parameter.medium())).doSim { dut =>
+      DmaHandshakeSim.release(dut.io.dmaRequest: _*)
       val (driver, regs) = init(dut)
       dut.clockDomain.waitSampling(2)
 
@@ -132,6 +140,7 @@ class MailboxTest extends AnyFunSuite {
       dut.clockDomain.waitSampling(2)
 
       SimTest.readField(driver, regs.status, 2, 2, 1, "Channel 0 full")
+      assert(!dut.io.dmaRequest(0).tx.req.toBoolean, "DMA tx request high on full channel 0")
 
       for (i <- 0 until dut.p.depth) {
         SimTest.read(driver, regs.read(0), i, s"Channel 0 drain value $i")
@@ -157,6 +166,43 @@ class MailboxTest extends AnyFunSuite {
 
       driver.write(regs.interruptPending(0), 0x1)
       dut.clockDomain.waitSampling(1)
+    }
+  }
+
+  test("DMA request") {
+    SimConfig.withWave.compile(Apb3Mailbox(MailboxCtrl.Parameter.small())).doSim { dut =>
+      DmaHandshakeSim.release(dut.io.dmaRequest: _*)
+      val (driver, regs) = init(dut)
+      val cd = dut.clockDomain
+      val ch0 = dut.io.dmaRequest(0)
+      val ch1 = dut.io.dmaRequest(1)
+      cd.waitSampling(2)
+
+      /* Idle: empty channels accept a message and hold none */
+      for ((ch, name) <- Seq((ch0, "channel 0"), (ch1, "channel 1"))) {
+        assert(ch.tx.req.toBoolean, s"DMA tx request low on empty $name")
+        assert(!ch.rx.req.toBoolean, s"DMA rx request high on empty $name")
+      }
+      DmaHandshakeSim.checkAck(ch0.tx, cd, "Mailbox channel 0 tx")
+
+      /* Fill channel 0: tx stops requesting, rx requests; channel 1 is unaffected */
+      for (i <- 0 until dut.p.depth) {
+        driver.write(regs.write(0), i)
+      }
+      cd.waitSampling(2)
+      assert(!ch0.tx.req.toBoolean, "DMA tx request high on full channel 0")
+      assert(ch0.rx.req.toBoolean, "DMA rx request low on full channel 0")
+      assert(ch1.tx.req.toBoolean, "DMA tx request low on empty channel 1")
+      assert(!ch1.rx.req.toBoolean, "DMA rx request high on empty channel 1")
+      DmaHandshakeSim.checkAck(ch0.rx, cd, "Mailbox channel 0 rx")
+
+      /* Drain channel 0: tx requests again, rx stops requesting */
+      for (i <- 0 until dut.p.depth) {
+        SimTest.read(driver, regs.read(0), i, s"Channel 0 drain value $i")
+      }
+      cd.waitSampling(2)
+      assert(ch0.tx.req.toBoolean, "DMA tx request low on drained channel 0")
+      assert(!ch0.rx.req.toBoolean, "DMA rx request high on drained channel 0")
     }
   }
 }

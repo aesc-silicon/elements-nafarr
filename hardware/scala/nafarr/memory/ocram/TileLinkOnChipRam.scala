@@ -9,6 +9,9 @@ import spinal.lib._
 import spinal.lib.fsm._
 import spinal.lib.bus.tilelink.{Bus => TileLinkBus, BusParameter => TileLinkParameter, Opcode}
 
+import nafarr.Feature
+import nafarr.peripherals.SysconFeatures
+
 /** Generic single-port synchronous on-chip RAM, TileLink burst-capable.
   *
   * Serves multi-beat cache-line transfers up to the bus parameter's sizeBytes, so it can back a
@@ -22,10 +25,13 @@ import spinal.lib.bus.tilelink.{Bus => TileLinkBus, BusParameter => TileLinkPara
   * @param size RAM size in bytes; power of 2.
   */
 case class TileLinkOnChipRam(p: TileLinkParameter, size: BigInt, singlePort: Boolean = true)
-    extends Component {
+    extends Component
+    with SysconFeatures {
   val io = new Bundle {
     val bus = slave(TileLinkBus(p))
   }
+
+  override def sysconFeatures = Some(List(Feature.Ocram))
 
   val words = (size / p.dataBytes).toInt
   val ram = Mem(Bits(p.dataWidth bits), words)

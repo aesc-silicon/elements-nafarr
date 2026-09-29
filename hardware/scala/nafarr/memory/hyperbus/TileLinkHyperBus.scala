@@ -14,7 +14,9 @@ import spinal.lib.bus.tilelink.{
   SlaveFactory => TileLinkSlaveFactory
 }
 
+import nafarr.Feature
 import nafarr.memory.hyperbus.phy.{HyperBusGenericPhy, HyperBusGenericDdrPhy}
+import nafarr.peripherals.SysconFeatures
 
 /** TileLink wrapper for the HyperBus controller.
   *
@@ -50,7 +52,8 @@ case class TileLinkHyperBus(
     p: HyperBusCtrl.Parameter,
     busConfig: TileLinkParameter,
     cfgBusConfig: TileLinkParameter = TileLinkParameter.simple(10, 32, 4, 1)
-) extends Component {
+) extends Component
+    with SysconFeatures {
 
   val io = new Bundle {
     val dataBus = slave(TileLinkBus(busConfig))
@@ -58,6 +61,8 @@ case class TileLinkHyperBus(
     val phy = master(HyperBus.Phy.Interface(p))
     val error = out Bool ()
   }
+
+  override def sysconFeatures = Some(List(Feature.Hyperbus))
 
   // -------------------------------------------------------------------------
   // HyperBus controller + configuration register mapper

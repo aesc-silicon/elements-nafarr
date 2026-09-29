@@ -13,7 +13,9 @@ import spinal.lib.bus.tilelink.{
   SlaveFactory => TileLinkSlaveFactory
 }
 
+import nafarr.Feature
 import nafarr.bus.tilelink.TileLinkCache
+import nafarr.peripherals.SysconFeatures
 import nafarr.peripherals.com.spi.{Spi, SpiControllerCtrl}
 
 /** XIP (execute-in-place) SPI flash controller with a TileLink-UH (burst) data
@@ -36,7 +38,8 @@ case class TileLinkSpiXipController(
     busConfig: TileLinkParameter,
     cfgBusConfig: TileLinkParameter = TileLinkParameter.simple(10, 32, 4, 1),
     cacheWords: Int = 0
-) extends Component {
+) extends Component
+    with SysconFeatures {
   val io = new Bundle {
     val bus = slave(TileLinkBus(busConfig))
     val cfgSpiBus = slave(TileLinkBus(cfgBusConfig))
@@ -44,6 +47,8 @@ case class TileLinkSpiXipController(
     val spi = master(Spi.Io(parameter.io))
     val interrupt = out(Bool)
   }
+
+  override def sysconFeatures = Some(List(Feature.SpiFlash))
 
   object RspState extends SpinalEnum {
     val IDLE, ERROR, CMD, RESPONSE = newElement()

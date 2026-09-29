@@ -166,32 +166,35 @@ by collecting ``sysconFeatures`` from each IP on the bus.
      - ``Mtimer``
      - Machine-mode timer present
    * - 11
+     - ``Timer``
+     - General-purpose timer present
+   * - 12
      - ``Plic``
      - Platform-level interrupt controller present
-   * - 12
+   * - 13
      - ``Reset``
      - Reset controller present
-   * - 13
+   * - 14
      - ``Semaphore``
      - Hardware semaphore present
-   * - 14
+   * - 15
      - ``Watchdog``
      - Watchdog timer present
-   * - 15
+   * - 16
      - ``Aes``
      - AES accelerator present
-   * - 16
+   * - 17
      - ``Crc``
      - CRC engine present
-   * - 17
+   * - 18
      - ``Prng``
      - Pseudo-random number generator present
-   * - 18
+   * - 19
      - ``Hyperbus``
      - HyperBus interface present
-   * - 19
+   * - 20
      - ``Ocram``
      - On-chip SRAM controller present
-   * - 20
+   * - 21
      - ``SpiFlash``
      - SPI flash controller present

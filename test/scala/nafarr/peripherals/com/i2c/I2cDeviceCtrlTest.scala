@@ -53,13 +53,21 @@ class I2cDeviceCtrlTest extends AnyFunSuite {
       val baudrate = 2500
       val tickPeriod = baudrate / 4
 
-      dut.io.config.clockDivider #= 100
+      dut.io.config.clockDivider #= 1
+      dut.io.config.clockDividerReload #= false
       dut.io.config.timeout #= tickPeriod
       dut.io.config.deviceAddr #= BigInt("0110001", 2)
       dut.io.i2c.sda.read #= true
       dut.io.i2c.scl.read #= true
       dut.io.i2c.sda.write #= true
       dut.io.i2c.scl.write #= true
+      dut.io.cmd.ready #= true
+      dut.io.rsp.valid #= false
+
+      /* A device that is not addressed never issues a command */
+      dut.clockDomain.onSamplings {
+        assert(!dut.io.cmd.valid.toBoolean, "Command issued for a foreign address")
+      }
 
       dut.clockDomain.assertReset()
       sleep(100 * 1000)
@@ -91,13 +99,21 @@ class I2cDeviceCtrlTest extends AnyFunSuite {
       val baudrate = 2500
       val tickPeriod = baudrate / 4
 
-      dut.io.config.clockDivider #= 100
+      dut.io.config.clockDivider #= 1
+      dut.io.config.clockDividerReload #= false
       dut.io.config.timeout #= 250
       dut.io.config.deviceAddr #= BigInt("0110001", 2)
       dut.io.i2c.sda.read #= true
       dut.io.i2c.scl.read #= true
       dut.io.i2c.sda.write #= true
       dut.io.i2c.scl.write #= true
+      dut.io.cmd.ready #= true
+      dut.io.rsp.valid #= false
+
+      /* A device that is not addressed never issues a command */
+      dut.clockDomain.onSamplings {
+        assert(!dut.io.cmd.valid.toBoolean, "Command issued for a foreign address")
+      }
 
       dut.clockDomain.assertReset()
       sleep(100 * 1000)

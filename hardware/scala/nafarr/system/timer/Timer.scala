@@ -14,6 +14,8 @@ import spinal.lib.bus.tilelink.{
   SlaveFactory => TileLinkSlaveFactory
 }
 import spinal.lib.bus.wishbone._
+import nafarr.Feature
+import nafarr.peripherals.PeripheralsComponent
 
 object Timer {
 
@@ -21,7 +23,7 @@ object Timer {
       p: TimerCtrl.Parameter,
       busType: HardType[T],
       factory: T => BusSlaveFactory
-  ) extends Component {
+  ) extends PeripheralsComponent {
     val io = new Bundle {
       val bus = slave(busType())
       val interrupt = out Bool ()
@@ -29,6 +31,14 @@ object Timer {
     val ctrl = TimerCtrl(p)
     val mapper = TimerCtrl.Mapper(factory(io.bus), ctrl, p)
     io.interrupt := mapper.interrupt
+
+    override def getInterrupt = Some(io.interrupt)
+    override def sysconFeatures = Some(List(Feature.Timer))
+
+    override def headerBareMetal(name: String, address: BigInt, size: BigInt) = {
+      val baseAddress = "%08x".format(address.toInt)
+      s"""#define ${name.toUpperCase}_BASE\t\t0x${baseAddress}\n"""
+    }
   }
 }
 

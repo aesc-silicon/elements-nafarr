@@ -245,6 +245,10 @@ object UartCtrl {
       busCtrl.read(fifoOccupancy, address = regs.fifoStatus, bitOffset = 24)
     }
 
+    // DMA request conditions: TX FIFO can accept a word, RX FIFO holds one.
+    val dmaTx = tx.streamUnbuffered.ready
+    val dmaRx = rx.stream.valid
+
     val config = new Area {
       val cfg = Reg(ctrl.config)
 

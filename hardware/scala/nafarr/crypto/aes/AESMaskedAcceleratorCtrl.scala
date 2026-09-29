@@ -197,5 +197,9 @@ object AesMaskedAcceleratorCtrl {
     busCtrl.read(fifoOccupancy, address = regs.control, bitOffset = 24)
 
     ctrl.masking << busCtrl.createAndDriveFlow(Bits(28 bits), address = regs.masking).toStream
+
+    // tx tracks the plaintext FIFO; the key is loaded once and not DMA-fed.
+    val dmaTx = ctrl.plaintext.ready
+    val dmaRx = stream.valid
   }
 }

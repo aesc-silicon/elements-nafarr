@@ -15,6 +15,7 @@ import nafarr.CheckTester._
 import nafarr.IpIdentification
 import nafarr.IpIdentificationTest
 import nafarr.SimTest
+import nafarr.system.dma.DmaHandshakeSim
 
 class PioTest extends AnyFunSuite {
   def fillCommands(apb: Apb3Driver, regs: PioCtrl.Regs, commands: List[BigInt]) {
@@ -171,6 +172,7 @@ class PioTest extends AnyFunSuite {
     }
 
     compiled.doSim("basicRegisters") { dut =>
+      DmaHandshakeSim.release(dut.io.dmaRequest)
       val (apb, regs) = init(dut)
 
       /* Check IP identification */
@@ -193,9 +195,14 @@ class PioTest extends AnyFunSuite {
       /* Read FIFO status */
       SimTest.readField(apb, regs.fifoStatus, 7, 0, 0, "FIFO Status - Exec pointer")
       SimTest.readField(apb, regs.fifoStatus, 15, 8, 0, "FIFO Status - Write pointer")
+
+      /* DMA request lines: no tx line (program memory), empty read FIFO */
+      assert(!dut.io.dmaRequest.tx.req.toBoolean, "DMA tx request must stay low")
+      assert(!dut.io.dmaRequest.rx.req.toBoolean, "DMA rx request high with empty read FIFO")
     }
 
     compiled.doSim("read value") { dut =>
+      DmaHandshakeSim.release(dut.io.dmaRequest)
       val (apb, regs) = init(dut)
 
       dut.io.pio.pins.read #= BigInt("00", 2)
@@ -204,8 +211,12 @@ class PioTest extends AnyFunSuite {
         generateCmd(1, PioCtrl.CommandType.READ)
       ))
       dut.clockDomain.waitSampling(15)
+      assert(dut.io.dmaRequest.rx.req.toBoolean, "DMA rx request low with data in read FIFO")
+      DmaHandshakeSim.checkAck(dut.io.dmaRequest.rx, dut.clockDomain, "PIO rx")
       SimTest.read(apb, regs.readWrite, BigInt("00010000", 16), "Unable to read value 0 from Pio pin 0")
       SimTest.read(apb, regs.readWrite, BigInt("00010000", 16), "Unable to read value 0 from Pio pin 1")
+      dut.clockDomain.waitSampling(2)
+      assert(!dut.io.dmaRequest.rx.req.toBoolean, "DMA rx request high after read FIFO drained")
 
       dut.io.pio.pins.read #= BigInt("01", 2)
       fillCommands(apb, regs, List(
@@ -451,6 +462,39 @@ class PioTest extends AnyFunSuite {
           dut.clockDomain.waitSampling(1)
         }
       }
+    }
+  }
+
+  test("DMA request") {
+    val compiled = SimConfig.withWave.compile {
+      Apb3Pio(PioCtrl.Parameter(io = Pio.Parameter(2), init = PioCtrl.InitParameter(2, 2)))
+    }
+
+    compiled.doSim("dmaRequest") { dut =>
+      DmaHandshakeSim.release(dut.io.dmaRequest)
+      val (apb, regs) = init(dut)
+      val cd = dut.clockDomain
+      val tx = dut.io.dmaRequest.tx
+      val rx = dut.io.dmaRequest.rx
+      dut.io.pio.pins.read #= BigInt("10", 2)
+
+      /* Idle: nothing to read; commands live in program memory, so tx never requests */
+      assert(!rx.req.toBoolean, "DMA rx request high with empty read FIFO")
+      DmaHandshakeSim.checkNeverRequests(tx, cd, "PIO tx")
+
+      /* RX: READ commands fill the read FIFO, reading it drains the FIFO */
+      fillCommands(apb, regs, List(
+        generateCmd(0, PioCtrl.CommandType.READ),
+        generateCmd(1, PioCtrl.CommandType.READ)
+      ))
+      DmaHandshakeSim.waitReq(rx, cd, true, 100, "PIO rx after READ commands")
+      DmaHandshakeSim.checkAck(rx, cd, "PIO rx")
+      SimTest.read(apb, regs.readWrite, BigInt("00010000", 16), "Pio pin 0 value")
+      assert(rx.req.toBoolean, "DMA rx request low with a second value in the read FIFO")
+      SimTest.read(apb, regs.readWrite, BigInt("00010001", 16), "Pio pin 1 value")
+      cd.waitSampling(2)
+      assert(!rx.req.toBoolean, "DMA rx request high after read FIFO drained")
+      assert(!tx.req.toBoolean, "DMA tx request high")
     }
   }
 }

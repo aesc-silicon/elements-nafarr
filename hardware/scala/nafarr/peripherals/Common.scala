@@ -7,6 +7,7 @@ package nafarr.peripherals
 import spinal.core._
 import spinal.lib._
 import nafarr.Feature
+import nafarr.system.dma.DmaRequest
 
 /** A component that contributes to the syscon feature register. */
 trait SysconFeatures {
@@ -51,4 +52,9 @@ abstract class PeripheralsComponent extends Component with SysconFeatures {
     * Override in Core classes that have an error output.
     */
   def getError: Option[Bool] = None
+
+  /** Returns the DMA request lines for platform wiring, one bundle per FIFO pair.
+    * Override in Core classes that expose a `dmaRequest` output.
+    */
+  def getDmaRequests: Seq[DmaRequest] = Nil
 }

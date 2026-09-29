@@ -340,6 +340,10 @@ object I2cControllerCtrl {
       busCtrl.read(fifoOccupancy, address = regOffset + 0x04, 0)
     }
 
+    // DMA request conditions: command FIFO can accept an entry, response FIFO holds one.
+    val dmaTx = cmdLogic.streamUnbuffered.ready
+    val dmaRx = rspLogic.stream.valid
+
     val config = new Area {
       val cfg = Reg(ctrl.config)
 

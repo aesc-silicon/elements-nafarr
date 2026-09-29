@@ -16,6 +16,7 @@ import spinal.lib.bus.tilelink.{
 import spinal.lib.bus.wishbone._
 import nafarr.Feature
 import nafarr.peripherals.PeripheralsComponent
+import nafarr.system.dma.DmaRequest
 
 object I2cController {
   case class Cmd() extends Bundle {
@@ -40,6 +41,7 @@ object I2cController {
       val bus = slave(busType())
       val i2c = master(I2c.Io(p.io))
       val interrupt = out(Bool)
+      val dmaRequest = master(DmaRequest())
     }
 
     val i2cControllerCtrl = I2cControllerCtrl(p)
@@ -47,9 +49,11 @@ object I2cController {
     io.interrupt := i2cControllerCtrl.io.interrupt
 
     val mapper = I2cControllerCtrl.Mapper(factory(io.bus), i2cControllerCtrl.io, p)
+    io.dmaRequest.drive(mapper.dmaTx, mapper.dmaRx)
 
     val clockSpeed = ClockDomain.current.frequency.getValue.toInt
     override def getInterrupt = Some(io.interrupt)
+    override def getDmaRequests = Seq(io.dmaRequest)
     override def sysconFeatures = Some(List(Feature.I2c))
 
     override def headerBareMetal(name: String, address: BigInt, size: BigInt) = {

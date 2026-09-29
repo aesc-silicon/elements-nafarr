@@ -16,6 +16,7 @@ import spinal.lib.bus.tilelink.{
 import spinal.lib.bus.wishbone._
 import nafarr.Feature
 import nafarr.peripherals.PeripheralsComponent
+import nafarr.system.dma.DmaRequest
 
 object Uart {
   case class Io(p: UartCtrl.Parameter) extends Bundle with IMasterSlave {
@@ -57,6 +58,7 @@ object Uart {
       val uart = master(Io(p))
       val interrupt = out(Bool)
       val error = out(Bool)
+      val dmaRequest = master(DmaRequest())
     }
 
     val ctrl = UartCtrl(p)
@@ -65,10 +67,12 @@ object Uart {
     io.error := ctrl.io.error
 
     val mapper = UartCtrl.Mapper(factory(io.bus), ctrl.io, p)
+    io.dmaRequest.drive(mapper.dmaTx, mapper.dmaRx)
 
     val clockSpeed = ClockDomain.current.frequency.getValue.toInt
     override def getInterrupt = Some(io.interrupt)
     override def getError = Some(io.error)
+    override def getDmaRequests = Seq(io.dmaRequest)
     override def sysconFeatures = Some(List(Feature.Uart))
 
     override def headerBareMetal(name: String, address: BigInt, size: BigInt) = {

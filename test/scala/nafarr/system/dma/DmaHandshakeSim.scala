@@ -27,6 +27,33 @@ object DmaHandshakeSim {
     }
   }
 
+  /** Waits up to `cycles` clock cycles for `req` to reach `level`. */
+  def waitReq(
+      hs: DmaHandshake,
+      cd: ClockDomain,
+      level: Boolean,
+      cycles: Int,
+      name: String
+  ): Unit = {
+    var left = cycles
+    while (hs.req.toBoolean != level) {
+      assert(left > 0, s"$name: req did not become $level within $cycles cycles")
+      cd.waitSampling()
+      left -= 1
+    }
+  }
+
+  /** Checks that `req` stays low, also across an ack cycle. */
+  def checkNeverRequests(hs: DmaHandshake, cd: ClockDomain, name: String): Unit = {
+    for (ack <- Seq(false, true, false)) {
+      hs.ack #= ack
+      for (_ <- 0 until 3) {
+        cd.waitSampling()
+        assert(!hs.req.toBoolean, s"$name: req high although it never requests")
+      }
+    }
+  }
+
   /** Checks the peripheral side of a pending request: `req` drops while `ack` is set and
     * returns once `ack` is released.
     */

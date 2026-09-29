@@ -18,6 +18,7 @@ import nafarr.CheckTester._
 import nafarr.IpIdentification
 import nafarr.IpIdentificationTest
 import nafarr.SimTest
+import nafarr.system.dma.DmaHandshakeSim
 
 class UartTest extends AnyFunSuite {
   def genCore[T <: spinal.core.Data with IMasterSlave](
@@ -136,6 +137,7 @@ class UartTest extends AnyFunSuite {
     val compiled = SimConfig.withWave.compile(genCore(UartCtrl.Parameter.default, Apb3Uart(_)))
 
     compiled.doSim("basicRegisters") { dut =>
+      DmaHandshakeSim.release(dut.io.dmaRequest)
       val (apb, regs) = init(dut)
 
       /* Check IP identification */
@@ -163,6 +165,11 @@ class UartTest extends AnyFunSuite {
       /* Read FIFO status */
       SimTest.readField(apb, regs.fifoStatus, 31, 24, 0, "UART RX occupancy")
       SimTest.readField(apb, regs.fifoStatus, 23, 16, 16, "UART TX vacany")
+
+      /* DMA request lines: empty TX FIFO accepts, empty RX FIFO has nothing */
+      assert(dut.io.dmaRequest.tx.req.toBoolean, "DMA tx request low with empty TX FIFO")
+      assert(!dut.io.dmaRequest.rx.req.toBoolean, "DMA rx request high with empty RX FIFO")
+      DmaHandshakeSim.checkAck(dut.io.dmaRequest.tx, dut.clockDomain, "UART tx")
     }
 
     compiled.doSim("testIO") { dut =>
@@ -253,6 +260,7 @@ class UartTest extends AnyFunSuite {
     }
 
     compiled.doSim("testIRQ-RX") { dut =>
+      DmaHandshakeSim.release(dut.io.dmaRequest)
       val (apb, regs) = init(dut)
 
       /* Init IP-Core */
@@ -264,7 +272,12 @@ class UartTest extends AnyFunSuite {
 
       val receive = UartEncoder(dut.io.uart.rxd, 8640, BigInt("47", 16))
       receive.join()
+      dut.clockDomain.waitSampling(2)
+      assert(dut.io.dmaRequest.rx.req.toBoolean, "DMA rx request low with data in RX FIFO")
+      DmaHandshakeSim.checkAck(dut.io.dmaRequest.rx, dut.clockDomain, "UART rx")
       SimTest.read(apb, regs.readWrite, BigInt("00010047", 16), "Didn't received 0x47/'G'")
+      dut.clockDomain.waitSampling(2)
+      assert(!dut.io.dmaRequest.rx.req.toBoolean, "DMA rx request high after RX FIFO drained")
       SimTest.read(apb, regs.interruptPending, BigInt("00000002", 16), "RX interrupt isn't pending")
       SimTest.checkPins(dut.io.interrupt.toBigInt, 1, f"Interrupt isn't pending")
       apb.write(regs.interruptEnable, BigInt("00000000", 16))
@@ -440,5 +453,44 @@ class UartTest extends AnyFunSuite {
       SimTest.read(apb, regs.errorPending, BigInt("00000004", 16), "RX FIFO isn't full")
     }
 
+  }
+
+  test("DMA request") {
+    val compiled = SimConfig.withWave.compile(genCore(UartCtrl.Parameter.default, Apb3Uart(_)))
+
+    compiled.doSim("dmaRequest") { dut =>
+      DmaHandshakeSim.release(dut.io.dmaRequest)
+      val (apb, regs) = init(dut)
+      val cd = dut.clockDomain
+      val tx = dut.io.dmaRequest.tx
+      val rx = dut.io.dmaRequest.rx
+
+      apb.write(regs.clockDivider, BigInt("0000006B", 16))
+      apb.write(regs.frameConfig, BigInt("00000007", 16))
+      cd.waitSampling(2)
+
+      /* Idle: the empty TX FIFO accepts a word, the empty RX FIFO holds none */
+      assert(tx.req.toBoolean, "DMA tx request low with empty TX FIFO")
+      assert(!rx.req.toBoolean, "DMA rx request high with empty RX FIFO")
+      DmaHandshakeSim.checkAck(tx, cd, "UART tx")
+
+      /* TX: no request while the FIFO is full, request again once a word is sent */
+      for (_ <- 0 to dut.ctrl.p.memory.txFifoDepth) {
+        apb.write(regs.readWrite, BigInt("55", 16))
+      }
+      cd.waitSampling(2)
+      SimTest.readField(apb, regs.fifoStatus, 23, 16, 0, "UART TX vacancy")
+      assert(!tx.req.toBoolean, "DMA tx request high with full TX FIFO")
+      DmaHandshakeSim.waitReq(tx, cd, true, 2 * 10 * 864, "UART tx after sending a word")
+
+      /* RX: request while a word is received, none after it is read */
+      UartEncoder(dut.io.uart.rxd, 8640, BigInt("47", 16)).join()
+      cd.waitSampling(2)
+      assert(rx.req.toBoolean, "DMA rx request low with data in RX FIFO")
+      DmaHandshakeSim.checkAck(rx, cd, "UART rx")
+      SimTest.read(apb, regs.readWrite, BigInt("00010047", 16), "Didn't receive 0x47/'G'")
+      cd.waitSampling(2)
+      assert(!rx.req.toBoolean, "DMA rx request high after RX FIFO drained")
+    }
   }
 }

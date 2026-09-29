@@ -12,6 +12,7 @@ import spinal.core.sim._
 import nafarr.CheckTester._
 import spinal.lib._
 import spinal.lib.bus.amba3.apb.sim.Apb3Driver
+import nafarr.system.dma.DmaHandshakeSim
 
 
 class I2cControllerTest extends AnyFunSuite {
@@ -111,6 +112,7 @@ class I2cControllerTest extends AnyFunSuite {
     val compiled = SimConfig.withWave.compile(genCore(I2cControllerCtrl.Parameter.default(), Apb3I2cController(_)))
 
     compiled.doSim("basicRegisters") { dut =>
+      DmaHandshakeSim.release(dut.io.dmaRequest)
       dut.clockDomain.forkStimulus(10)
       fork {
         dut.clockDomain.fallingEdge()
@@ -128,6 +130,11 @@ class I2cControllerTest extends AnyFunSuite {
       /* Wait for reset and check initialized state */
       dut.clockDomain.waitSampling(2)
       dut.clockDomain.waitFallingEdge()
+
+      /* DMA request lines: empty command FIFO accepts, empty response FIFO has nothing */
+      assert(dut.io.dmaRequest.tx.req.toBoolean, "DMA tx request low with empty command FIFO")
+      assert(!dut.io.dmaRequest.rx.req.toBoolean, "DMA rx request high with empty response FIFO")
+      DmaHandshakeSim.checkAck(dut.io.dmaRequest.tx, dut.clockDomain, "I2C tx")
 
       /* Check IP identification */
       assert(
@@ -165,6 +172,53 @@ class I2cControllerTest extends AnyFunSuite {
     }
   }
 
+  test("DMA request") {
+    // Clock divider set at reset: a divider written while the controller is idle only takes
+    // effect after the reset value has counted down.
+    val parameter =
+      I2cControllerCtrl.Parameter.default().copy(init = I2cControllerCtrl.InitParameter(10))
+    val compiled = SimConfig.withWave.compile(genCore(parameter, Apb3I2cController(_)))
 
+    compiled.doSim("dmaRequest") { dut =>
+      DmaHandshakeSim.release(dut.io.dmaRequest)
+      val cd = dut.clockDomain
+      cd.forkStimulus(10)
+      val apb = new Apb3Driver(dut.io.bus, cd)
+      val regOffset = dut.mapper.regOffset
+      val tx = dut.io.dmaRequest.tx
+      val rx = dut.io.dmaRequest.rx
 
+      /* Open-drain lines with pull-ups and no device: write pulls a line low */
+      dut.io.i2c.scl.read #= true
+      dut.io.i2c.sda.read #= true
+      cd.onSamplings {
+        dut.io.i2c.scl.read #= !dut.io.i2c.scl.write.toBoolean
+        dut.io.i2c.sda.read #= !dut.io.i2c.sda.write.toBoolean
+      }
+      cd.waitSampling(2)
+
+      /* Idle: the empty command FIFO accepts an entry, no response is waiting */
+      assert(tx.req.toBoolean, "DMA tx request low with empty command FIFO")
+      assert(!rx.req.toBoolean, "DMA rx request high with empty response FIFO")
+      DmaHandshakeSim.checkAck(tx, cd, "I2C tx")
+
+      /* RX: a START + READ command produces a response, reading it drains the FIFO */
+      apb.write(regOffset, (1 << 8) | (1 << 10))
+      DmaHandshakeSim.waitReq(rx, cd, true, 5000, "I2C rx after a read command")
+      DmaHandshakeSim.checkAck(rx, cd, "I2C rx")
+      assert((apb.read(regOffset) >> 31) == 1, "I2C response not valid")
+      cd.waitSampling(2)
+      assert(!rx.req.toBoolean, "DMA rx request high after response FIFO drained")
+
+      /* TX: no request while the command FIFO is full, request again once one is consumed */
+      val depth = I2cControllerCtrl.Parameter.default().memory.cmdFifoDepth
+      for (_ <- 0 to depth) {
+        apb.write(regOffset, 0x55)
+      }
+      cd.waitSampling(2)
+      assert(((apb.read(regOffset + 0x04) >> 16) & 0xffff) == 0, "I2C command FIFO not full")
+      assert(!tx.req.toBoolean, "DMA tx request high with full command FIFO")
+      DmaHandshakeSim.waitReq(tx, cd, true, 5000, "I2C tx after a command was consumed")
+    }
+  }
 }

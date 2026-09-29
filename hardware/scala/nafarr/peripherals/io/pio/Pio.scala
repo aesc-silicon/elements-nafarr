@@ -17,6 +17,7 @@ import spinal.lib.bus.wishbone._
 import spinal.lib.io.{TriStateArray, TriState}
 import nafarr.Feature
 import nafarr.peripherals.PeripheralsComponent
+import nafarr.system.dma.DmaRequest
 
 object Pio {
   case class Parameter(width: Int) {
@@ -37,6 +38,7 @@ object Pio {
       val pio = Io(parameter.io)
       val interrupt = out(Bool)
       val error = out(Bool)
+      val dmaRequest = master(DmaRequest())
     }
 
     val ctrl = PioCtrl(parameter)
@@ -45,9 +47,11 @@ object Pio {
     io.error := ctrl.io.error
 
     val mapper = PioCtrl.Mapper(factory(io.bus), ctrl.io, parameter)
+    io.dmaRequest.drive(mapper.dmaTx, mapper.dmaRx)
 
     override def getInterrupt = Some(io.interrupt)
     override def getError = Some(io.error)
+    override def getDmaRequests = Seq(io.dmaRequest)
     override def sysconFeatures = Some(List(Feature.Pio))
 
     override def headerBareMetal(name: String, address: BigInt, size: BigInt) = {

@@ -189,6 +189,13 @@ The flexibility of the Programmable IO IP Core makes it suitable for a variety o
 * Interface with legacy hardware with specific timing requirements
 * Prototyping new digital communication standards
 
+DMA Request
+***********
+
+``dmaRequest.rx`` requests while the read FIFO holds a value, so a DMA channel can drain
+``READ`` results into memory without CPU polling (see :ref:`hardware-system-dma`).
+Commands are stored in program memory rather than a FIFO, so ``dmaRequest.tx`` never requests.
+
 Configuration
 *************
 

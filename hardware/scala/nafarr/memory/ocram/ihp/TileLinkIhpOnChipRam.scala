@@ -8,6 +8,8 @@ import spinal.core._
 import spinal.lib._
 import spinal.lib.bus.tilelink.{Bus => TileLinkBus, BusParameter => TileLinkParameter, Opcode}
 
+import nafarr.Feature
+import nafarr.peripherals.SysconFeatures
 import nafarr.blackboxes.ihp.sg13g2._
 
 object TileLinkIhpOnChipRam {
@@ -16,7 +18,9 @@ object TileLinkIhpOnChipRam {
   // When size exceeds this, multiple macros are banked.
   private val bankSize = 8192
 
-  case class OnePort(p: TileLinkParameter, size: Int) extends Component {
+  case class OnePort(p: TileLinkParameter, size: Int) extends Component with SysconFeatures {
+    override def sysconFeatures = Some(List(Feature.Ocram))
+
     private val bankCount = size / bankSize
     require(
       size > 0 && size % bankSize == 0,

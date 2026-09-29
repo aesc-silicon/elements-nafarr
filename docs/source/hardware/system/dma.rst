@@ -57,6 +57,12 @@ latency between the peripheral and the DMA. ``DmaHandshakeCc`` synchronizes one 
 between a peripheral clock domain and the DMA clock domain. Unconnected ``req`` and ``ack``
 inputs default to low. Channels without ``req_enable`` run whenever they are busy.
 
+FIFO-backed IPs expose these handshakes as a ``DmaRequest`` bundle (``tx``: write-side FIFO
+can accept an element, ``rx``: read-side FIFO holds one): UART, SPI controller, I2C
+controller, PIO (``rx`` only), Mailbox (one bundle per channel) and the AES accelerator
+(``tx`` follows the plaintext FIFO). ``PeripheralsComponent.getDmaRequests`` lists them for
+platform wiring.
+
 Descriptors
 ===========
 

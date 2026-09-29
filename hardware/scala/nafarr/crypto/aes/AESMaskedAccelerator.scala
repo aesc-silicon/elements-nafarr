@@ -16,6 +16,7 @@ import spinal.lib.bus.tilelink.{
 import spinal.lib.bus.wishbone._
 import nafarr.Feature
 import nafarr.peripherals.PeripheralsComponent
+import nafarr.system.dma.DmaRequest
 
 object AesMaskedAccelerator {
   class Core[T <: spinal.core.Data with IMasterSlave](
@@ -25,10 +26,13 @@ object AesMaskedAccelerator {
   ) extends PeripheralsComponent {
     val io = new Bundle {
       val bus = slave(busType())
+      val dmaRequest = master(DmaRequest())
     }
     val ctrl = AesMaskedAcceleratorCtrl(p)
     val mapper = AesMaskedAcceleratorCtrl.Mapper(factory(io.bus), ctrl.io, p)
+    io.dmaRequest.drive(mapper.dmaTx, mapper.dmaRx)
 
+    override def getDmaRequests = Seq(io.dmaRequest)
     override def sysconFeatures = Some(List(Feature.Aes))
 
     override def headerBareMetal(name: String, address: BigInt, size: BigInt) = {

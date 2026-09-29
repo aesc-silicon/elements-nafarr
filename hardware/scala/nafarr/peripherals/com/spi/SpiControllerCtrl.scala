@@ -467,6 +467,10 @@ object SpiControllerCtrl {
       busCtrl.read(fifoOccupancy, address = regOffset + 0x04, 0)
     }
 
+    // DMA request conditions: command FIFO can accept an entry, response FIFO holds one.
+    val dmaTx = cmdLogic.streamUnbuffered.ready
+    val dmaRx = rspLogic.stream.valid
+
     val interruptCtrl = new Area {
       val irqCtrl = new InterruptCtrl(2)
       irqCtrl.driveFrom(busCtrl, regOffset + 0x8)

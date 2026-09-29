@@ -19,6 +19,8 @@ Features
 
 * **Command FIFO:** Enables efficient queuing of transmission commands for the controller.
 * **Response FIFO:** Stores responses received from I2C devices for further processing.
+* **DMA Requests:** ``dmaRequest.tx`` requests while the command FIFO can accept an entry,
+  ``dmaRequest.rx`` while the response FIFO holds one (see :ref:`hardware-system-dma`).
 
 Architecture
 ************

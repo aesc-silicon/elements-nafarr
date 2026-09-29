@@ -16,6 +16,7 @@ import spinal.lib.bus.tilelink.{
 import spinal.lib.bus.wishbone._
 import nafarr.Feature
 import nafarr.peripherals.PeripheralsComponent
+import nafarr.system.dma.DmaRequest
 
 object SpiController {
   object CmdMode extends SpinalEnum(binarySequential) {
@@ -70,6 +71,7 @@ object SpiController {
       val bus = slave(busType())
       val spi = master(Spi.Io(p.io))
       val interrupt = out(Bool)
+      val dmaRequest = master(DmaRequest())
     }
 
     val spiControllerCtrl = SpiControllerCtrl(p)
@@ -78,9 +80,11 @@ object SpiController {
 
     val busFactory = factory(io.bus)
     SpiControllerCtrl.Mapper(busFactory, spiControllerCtrl.io, p)
-    SpiControllerCtrl.StreamMapper(busFactory, spiControllerCtrl.io, p)
+    val streamMapper = SpiControllerCtrl.StreamMapper(busFactory, spiControllerCtrl.io, p)
+    io.dmaRequest.drive(streamMapper.dmaTx, streamMapper.dmaRx)
 
     override def getInterrupt = Some(io.interrupt)
+    override def getDmaRequests = Seq(io.dmaRequest)
     override def sysconFeatures = Some(List(Feature.Spi))
 
     override def headerBareMetal(name: String, address: BigInt, size: BigInt) = {

@@ -448,6 +448,10 @@ object PioCtrl {
       busCtrl.read(fifoOccupancy, address = regs.fifoStatus, bitOffset = 24)
     }
 
+    // Commands live in program memory, not a FIFO: only the read FIFO can request.
+    val dmaTx = False
+    val dmaRx = rx.stream.valid
+
     val clockDivider = Reg(UInt(p.clockDividerWidth bits))
     if (p.init != null && p.init.clockDivider != 0)
       clockDivider.init(p.init.clockDivider)

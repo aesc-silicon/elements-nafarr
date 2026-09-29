@@ -15,13 +15,16 @@ import spinal.lib.bus.tilelink.{
 }
 import spinal.lib.bus.wishbone._
 
+import nafarr.Feature
+import nafarr.peripherals.PeripheralsComponent
+
 object Mailbox {
 
   class Core[T <: spinal.core.Data with IMasterSlave](
       p: MailboxCtrl.Parameter,
       busType: HardType[T],
       factory: T => BusSlaveFactory
-  ) extends Component {
+  ) extends PeripheralsComponent {
     val io = new Bundle {
       val bus = slave(busType())
       val interrupt = out(Bool())
@@ -30,6 +33,14 @@ object Mailbox {
     val ctrl = MailboxCtrl(p)
     val mapper = MailboxCtrl.Mapper(busCtrl, ctrl, p)
     io.interrupt := ctrl.io.interrupt
+
+    override def getInterrupt = Some(io.interrupt)
+    override def sysconFeatures = Some(List(Feature.Mailbox))
+
+    override def headerBareMetal(name: String, address: BigInt, size: BigInt) = {
+      val baseAddress = "%08x".format(address.toInt)
+      s"""#define ${name.toUpperCase}_BASE\t\t0x${baseAddress}\n"""
+    }
   }
 }
 

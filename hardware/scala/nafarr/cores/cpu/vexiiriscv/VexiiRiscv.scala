@@ -144,6 +144,7 @@ object VexiiRiscvCoreParameter {
       withCompressed: Boolean = true,
       withCacheOps: Boolean = false,
       withBitManip: Boolean = false,
+      withAtomics: Boolean = false,
       mainRegions: Seq[SizeMapping] = Seq(SizeMapping(0x80000000L, 0x30000000L)),
       ioRegions: Seq[SizeMapping] = Seq(SizeMapping(0xf0000000L, 0x10000000L)),
       debugTransport: DebugTransport = DebugTransport.Jtag
@@ -161,6 +162,8 @@ object VexiiRiscvCoreParameter {
     if (withCacheOps) param.addISA("zicbom")
     // Zba/Zbb/Zbc/Zbs bit manipulation.
     if (withBitManip) param.addISA("zba", "zbb", "zbc", "zbs")
+    // A (Zaamo + Zalrsc), executed in the L1: AMOs only work on cacheable (main) regions.
+    if (withAtomics) param.addISA("a")
     param.additionalPerformanceCounters = 4
 
     require(iCacheSize % lineSize == 0, s"iCacheSize must be a multiple of $lineSize")

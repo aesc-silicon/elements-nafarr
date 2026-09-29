@@ -39,6 +39,7 @@ object IpIdentification {
     val Timer = newElement() // 23
     val Syscon = newElement() // 24
     val Hyperbus = newElement() // 25
+    val Dma = newElement() // 26
   }
 
   case class IpIdentificationCtrl(

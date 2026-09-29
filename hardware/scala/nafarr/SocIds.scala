@@ -71,4 +71,5 @@ object Feature extends SpinalEnum(binarySequential) {
   val Hyperbus = newElement() // 19
   val Ocram = newElement() // 20
   val SpiFlash = newElement() // 21
+  val Dma = newElement() // 22
 }

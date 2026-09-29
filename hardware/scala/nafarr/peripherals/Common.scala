@@ -8,7 +8,24 @@ import spinal.core._
 import spinal.lib._
 import nafarr.Feature
 
-abstract class PeripheralsComponent extends Component {
+/** A component that contributes to the syscon feature register. */
+trait SysconFeatures {
+
+  /** Returns the SoC feature flags this IP contributes to the syscon feature register.
+    *
+    * Override to report one or more [[Feature]] elements. The SoC builder collects
+    * these across all components of the platform and passes the deduplicated list to
+    * `Syscon.Parameter`. Returns `None` by default (no feature advertised).
+    *
+    * Example (an IP that provides both AES and a generic crypto flag):
+    * {{{
+    *   override def sysconFeatures = Some(List(Feature.Aes))
+    * }}}
+    */
+  def sysconFeatures: Option[List[Feature.E]] = None
+}
+
+abstract class PeripheralsComponent extends Component with SysconFeatures {
 
   /** Generates a C header snippet for this IP's base address and any
     * IRQ/error number macros.
@@ -34,17 +51,4 @@ abstract class PeripheralsComponent extends Component {
     * Override in Core classes that have an error output.
     */
   def getError: Option[Bool] = None
-
-  /** Returns the SoC feature flags this IP contributes to the syscon feature register.
-    *
-    * Override to report one or more [[Feature]] elements. The SoC builder collects
-    * these across all IPs on each bus and passes the deduplicated list to
-    * `SysconCtrl.Parameter`. Returns `None` by default (no feature advertised).
-    *
-    * Example (an IP that provides both AES and a generic crypto flag):
-    * {{{
-    *   override def sysconFeatures = Some(List(Feature.Aes))
-    * }}}
-    */
-  def sysconFeatures: Option[List[Feature.E]] = None
 }

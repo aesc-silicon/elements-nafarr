@@ -198,3 +198,6 @@ by collecting ``sysconFeatures`` from each IP on the bus.
    * - 21
      - ``SpiFlash``
      - SPI flash controller present
+   * - 22
+     - ``Dma``
+     - DMA controller present

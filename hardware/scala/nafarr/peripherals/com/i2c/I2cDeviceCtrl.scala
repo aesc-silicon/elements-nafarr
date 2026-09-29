@@ -119,23 +119,24 @@ object I2cDeviceCtrl {
     }
 
     val ctrl = new Area {
+      // Reset to the state a STOP condition leaves, so SDA stays released until a START.
       val state = RegInit(State.IDLE)
-      val shiftRegister = Reg(Bits(11 bits))
-      val bitCounter = Reg(UInt(5 bits))
-      val frameCounter = Reg(UInt(4 bits))
+      val shiftRegister = Reg(Bits(11 bits)).init(0)
+      val bitCounter = Reg(UInt(5 bits)).init(U(5 bits, default -> true))
+      val frameCounter = Reg(UInt(4 bits)).init(0)
       val transmission = Reg(Bool).init(False)
 
       val sdaWrite = Reg(Bool).init(False)
 
       val address = shiftRegister(p.addressWidth downto 1)
       val data = shiftRegister(7 downto 0)
-      val read = Reg(Bool())
+      val read = Reg(Bool()).init(False)
       val write = !read
       val response = new Area {
-        val error = Reg(Bool())
-        val data = Reg(Bits(8 bits))
+        val error = Reg(Bool()).init(True)
+        val data = Reg(Bits(8 bits)).init(0)
       }
-      val cmdLock = Reg(Bool())
+      val cmdLock = Reg(Bool()).init(False)
 
       def isRWBit = bitCounter === 7
       def isAckBit = bitCounter === 8

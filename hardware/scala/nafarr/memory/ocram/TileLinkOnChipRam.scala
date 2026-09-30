@@ -72,21 +72,17 @@ case class TileLinkOnChipRam(p: TileLinkParameter, size: BigInt, singlePort: Boo
   // Read and write never overlap, so a single port suffices and maps onto 1P
   // SRAM macros. The two-port variant needs a matching 2P macro.
   val readRsp = if (singlePort) {
-    val rsp = Stream(Bits(p.dataWidth bits))
-    val hold = Reg(Bits(p.dataWidth bits))
-    val holdValid = RegInit(False)
-    readCmd.ready := !holdValid || rsp.ready
-    val issued = RegNext(readCmd.fire) init (False)
     val rdData = ram.readWriteSync(rwAddr, a.data, wrEnable || readCmd.fire, wrEnable, a.mask)
-    when(issued) {
-      hold := rdData
-      holdValid := True
-    } elsewhen (rsp.ready) {
-      holdValid := False
-    }
-    rsp.valid := holdValid
-    rsp.payload := hold
-    rsp
+    val issued = RegNext(readCmd.fire) init (False)
+    // The synchronous read returns one cycle after it is issued. Buffer up to two words and
+    // only issue a read when the words buffered, the one in flight and the new one fit, so
+    // no word is lost while the D channel is stalled.
+    val buffer = StreamFifo(Bits(p.dataWidth bits), 2, latency = 1)
+    buffer.io.push.valid := issued
+    buffer.io.push.payload := rdData
+    val pending = (buffer.io.occupancy +^ issued.asUInt) - buffer.io.pop.fire.asUInt
+    readCmd.ready := pending <= 1
+    buffer.io.pop
   } else {
     ram.write(rwAddr, a.data, wrEnable, a.mask)
     ram.streamReadSync(readCmd)

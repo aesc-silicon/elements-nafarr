@@ -28,6 +28,18 @@ object DebugTransport {
   case object Swd extends DebugTransport
 }
 
+/** Floating-point support of the performance profile. */
+sealed trait Fpu
+object Fpu {
+  case object None extends Fpu
+
+  /** F: single precision. */
+  case object Single extends Fpu
+
+  /** F and D: single and double precision; widens the data buses to 64 bits. */
+  case object Double extends Fpu
+}
+
 case class VexiiRiscvCoreParameter(
     plugins: Seq[Hostable],
     iBusTlParam: TileLinkParameter,
@@ -145,6 +157,9 @@ object VexiiRiscvCoreParameter {
       withCacheOps: Boolean = false,
       withBitManip: Boolean = false,
       withAtomics: Boolean = false,
+      withDualIssue: Boolean = false,
+      fpu: Fpu = Fpu.None,
+      memDataWidth: Int = 32,
       mainRegions: Seq[SizeMapping] = Seq(SizeMapping(0x80000000L, 0x30000000L)),
       ioRegions: Seq[SizeMapping] = Seq(SizeMapping(0xf0000000L, 0x10000000L)),
       debugTransport: DebugTransport = DebugTransport.Jtag
@@ -155,6 +170,14 @@ object VexiiRiscvCoreParameter {
     param.xlen = 32
     param.resetVector = resetAddress.toLong
 
+    require(
+      Seq(32, 64, 128).contains(memDataWidth),
+      s"memDataWidth must be 32, 64 or 128, got $memDataWidth"
+    )
+    // Minimum width of the instruction and data buses; dual-issue and D may widen them further.
+    param.fetchMemDataWidthMin = memDataWidth
+    param.lsuMemDataWidthMin = memDataWidth
+
     param.addISA("m")
     if (withCompressed) param.addISA("c")
     param.addISA("zicntr", "zihpm")
@@ -164,6 +187,11 @@ object VexiiRiscvCoreParameter {
     if (withBitManip) param.addISA("zba", "zbb", "zbc", "zbs")
     // A (Zaamo + Zalrsc), executed in the L1: AMOs only work on cacheable (main) regions.
     if (withAtomics) param.addISA("a")
+    fpu match {
+      case Fpu.None =>
+      case Fpu.Single => param.addISA("f")
+      case Fpu.Double => param.addISA("f", "d")
+    }
     param.additionalPerformanceCounters = 4
 
     require(iCacheSize % lineSize == 0, s"iCacheSize must be a multiple of $lineSize")
@@ -201,6 +229,15 @@ object VexiiRiscvCoreParameter {
     param.regFileSync = false
     param.withIterativeShift = false
 
+    // Two decoders and execution lanes; fetching two instructions per cycle needs a 64-bit
+    // instruction bus.
+    if (withDualIssue) {
+      param.decoders = 2
+      param.lanes = 2
+      param.withAlignerBuffer = true
+      param.withDispatcherBuffer = true
+    }
+
     param.privParam.withDebug = true
     setDebugTransport(param, debugTransport)
     if (debugTriggers > 0) {
@@ -235,9 +272,12 @@ object VexiiRiscvCoreParameter {
       )
     ParamSimple.setPma(plugins, pmaRegions)
 
-    val iBusTlParam = TileLinkParameter.simple(32, 32, lineSize, 1)
-    val dBusTlParam = TileLinkParameter.simple(32, 32, lineSize, 1)
-    val dIoBusTlParam = TileLinkParameter.simple(32, 32, lineSize, 1)
+    // Bus widths as VexiiRiscv derives them: fetch from the decoder count, cached data from D,
+    // uncached I/O from max(XLEN, FLEN).
+    val ioDataWidth = if (fpu == Fpu.Double) 64 else 32
+    val iBusTlParam = TileLinkParameter.simple(32, param.fetchMemDataWidth, lineSize, 1)
+    val dBusTlParam = TileLinkParameter.simple(32, param.lsuMemDataWidth, lineSize, 1)
+    val dIoBusTlParam = TileLinkParameter.simple(32, ioDataWidth, lineSize, 1)
 
     VexiiRiscvCoreParameter(plugins, iBusTlParam, dBusTlParam, dIoBusTlParam)
   }

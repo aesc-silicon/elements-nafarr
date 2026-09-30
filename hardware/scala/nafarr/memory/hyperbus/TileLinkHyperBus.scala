@@ -125,6 +125,17 @@ case class TileLinkHyperBus(
 
   ctrl.io.frontend.ready := False
 
+  // Byte lanes a PUT_FULL_DATA covers: all lanes from a full beat on, else the lanes of its
+  // size at its address.
+  val fullMask = Bits(busConfig.dataBytes bits)
+  fullMask.setAll()
+  for (k <- 0 until dataBytesLog2) {
+    when(io.dataBus.a.size === k) {
+      fullMask := (B((BigInt(1) << (1 << k)) - 1, busConfig.dataBytes bits) <<
+        io.dataBus.a.address(dataBytesLog2 - 1 downto 0)).resized
+    }
+  }
+
   // -------------------------------------------------------------------------
   // State machine
   // -------------------------------------------------------------------------
@@ -190,10 +201,10 @@ case class TileLinkHyperBus(
         io.dataBus.a.ready := ctrl.io.controller.ready
         ctrl.io.controller.valid := io.dataBus.a.valid
         ctrl.io.controller.payload.read := False
-        // PUT_FULL_DATA implies every byte lane is active; a compliant master may
-        // leave a_mask at 0. Only PUT_PARTIAL_DATA carries meaningful byte enables.
+        // PUT_FULL_DATA covers all byte lanes of its size at its address; a sub-word write
+        // must not touch the rest of the word. PUT_PARTIAL_DATA carries its own byte enables.
         when(io.dataBus.a.opcode === Opcode.A.PUT_FULL_DATA()) {
-          ctrl.io.controller.payload.strobe := B(busConfig.dataBytes bits, default -> true)
+          ctrl.io.controller.payload.strobe := fullMask
         }
         when(io.dataBus.a.valid && ctrl.io.controller.ready) {
           cmdCounter := cmdCounter + 1

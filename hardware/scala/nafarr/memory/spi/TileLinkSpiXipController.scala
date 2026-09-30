@@ -18,12 +18,130 @@ import nafarr.bus.tilelink.TileLinkCache
 import nafarr.peripherals.SysconFeatures
 import nafarr.peripherals.com.spi.{Spi, SpiControllerCtrl}
 
+object TileLinkSpiXipController {
+
+  /** Converts TileLink requests into commands of the 32-bit XIP engine.
+    *
+    * A GET fetches the covered 32-bit words from its 4-byte aligned address, at least one.
+    * Response words are packed into D beats of `dataWidth / 32` words, starting at the
+    * request's word position within the beat, so sub-beat GETs return their bytes in the
+    * lanes TileLink expects. Any other request is denied.
+    */
+  case class BusAdapter(p: TileLinkParameter) extends Component {
+    require(Seq(32, 64, 128).contains(p.dataWidth), "dataWidth must be 32, 64 or 128")
+    require(p.sizeBytes <= 1024, "the XIP engine fetches at most 256 words per command")
+
+    val io = new Bundle {
+      val bus = slave(TileLinkBus(p))
+      val cmd = master(Stream(SpiXipController.GenericInterface.Cmd()))
+      val rsp = slave(Stream(SpiXipController.GenericInterface.Rsp()))
+    }
+
+    object State extends SpinalEnum {
+      val IDLE, ERROR, CMD, RESPONSE = newElement()
+    }
+
+    val wordsPerBeat = p.dataWidth / 32
+    val laneWidth = log2Up(wordsPerBeat)
+    val a = io.bus.a
+    val d = io.bus.d
+
+    val source = Reg(p.source())
+    val size = Reg(p.size())
+    val command = Reg(SpiXipController.GenericInterface.Cmd())
+    val startLane = Reg(UInt(laneWidth bits))
+    val lane = Reg(UInt(laneWidth bits))
+    val words = Vec(Reg(Bits(32 bits)), wordsPerBeat)
+    val full = RegInit(False)
+    val fullLast = Reg(Bool())
+
+    // Word count of the request (a 1 or 2 byte GET still fetches one word) and its first word
+    // position within a beat; lanes only exist for buses wider than 32 bits.
+    val requestWords = ((U(1, 11 bits) |<< a.size) + 3) >> 2
+    val wordLane =
+      if (laneWidth > 0) a.address(p.dataBytesLog2Up - 1 downto 2) else U(0, 0 bits)
+    val atLastLane = if (laneWidth > 0) lane === (wordsPerBeat - 1) else True
+
+    a.ready := False
+    io.cmd.valid := False
+    io.cmd.payload := command
+    io.rsp.ready := False
+    d.valid := False
+    d.opcode := Opcode.D.ACCESS_ACK_DATA()
+    d.param := 0
+    d.size := size
+    d.source := source
+    d.sink := 0
+    d.denied := False
+    d.data := words.asBits
+    d.corrupt := False
+
+    val state = RegInit(State.IDLE)
+    switch(state) {
+      is(State.IDLE) {
+        a.ready := True
+        when(a.valid) {
+          source := a.source
+          size := a.size
+          command.addr := a.address.resize(24)(23 downto 2) @@ U(0, 2 bits)
+          command.count := (requestWords - 1).resized
+          if (laneWidth > 0) startLane := wordLane
+          when(a.opcode === Opcode.A.GET()) {
+            state := State.CMD
+          } otherwise {
+            // Write to a read-only flash controller: deny once the last beat is taken.
+            when(a.isLast()) {
+              state := State.ERROR
+            }
+          }
+        }
+      }
+      is(State.ERROR) {
+        d.opcode := Opcode.D.ACCESS_ACK()
+        d.denied := True
+        d.valid := True
+        when(d.ready) {
+          state := State.IDLE
+        }
+      }
+      is(State.CMD) {
+        io.cmd.valid := True
+        when(io.cmd.ready) {
+          if (laneWidth > 0) lane := startLane
+          state := State.RESPONSE
+        }
+      }
+      is(State.RESPONSE) {
+        io.rsp.ready := !full
+        when(io.rsp.fire) {
+          if (laneWidth > 0) words(lane) := io.rsp.payload.data
+          else words(0) := io.rsp.payload.data
+          when(atLastLane || io.rsp.payload.last) {
+            full := True
+            fullLast := io.rsp.payload.last
+          } otherwise {
+            if (laneWidth > 0) lane := lane + 1
+          }
+        }
+        d.valid := full
+        when(d.fire) {
+          full := False
+          if (laneWidth > 0) lane := 0
+          when(fullLast) {
+            state := State.IDLE
+          }
+        }
+      }
+    }
+  }
+}
+
 /** XIP (execute-in-place) SPI flash controller with a TileLink-UH (burst) data
   * interface.
   *
   * The controller is read-only.  Burst GET requests trigger an SPI transaction
-  * that fetches the requested words sequentially and returns one D-beat per
-  * word.  Any non-GET request is immediately acknowledged with `denied = true`.
+  * that fetches the requested 32-bit words sequentially; they are packed into D
+  * beats of the bus width.  Any non-GET request is acknowledged with `denied = true`.
   *
   * Configuration (SPI timing and XIP mode/dummy-cycles) is exposed via two
   * separate Wishbone slave ports (`cfgSpiBus` / `cfgXipBus`) that are
@@ -50,10 +168,6 @@ case class TileLinkSpiXipController(
 
   override def sysconFeatures = Some(List(Feature.SpiFlash))
 
-  object RspState extends SpinalEnum {
-    val IDLE, ERROR, CMD, RESPONSE = newElement()
-  }
-
   val spiControllerCtrl = SpiControllerCtrl(parameter)
   spiControllerCtrl.io.spi <> io.spi
   io.interrupt := False
@@ -61,7 +175,6 @@ case class TileLinkSpiXipController(
   val spiXipControllerCtrl = SpiXipControllerCtrl(parameter, 32)
   spiControllerCtrl.io.cmd << spiXipControllerCtrl.io.cmd
   spiXipControllerCtrl.io.rsp << spiControllerCtrl.io.rsp
-  spiXipControllerCtrl.io.busRsp.ready := False
 
   val cache = if (cacheWords > 0) TileLinkCache.Cache(busConfig, cacheWords) else null
   val busPort = if (cache != null) {
@@ -70,75 +183,10 @@ case class TileLinkSpiXipController(
     cache.io.outer
   } else io.bus
 
-  val dSource = RegNextWhen(busPort.a.source, busPort.a.ready)
-  val dSize = RegNextWhen(busPort.a.size, busPort.a.ready)
-
-  val spiCmd = SpiXipController.GenericInterface.Cmd()
-  val aWords =
-    ((U(1, 10 bits) |<< busPort.a.size) + (busPort.p.dataBytes - 1)) >> busPort.p.dataBytesLog2Up
-  val alignedAddr =
-    (busPort.a.address >> busPort.p.dataBytesLog2Up) @@ U(0, busPort.p.dataBytesLog2Up bits)
-  spiCmd.addr := RegNextWhen(alignedAddr.resize(24), busPort.a.ready)
-  spiCmd.count := RegNextWhen(
-    (aWords - 1).resize(widthOf(spiCmd.count)),
-    busPort.a.ready
-  )
-  spiXipControllerCtrl.io.busCmd.payload := spiCmd
-  spiXipControllerCtrl.io.busCmd.valid := False
-
-  // D-channel defaults (overridden per state below).
-  busPort.a.ready := False
-  busPort.d.valid := False
-  busPort.d.opcode := Opcode.D.ACCESS_ACK_DATA()
-  busPort.d.param := 0
-  busPort.d.size := dSize
-  busPort.d.source := dSource
-  busPort.d.sink := 0
-  busPort.d.denied := False
-  busPort.d.data := spiXipControllerCtrl.io.busRsp.payload.data
-  busPort.d.corrupt := False
-
-  val stateMachine = new Area {
-    val state = RegInit(RspState.IDLE)
-    switch(state) {
-      is(RspState.IDLE) {
-        when(busPort.a.valid) {
-          busPort.a.ready := True
-          when(busPort.a.opcode === Opcode.A.GET()) {
-            state := RspState.CMD
-          } otherwise {
-            // Write to a read-only flash controller: deny immediately.
-            state := RspState.ERROR
-          }
-        }
-      }
-      is(RspState.ERROR) {
-        busPort.d.opcode := Opcode.D.ACCESS_ACK()
-        busPort.d.denied := True
-        busPort.d.valid := True
-        when(busPort.d.ready) {
-          state := RspState.IDLE
-        }
-      }
-      is(RspState.CMD) {
-        spiXipControllerCtrl.io.busCmd.valid := True
-        when(spiXipControllerCtrl.io.busCmd.fire) {
-          state := RspState.RESPONSE
-        }
-      }
-      is(RspState.RESPONSE) {
-        when(spiXipControllerCtrl.io.busRsp.valid) {
-          busPort.d.valid := True
-          when(busPort.d.ready) {
-            spiXipControllerCtrl.io.busRsp.ready := True
-            when(spiXipControllerCtrl.io.busRsp.payload.last) {
-              state := RspState.IDLE
-            }
-          }
-        }
-      }
-    }
-  }
+  val busAdapter = TileLinkSpiXipController.BusAdapter(busPort.p)
+  busAdapter.io.bus <> busPort
+  spiXipControllerCtrl.io.busCmd << busAdapter.io.cmd
+  busAdapter.io.rsp << spiXipControllerCtrl.io.busRsp
 
   val cfgSpiBusFactory = new TileLinkSlaveFactory(io.cfgSpiBus, false)
   SpiControllerCtrl.Mapper(cfgSpiBusFactory, spiControllerCtrl.io, parameter)

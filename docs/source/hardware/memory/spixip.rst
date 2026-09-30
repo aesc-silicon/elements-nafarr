@@ -50,6 +50,10 @@ Available bus architectures:
 
 By default, all buses are defined with 12 bit address and 32 bit data width.
 
+The TileLink data bus of ``TileLinkSpiXipController`` may be 32, 64 or 128 bits wide. The
+engine fetches 32-bit words; they are packed into beats of the bus width, starting at the
+request's word position within the beat.
+
 Parameter
 =========
 

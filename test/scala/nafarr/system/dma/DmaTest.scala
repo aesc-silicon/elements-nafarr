@@ -40,6 +40,10 @@ class DmaTest extends AnyFunSuite {
     generationShouldFail(Apb3Dma(DmaCtrl.Parameter(burstBytes = 2)))
     generationShouldFail(Apb3Dma(DmaCtrl.Parameter(burstBytes = 48)))
     generationShouldFail(Apb3Dma(DmaCtrl.Parameter(burstBytes = 8192)))
+    generationShouldPass(Apb3Dma(DmaCtrl.Parameter(dataWidth = 64)))
+    generationShouldPass(Apb3Dma(DmaCtrl.Parameter(dataWidth = 128, burstBytes = 16)))
+    generationShouldFail(Apb3Dma(DmaCtrl.Parameter(dataWidth = 16)))
+    generationShouldFail(Apb3Dma(DmaCtrl.Parameter(dataWidth = 128, burstBytes = 8)))
   }
 
   test("TileLinkParameter") {
@@ -135,18 +139,27 @@ class DmaTest extends AnyFunSuite {
     def randomBytes(n: Int): Seq[Int] = Seq.fill(n)(simRandom.nextInt(256))
   }
 
-  lazy val compiled = SimConfig.withWave.compile(Apb3Dma(simParam))
+  // The memory port is tested at every supported bus width, each in its own workspace.
+  val dataWidths = Seq(32, 64, 128)
+  private val compiledByWidth = mutable.Map[Int, SimCompiled[Apb3Dma]]()
+  def compiled(width: Int): SimCompiled[Apb3Dma] =
+    compiledByWidth.getOrElseUpdate(
+      width,
+      SimConfig.withWave
+        .workspaceName(s"Apb3Dma_$width")
+        .compile(Apb3Dma(simParam.copy(dataWidth = width)))
+    )
 
-  test("IpIdentification") {
-    compiled.doSim("IpIdentification") { dut =>
+  for (width <- dataWidths) test(s"IpIdentification ($width-bit)") {
+    compiled(width).doSim("IpIdentification") { dut =>
       val env = new Env(dut)
       IpIdentificationTest.V0.checkApi(env.driver, IpIdentification.Ids.Dma)
       IpIdentificationTest.V0.checkVersion(env.driver, 1, 0, 0)
     }
   }
 
-  test("Info register") {
-    compiled.doSim("InfoRegister") { dut =>
+  for (width <- dataWidths) test(s"Info register ($width-bit)") {
+    compiled(width).doSim("InfoRegister") { dut =>
       val env = new Env(dut)
       SimTest.readField(env.driver, env.regs.info, 7, 0, 2, "channels=2")
       SimTest.readField(env.driver, env.regs.info, 15, 8, 4, "requestLines=4")
@@ -154,20 +167,28 @@ class DmaTest extends AnyFunSuite {
     }
   }
 
-  test("Memory to memory copy with bursts") {
-    compiled.doSim("MemToMem") { dut =>
+  for (width <- dataWidths) test(s"Memory to memory copy with bursts ($width-bit)") {
+    compiled(width).doSim("MemToMem") { dut =>
       val env = new Env(dut)
       val src = RAM + 0x100
       val dst = RAM + 0x1000
       val data = env.randomBytes(100)
       env.slave.fill(src, data)
 
+      var writeBeats = 0
+      StreamMonitor(dut.io.mem.a, dut.clockDomain) { a =>
+        if (a.opcode.toEnum == Opcode.A.PUT_FULL_DATA) writeBeats += 1
+      }
       env.program(0, cfg(), src, dst, data.length)
       env.start(0)
       env.waitIdle(0)
 
       assert(env.slave.readBytes(dst, data.length) == data, "copied data mismatch")
       assert(!env.error(0))
+      // Chunks of 32 + 32 + 32 + 4 bytes, each written in full-width beats.
+      val dataBytes = width / 8
+      val expectedBeats = Seq(32, 32, 32, 4).map(c => (c + dataBytes - 1) / dataBytes).sum
+      assert(writeBeats == expectedBeats, s"expected $expectedBeats write beats, got $writeBeats")
       SimTest.read(env.driver, env.regs.src(0), src + data.length, "src advanced")
       SimTest.read(env.driver, env.regs.dst(0), dst + data.length, "dst advanced")
       SimTest.read(env.driver, env.regs.length(0), 0, "length exhausted")
@@ -182,8 +203,8 @@ class DmaTest extends AnyFunSuite {
     }
   }
 
-  test("Interrupt output follows mask") {
-    compiled.doSim("Interrupt") { dut =>
+  for (width <- dataWidths) test(s"Interrupt output follows mask ($width-bit)") {
+    compiled(width).doSim("Interrupt") { dut =>
       val env = new Env(dut)
       val data = env.randomBytes(8)
       env.slave.fill(RAM, data)
@@ -200,8 +221,8 @@ class DmaTest extends AnyFunSuite {
     }
   }
 
-  test("Unaligned copy falls back to smaller chunks") {
-    compiled.doSim("Unaligned") { dut =>
+  for (width <- dataWidths) test(s"Unaligned copy falls back to smaller chunks ($width-bit)") {
+    compiled(width).doSim("Unaligned") { dut =>
       val env = new Env(dut)
       val src = RAM + 0x101
       val dst = RAM + 0x2003
@@ -224,8 +245,8 @@ class DmaTest extends AnyFunSuite {
     }
   }
 
-  test("Burst limit caps transaction size") {
-    compiled.doSim("BurstLimit") { dut =>
+  for (width <- dataWidths) test(s"Burst limit caps transaction size ($width-bit)") {
+    compiled(width).doSim("BurstLimit") { dut =>
       val env = new Env(dut)
       val data = env.randomBytes(64)
       env.slave.fill(RAM, data)
@@ -237,8 +258,8 @@ class DmaTest extends AnyFunSuite {
     }
   }
 
-  test("Fixed source fills memory") {
-    compiled.doSim("Fill") { dut =>
+  for (width <- dataWidths) test(s"Fixed source fills memory ($width-bit)") {
+    compiled(width).doSim("Fill") { dut =>
       val env = new Env(dut)
       val pattern = RAM + 0x10
       env.slave.writeWord(pattern, BigInt("deadbeef", 16))
@@ -252,8 +273,8 @@ class DmaTest extends AnyFunSuite {
     }
   }
 
-  test("Request-gated peripheral to memory") {
-    compiled.doSim("PeriphToMem") { dut =>
+  for (width <- dataWidths) test(s"Request-gated peripheral to memory ($width-bit)") {
+    compiled(width).doSim("PeriphToMem") { dut =>
       val env = new Env(dut)
       val data = env.randomBytes(20)
       val fifo = mutable.Queue(data: _*)
@@ -285,8 +306,8 @@ class DmaTest extends AnyFunSuite {
     }
   }
 
-  test("Request-gated memory to peripheral") {
-    compiled.doSim("MemToPeriph") { dut =>
+  for (width <- dataWidths) test(s"Request-gated memory to peripheral ($width-bit)") {
+    compiled(width).doSim("MemToPeriph") { dut =>
       val env = new Env(dut)
       val data = env.randomBytes(16)
       env.slave.fill(RAM + 0x400, data)
@@ -303,7 +324,7 @@ class DmaTest extends AnyFunSuite {
 
       StreamMonitor(dut.io.mem.a, dut.clockDomain) { a =>
         if (a.address.toLong == PERIPH && a.opcode.toEnum == Opcode.A.PUT_FULL_DATA) {
-          val unused = (0 until 4).filter(b => ((a.mask.toInt >> b) & 1) == 0)
+          val unused = (0 until width / 8).filter(b => !a.mask.toBigInt.testBit(b))
           val lanes = unused.map(b => (a.data.toBigInt >> (8 * b)) & 0xff)
           assert(lanes.forall(_ == 0), s"unmasked lanes not zero: ${a.data.toBigInt.toString(16)}")
         }
@@ -323,8 +344,8 @@ class DmaTest extends AnyFunSuite {
     }
   }
 
-  test("Request handshake moves one element per acknowledge") {
-    compiled.doSim("ReqAck") { dut =>
+  for (width <- dataWidths) test(s"Request handshake moves one element per acknowledge ($width-bit)") {
+    compiled(width).doSim("ReqAck") { dut =>
       val env = new Env(dut)
       env.slave.fill(RAM + 0x400, env.randomBytes(8))
       val hs = dut.io.request(2)
@@ -404,8 +425,8 @@ class DmaTest extends AnyFunSuite {
     }
   }
 
-  test("Descriptor chain") {
-    compiled.doSim("Descriptors") { dut =>
+  for (width <- dataWidths) test(s"Descriptor chain ($width-bit)") {
+    compiled(width).doSim("Descriptors") { dut =>
       val env = new Env(dut)
       val desc0 = RAM + 0x3000
       val desc1 = RAM + 0x3020
@@ -436,8 +457,8 @@ class DmaTest extends AnyFunSuite {
     }
   }
 
-  test("Bus error stops the channel") {
-    compiled.doSim("BusError") { dut =>
+  for (width <- dataWidths) test(s"Bus error stops the channel ($width-bit)") {
+    compiled(width).doSim("BusError") { dut =>
       val env = new Env(dut)
       env.slave.denyAt = address => address >= RAM + 0x800 && address < RAM + 0x900
       env.program(0, cfg(), RAM + 0x700, RAM + 0x800, 32)
@@ -456,8 +477,8 @@ class DmaTest extends AnyFunSuite {
     }
   }
 
-  test("Misaligned element access is rejected") {
-    compiled.doSim("Misaligned") { dut =>
+  for (width <- dataWidths) test(s"Misaligned element access is rejected ($width-bit)") {
+    compiled(width).doSim("Misaligned") { dut =>
       val env = new Env(dut)
       dut.io.request(0).req #= true
       env.program(0, cfg(width = 2, req = 0), RAM + 0x1, RAM + 0x100, 8)
@@ -468,8 +489,8 @@ class DmaTest extends AnyFunSuite {
     }
   }
 
-  test("Abort stops a running channel") {
-    compiled.doSim("Abort") { dut =>
+  for (width <- dataWidths) test(s"Abort stops a running channel ($width-bit)") {
+    compiled(width).doSim("Abort") { dut =>
       val env = new Env(dut)
       env.slave.readyRandomizer.setFactor(0.1f)
       env.program(0, cfg(), RAM, RAM + 0x4000, 4096)
@@ -485,8 +506,8 @@ class DmaTest extends AnyFunSuite {
     }
   }
 
-  test("Two channels share the engine") {
-    compiled.doSim("TwoChannels") { dut =>
+  for (width <- dataWidths) test(s"Two channels share the engine ($width-bit)") {
+    compiled(width).doSim("TwoChannels") { dut =>
       val env = new Env(dut)
       val a = env.randomBytes(96)
       val b = env.randomBytes(96)
@@ -505,8 +526,8 @@ class DmaTest extends AnyFunSuite {
     }
   }
 
-  test("Registers are read-only while busy") {
-    compiled.doSim("BusyLock") { dut =>
+  for (width <- dataWidths) test(s"Registers are read-only while busy ($width-bit)") {
+    compiled(width).doSim("BusyLock") { dut =>
       val env = new Env(dut)
       env.slave.readyRandomizer.setFactor(0.1f)
       env.program(0, cfg(), RAM, RAM + 0x4000, 2048)

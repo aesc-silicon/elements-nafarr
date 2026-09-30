@@ -21,8 +21,10 @@ object DmaCtrl {
       requestLines: Int = 4,
       burstBytes: Int = 64,
       addressWidth: Int = 32,
-      sourceWidth: Int = 1
+      sourceWidth: Int = 1,
+      dataWidth: Int = 32
   ) {
+    require(Seq(32, 64, 128).contains(dataWidth), "dataWidth must be 32, 64 or 128")
     require(channels >= 1 && channels <= 8, "channels must be 1..8")
     require(requestLines >= 0 && requestLines <= 16, "requestLines must be 0..16")
     require(
@@ -31,8 +33,9 @@ object DmaCtrl {
     )
     require(addressWidth >= 12 && addressWidth <= 32, "addressWidth must be 12..32")
     require(sourceWidth >= 1 && sourceWidth <= 8, "sourceWidth must be 1..8")
-    val dataWidth = 32
-    val dataBytes = 4
+    val dataBytes = dataWidth / 8
+    require(burstBytes >= dataBytes, "burstBytes must cover at least one bus beat")
+    val dataBytesLog2 = log2Up(dataBytes)
     val burstLog2 = log2Up(burstBytes)
     val beatMax = burstBytes / dataBytes
     val channelStride = 0x20
@@ -290,24 +293,27 @@ object DmaCtrl {
       val chunkBytes = Reg(UInt(p.burstLog2 + 1 bits)) init 0
       val beats = Reg(UInt(beatCntWidth bits)) init 0
       val beatsLeft = Reg(UInt(beatCntWidth bits)) init 0
-      val srcShift = Reg(UInt(5 bits)) init 0
-      val dstShift = Reg(UInt(5 bits)) init 0
-      val rdMask = Reg(Bits(4 bits)) init 0
-      val wrMask = Reg(Bits(4 bits)) init 0
+      // Byte-lane position of the chunk within a bus beat, as a bit shift.
+      val shiftWidth = log2Up(p.dataWidth)
+      val srcShift = Reg(UInt(shiftWidth bits)) init 0
+      val dstShift = Reg(UInt(shiftWidth bits)) init 0
+      val rdMask = Reg(Bits(p.dataBytes bits)) init 0
+      val wrMask = Reg(Bits(p.dataBytes bits)) init 0
       val denied = RegInit(False)
       val ackSeen = RegInit(False)
       val descIdx = Reg(UInt(3 bits)) init 0
 
-      val laneMask = Bits(4 bits)
-      when(kSel === 0) {
-        laneMask := B"0001"
-      } elsewhen (kSel === 1) {
-        laneMask := B"0011"
-      } otherwise {
-        laneMask := B"1111"
+      // Byte lanes of a chunk starting at lane 0: 2^kSel lanes, all lanes from a full beat on.
+      val laneMask = Bits(p.dataBytes bits)
+      laneMask.setAll()
+      for (k <- 0 until p.dataBytesLog2) {
+        when(kSel === k) {
+          laneMask := B((BigInt(1) << (1 << k)) - 1, p.dataBytes bits)
+        }
       }
+      def laneOffset(address: UInt): UInt = address(p.dataBytesLog2 - 1 downto 0)
 
-      val fifo = StreamFifo(Bits(32 bits), p.beatMax)
+      val fifo = StreamFifo(Bits(p.dataWidth bits), p.beatMax)
       fifo.io.push.valid := False
       fifo.io.push.payload := mem.d.data |>> srcShift
       fifo.io.pop.ready := False
@@ -323,6 +329,11 @@ object DmaCtrl {
       // Lanes outside the write mask carry zeros instead of neighbouring source bytes, so
       // registers wider than the element (e.g. a 9-bit UART data register) see clean data.
       val writeLanes = Cat(wrMask.asBools.map(lane => Mux(lane, B(0xff, 8 bits), B(0, 8 bits))))
+
+      // Descriptors are read as 32-bit words; select the word's lanes within the bus beat.
+      val descAddress = curNext + (descIdx << 2)
+      val descLane = if (p.dataBytesLog2 > 2) descAddress(p.dataBytesLog2 - 1 downto 2) else U(0)
+      val descWord = (mem.d.data >> (descLane << 5))(31 downto 0)
       mem.a.data := (fifo.io.pop.payload |<< dstShift) & writeLanes
       mem.a.corrupt := False
       mem.d.ready := False
@@ -358,13 +369,14 @@ object DmaCtrl {
             } otherwise {
               chunkLog2 := kSel
               chunkBytes := (U(1, p.burstLog2 + 1 bits) |<< kSel).resized
-              val nBeats = ((U(1, p.burstLog2 + 1 bits) |<< kSel) + 3) >> 2
+              val nBeats =
+                ((U(1, p.burstLog2 + 1 bits) |<< kSel) + (p.dataBytes - 1)) >> p.dataBytesLog2
               beats := nBeats.resized
               beatsLeft := nBeats.resized
-              srcShift := (curSrc(1 downto 0) << 3).resized
-              dstShift := (curDst(1 downto 0) << 3).resized
-              rdMask := (laneMask << curSrc(1 downto 0)).resized
-              wrMask := (laneMask << curDst(1 downto 0)).resized
+              srcShift := (laneOffset(curSrc) << 3).resized
+              dstShift := (laneOffset(curDst) << 3).resized
+              rdMask := (laneMask << laneOffset(curSrc)).resized
+              wrMask := (laneMask << laneOffset(curDst)).resized
               denied := False
               ackSeen := False
               goto(readCmd)
@@ -481,8 +493,8 @@ object DmaCtrl {
           whenIsActive {
             mem.a.valid := True
             mem.a.size := 2
-            mem.a.address := curNext + (descIdx << 2)
-            mem.a.mask := B"1111"
+            mem.a.address := descAddress
+            mem.a.mask := (B(0xf, p.dataBytes bits) << (descLane << 2)).resized
             when(mem.a.ready) {
               goto(descRsp)
             }
@@ -498,11 +510,11 @@ object DmaCtrl {
               } otherwise {
                 onSel { c =>
                   switch(descIdx) {
-                    is(0) { c.config := mem.d.data }
-                    is(1) { c.src := mem.d.data.asUInt.resized }
-                    is(2) { c.dst := mem.d.data.asUInt.resized }
-                    is(3) { c.length := mem.d.data.asUInt }
-                    is(4) { c.next := mem.d.data.asUInt.resized }
+                    is(0) { c.config := descWord }
+                    is(1) { c.src := descWord.asUInt.resized }
+                    is(2) { c.dst := descWord.asUInt.resized }
+                    is(3) { c.length := descWord.asUInt }
+                    is(4) { c.next := descWord.asUInt.resized }
                   }
                 }
                 descIdx := descIdx + 1

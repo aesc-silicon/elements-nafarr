@@ -13,7 +13,7 @@ import spinal.lib.bus.tilelink.{Bus => TileLinkBus, Opcode}
 
 /** Simulation-only TileLink UL/UH slave backed by a sparse byte memory.
   *
-  * Serves GET and PUT_{FULL,PARTIAL}_DATA bursts (32-bit data), randomizes `a.ready`
+  * Serves GET and PUT_{FULL,PARTIAL}_DATA bursts (multiples of 32-bit data), randomizes `a.ready`
   * and the D-channel issue delay. Hooks allow emulating peripherals and bus errors:
   *   - `denyAt`: transactions whose address matches are answered with `denied`.
   *   - `onRead` / `onWrite`: called once per transaction after it is serviced.
@@ -21,7 +21,8 @@ import spinal.lib.bus.tilelink.{Bus => TileLinkBus, Opcode}
   *     a clock-domain crossing in front of a peripheral.
   */
 class TileLinkSlaveModel(bus: TileLinkBus, cd: ClockDomain) {
-  require(bus.p.dataWidth == 32)
+  require(bus.p.dataWidth % 32 == 0)
+  private val dataBytes = bus.p.dataBytes
 
   val mem = mutable.HashMap[Long, Byte]()
   var denyAt: Long => Boolean = (_: Long) => false
@@ -42,6 +43,10 @@ class TileLinkSlaveModel(bus: TileLinkBus, cd: ClockDomain) {
     for (i <- 0 until 4) {
       write8(base + i, ((value >> (8 * i)) & 0xff).toInt)
     }
+  }
+  private def readBeat(address: Long): BigInt = {
+    val base = address & ~(dataBytes - 1L)
+    (0 until dataBytes).map(i => BigInt(read8(base + i)) << (8 * i)).sum
   }
   def fill(address: Long, bytes: Seq[Int]): Unit = {
     for ((b, i) <- bytes.zipWithIndex) {
@@ -78,12 +83,13 @@ class TileLinkSlaveModel(bus: TileLinkBus, cd: ClockDomain) {
     val address = a.address.toLong
     val source = a.source.toInt
     val bytes = 1 << size
-    val beats = (bytes + 3) / 4
+    val beats = (bytes + dataBytes - 1) / dataBytes
     opcode match {
       case Opcode.A.GET =>
         val denied = denyAt(address)
         for (i <- 0 until beats) {
-          val data = if (denied) BigInt(0) else readWord((address & ~3L) + i * 4)
+          val beatAddress = (address & ~(dataBytes - 1L)) + i * dataBytes
+          val data = if (denied) BigInt(0) else readBeat(beatAddress)
           val readyAt = cycle + responseDelay(address)
           dQueue += Beat(Opcode.D.ACCESS_ACK_DATA, size, source, data, denied, readyAt)
         }
@@ -98,12 +104,12 @@ class TileLinkSlaveModel(bus: TileLinkBus, cd: ClockDomain) {
           putDenied = denyAt(address)
         }
         if (!putDenied) {
-          val wordAddress = (putAddress & ~3L) + putIndex * 4
+          val beatAddress = (putAddress & ~(dataBytes - 1L)) + putIndex * dataBytes
           val data = a.data.toBigInt
-          val mask = a.mask.toInt
-          for (b <- 0 until 4) {
-            if (((mask >> b) & 1) == 1) {
-              write8(wordAddress + b, ((data >> (8 * b)) & 0xff).toInt)
+          val mask = a.mask.toBigInt
+          for (b <- 0 until dataBytes) {
+            if (mask.testBit(b)) {
+              write8(beatAddress + b, ((data >> (8 * b)) & 0xff).toInt)
             }
           }
         }

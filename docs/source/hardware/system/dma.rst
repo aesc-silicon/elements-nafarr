@@ -11,7 +11,8 @@ Features
 ********
 
 * 1 to 8 channels sharing one transfer engine (round-robin arbitration per chunk)
-* TileLink UH master port with naturally aligned bursts up to ``burstBytes``
+* TileLink UH master port of 32, 64 or 128 bits with naturally aligned bursts up to
+  ``burstBytes``
 * Memory-to-memory, memory-to-peripheral and peripheral-to-memory transfers
 * Incrementing or fixed source and destination addresses
 * 8, 16 and 32 bit element widths with automatic byte-lane steering
@@ -132,8 +133,9 @@ Available bus architectures:
 - Wishbone
 
 By default, all register buses are defined with 12 bit address and 32 bit data width. The
-memory port is always TileLink (``BusParameter.simple(addressWidth, 32, burstBytes,
-sourceWidth)``).
+memory port is always TileLink (``BusParameter.simple(addressWidth, dataWidth, burstBytes,
+sourceWidth)``). Element accesses and descriptor reads stay 8, 16 or 32 bits wide at their byte
+position, so a wider memory port still reaches 32-bit peripherals through a width adapter.
 
 Parameter
 =========
@@ -167,6 +169,10 @@ Parameter
      - Int
      - Memory port TileLink source width. Must be between 1 and 8.
      - 1
+   * - dataWidth
+     - Int
+     - Memory port data width: 32, 64 or 128. ``burstBytes`` must cover at least one beat.
+     - 32
 
 .. code-block:: scala
 

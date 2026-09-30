@@ -152,6 +152,7 @@ object VexiiRiscvCoreParameter {
       dCacheSize: BigInt = 4096,
       debugTriggers: BigInt = 0,
       btbSets: Int = 16,
+      gshareBytes: Int = 256,
       pmpRegions: Int = 8,
       withCompressed: Boolean = true,
       withCacheOps: Boolean = false,
@@ -213,7 +214,10 @@ object VexiiRiscvCoreParameter {
     param.withGShare = true
     param.withRas = true
     param.btbSets = btbSets
-    param.gshareBytes = 256
+    // One GShare bank row holds a counter per fetch slice: wider fetches need more bytes for
+    // the same number of rows.
+    require(isPow2(gshareBytes), "gshareBytes must be a power of two")
+    param.gshareBytes = gshareBytes
     param.bootMemClear = true
 
     // U-mode + PMP for isolation (no supervisor/MMU at this class).

@@ -51,6 +51,11 @@ Available bus architectures:
 
 By default, the configuration bus is defined with 10 bit address and 32 bit data width.
 
+The TileLink ``dataBus`` may be 32, 64 or 128 bits wide. The controller works on 32-bit
+words: each covered word of a request becomes one controller command, and read words are
+packed into beats of the bus width. A burst must fit into the controller's command storage
+(``storageDepth`` words).
+
 Parameter
 =========
 

@@ -18,6 +18,199 @@ import nafarr.Feature
 import nafarr.memory.hyperbus.phy.{HyperBusGenericPhy, HyperBusGenericDdrPhy}
 import nafarr.peripherals.SysconFeatures
 
+object TileLinkHyperBus {
+
+  /** Converts TileLink requests into 32-bit word commands of the HyperBus controller.
+    *
+    * A request covers the 32-bit words from its 4-byte aligned address, at least one. Each
+    * word becomes one controller command; `last` marks the final word of the burst. Read
+    * responses are packed into D beats of `dataWidth / 32` words, starting at the request's
+    * word position within the beat. Writes take the data and byte strobes of each covered
+    * word (all strobes for PUT_FULL_DATA), drain one frontend ACK per word and answer with a
+    * single ACCESS_ACK.
+    */
+  case class BusAdapter(p: HyperBusCtrl.Parameter, busConfig: TileLinkParameter) extends Component {
+    require(p.frontend.dataWidth == 32, "the controller frontend must be 32 bits wide")
+    require(Seq(32, 64, 128).contains(busConfig.dataWidth), "dataWidth must be 32, 64 or 128")
+    require(
+      busConfig.sizeBytes / 4 <= p.frontend.storageDepth,
+      "a burst must fit into the controller's command storage"
+    )
+
+    val io = new Bundle {
+      val bus = slave(TileLinkBus(busConfig))
+      val controller = master(Stream(HyperBus.ControllerInterface(p)))
+      val frontend = slave(Stream(HyperBus.FrontendInterface(p)))
+    }
+
+    val wordsPerBeat = busConfig.dataWidth / 32
+    val laneWidth = log2Up(wordsPerBeat)
+    val countWidth = log2Up((busConfig.sizeBytes / 4).max(1) + 1)
+    val a = io.bus.a
+    val d = io.bus.d
+
+    val source = Reg(busConfig.source())
+    val size = Reg(busConfig.size())
+    val baseAddr = Reg(UInt(p.frontend.addrWidth bits))
+    val totalWords = Reg(UInt(countWidth bits))
+    val cmdIndex = Reg(UInt(countWidth bits))
+    val rspIndex = Reg(UInt(countWidth bits))
+    val lane = Reg(UInt(laneWidth bits))
+    val words = Vec(Reg(Bits(32 bits)), wordsPerBeat)
+    val full = RegInit(False)
+    val fullLast = Reg(Bool())
+
+    // Word count of the request and its first word position within a beat; lanes only
+    // exist for buses wider than 32 bits.
+    val requestWords = ((U(1, 11 bits) |<< a.size) + 3) >> 2
+    val wordLane =
+      if (laneWidth > 0) a.address(busConfig.dataBytesLog2Up - 1 downto 2) else U(0, 0 bits)
+    val atLastLane = if (laneWidth > 0) lane === (wordsPerBeat - 1) else True
+    val lastCommand = cmdIndex === totalWords - 1
+    val lastResponse = rspIndex === totalWords - 1
+    // Byte lanes a PUT_FULL_DATA covers: all lanes from a full beat on, else the lanes of
+    // its size at its address (a sub-word write must not touch the rest of the word).
+    val fullMask = Bits(busConfig.dataBytes bits)
+    fullMask.setAll()
+    for (k <- 0 until busConfig.dataBytesLog2Up) {
+      when(a.size === k) {
+        fullMask := (B((BigInt(1) << (1 << k)) - 1, busConfig.dataBytes bits) <<
+          a.address(busConfig.dataBytesLog2Up - 1 downto 0)).resized
+      }
+    }
+    val writeMask = Mux(a.opcode === Opcode.A.PUT_FULL_DATA(), fullMask, a.mask)
+    val laneData = if (laneWidth > 0) a.data.subdivideIn(32 bits)(lane) else a.data
+    val laneMask = if (laneWidth > 0) writeMask.subdivideIn(4 bits)(lane) else writeMask
+
+    a.ready := False
+    io.controller.valid := False
+    io.controller.payload.id := 0
+    io.controller.payload.read := False
+    io.controller.payload.memory := True
+    io.controller.payload.unaligned := False
+    io.controller.payload.addr := (baseAddr + (cmdIndex << 2)).resized
+    io.controller.payload.data := laneData
+    io.controller.payload.strobe := laneMask
+    io.controller.payload.last := lastCommand
+    io.frontend.ready := False
+
+    d.valid := False
+    d.opcode := Opcode.D.ACCESS_ACK_DATA()
+    d.param := 0
+    d.size := size
+    d.source := source
+    d.sink := 0
+    d.denied := False
+    d.data := words.asBits
+    d.corrupt := False
+
+    val fsm = new StateMachine {
+      val idle: State = new State with EntryPoint {
+        whenIsActive {
+          when(a.valid) {
+            source := a.source
+            size := a.size
+            baseAddr := (a.address(a.address.high downto 2) @@ U(0, 2 bits)).resized
+            totalWords := requestWords.resized
+            cmdIndex := 0
+            rspIndex := 0
+            if (laneWidth > 0) lane := wordLane
+            when(a.opcode === Opcode.A.GET()) {
+              // A GET has a single A beat; take it here.
+              a.ready := True
+              goto(readCmd)
+            } otherwise {
+              // A PUT's beats are taken in writeCmd, one per issued beat.
+              goto(writeCmd)
+            }
+          }
+        }
+      }
+
+      val readCmd: State = new State {
+        whenIsActive {
+          io.controller.valid := True
+          io.controller.payload.read := True
+          io.controller.payload.data := 0
+          io.controller.payload.strobe.setAll()
+          when(io.controller.fire) {
+            cmdIndex := cmdIndex + 1
+            when(lastCommand) {
+              goto(readRsp)
+            }
+          }
+        }
+      }
+
+      val readRsp: State = new State {
+        whenIsActive {
+          io.frontend.ready := !full
+          when(io.frontend.fire) {
+            if (laneWidth > 0) words(lane) := io.frontend.payload.data
+            else words(0) := io.frontend.payload.data
+            rspIndex := rspIndex + 1
+            when(atLastLane || lastResponse) {
+              full := True
+              fullLast := lastResponse
+            } otherwise {
+              if (laneWidth > 0) lane := lane + 1
+            }
+          }
+          d.valid := full
+          when(d.fire) {
+            full := False
+            if (laneWidth > 0) lane := 0
+            when(fullLast) {
+              goto(idle)
+            }
+          }
+        }
+      }
+
+      val writeCmd: State = new State {
+        whenIsActive {
+          io.controller.valid := a.valid
+          when(io.controller.fire) {
+            cmdIndex := cmdIndex + 1
+            when(atLastLane || lastCommand) {
+              // All covered words of this beat are issued: take the beat.
+              a.ready := True
+              if (laneWidth > 0) lane := 0
+            } otherwise {
+              if (laneWidth > 0) lane := lane + 1
+            }
+            when(lastCommand) {
+              goto(writeRsp)
+            }
+          }
+        }
+      }
+
+      val writeRsp: State = new State {
+        whenIsActive {
+          io.frontend.ready := True
+          when(io.frontend.valid) {
+            rspIndex := rspIndex + 1
+            when(lastResponse) {
+              goto(writeAck)
+            }
+          }
+        }
+      }
+
+      val writeAck: State = new State {
+        whenIsActive {
+          d.valid := True
+          d.opcode := Opcode.D.ACCESS_ACK()
+          when(d.ready) {
+            goto(idle)
+          }
+        }
+      }
+    }
+  }
+}
+
 /** TileLink wrapper for the HyperBus controller.
   *
   * Exposes two TileLink slave ports and a raw PHY interface:
@@ -36,16 +229,16 @@ import nafarr.peripherals.SysconFeatures
   *             HyperBusGenericPhy or a technology-specific PHY.  For FPGA use
   *             TileLinkHyperBusGenericPhyCluster, which includes the PHY.
   *
-  * Protocol mapping
+  * Protocol mapping (see TileLinkHyperBus.BusAdapter)
   * ----------------
-  * Read  (GET):          Single A-beat accepted in idle -> N controller stream
-  *                       commands -> N D-channel beats.
-  * Write (PUT_FULL_DATA): N A-beats paired one-for-one with N controller stream
-  *                       commands -> N frontend ACKs drained -> single ACCESS_ACK.
+  * Read  (GET):  one controller command per covered 32-bit word; the frontend
+  *               responses are packed into D beats of the bus width.
+  * Write (PUT):  one controller command per covered 32-bit word of each A beat;
+  *               the frontend ACKs are drained, then a single ACCESS_ACK is sent.
   *
   * @param p            HyperBus controller parameter.
   * @param busConfig    TileLink parameter for the data bus (TL-UH).
-  *                     dataWidth must equal 32.  sizeBytes sets the max burst.
+  *                     dataWidth may be 32, 64 or 128.  sizeBytes sets the max burst.
   * @param cfgBusConfig TileLink parameter for the configuration bus (TL-UL).
   */
 case class TileLinkHyperBus(
@@ -75,171 +268,12 @@ case class TileLinkHyperBus(
   io.error := mapper.error
 
   // -------------------------------------------------------------------------
-  // Data bus - TileLink <-> HyperBus.ControllerInterface bridge
+  // Data bus - TileLink <-> 32-bit controller command / frontend response streams
   // -------------------------------------------------------------------------
-  private val dataBytesLog2 = busConfig.dataBytesLog2Up
-
-  // Maximum word count per burst (Scala elaboration-time constant).
-  private val maxWords = 1 << (busConfig.sizeMax - dataBytesLog2)
-  private val cntWidth = log2Up(maxWords + 1)
-
-  // Transaction metadata, registered on the first accepted A-beat.
-  val regSource = Reg(busConfig.source())
-  val regSize = Reg(busConfig.size())
-  val regAddr = Reg(UInt(busConfig.addressWidth bits))
-
-  // Word count for the current burst - combinatorial from regSize.
-  val regWords =
-    (((U(1, 10 bits) |<< regSize) + (busConfig.dataBytes - 1)) >> dataBytesLog2).resize(cntWidth)
-
-  // Beat counters.
-  val cmdCounter = Reg(UInt(cntWidth bits)) init 0 // controller commands issued
-  val rspCounter = Reg(UInt(cntWidth bits)) init 0 // frontend responses consumed
-
-  // ---- D-channel defaults (active state overrides where needed) ----------
-  io.dataBus.a.ready := False
-  io.dataBus.d.valid := False
-  io.dataBus.d.opcode := Opcode.D.ACCESS_ACK_DATA()
-  io.dataBus.d.param := 0
-  io.dataBus.d.size := regSize
-  io.dataBus.d.source := regSource
-  io.dataBus.d.sink := 0
-  io.dataBus.d.denied := False
-  io.dataBus.d.data := ctrl.io.frontend.payload.data
-  io.dataBus.d.corrupt := False
-
-  // ---- Controller stream defaults ----------------------------------------
-  ctrl.io.controller.valid := False
-  ctrl.io.controller.payload.id := 0
-  ctrl.io.controller.payload.read := False
-  ctrl.io.controller.payload.memory := True
-  ctrl.io.controller.payload.unaligned := False
-  // Byte address of the current word in the burst.
-  ctrl.io.controller.payload.addr :=
-    (regAddr + (cmdCounter << dataBytesLog2)).resize(p.frontend.addrWidth)
-  // Write data / strobe come directly from the live A-channel (valid in writeCmd).
-  ctrl.io.controller.payload.data := io.dataBus.a.data
-  ctrl.io.controller.payload.strobe := io.dataBus.a.mask
-  // Assert last on the final word of every burst.
-  ctrl.io.controller.payload.last := (cmdCounter === (regWords - 1).resized)
-
-  ctrl.io.frontend.ready := False
-
-  // Byte lanes a PUT_FULL_DATA covers: all lanes from a full beat on, else the lanes of its
-  // size at its address.
-  val fullMask = Bits(busConfig.dataBytes bits)
-  fullMask.setAll()
-  for (k <- 0 until dataBytesLog2) {
-    when(io.dataBus.a.size === k) {
-      fullMask := (B((BigInt(1) << (1 << k)) - 1, busConfig.dataBytes bits) <<
-        io.dataBus.a.address(dataBytesLog2 - 1 downto 0)).resized
-    }
-  }
-
-  // -------------------------------------------------------------------------
-  // State machine
-  // -------------------------------------------------------------------------
-  val fsm = new StateMachine {
-
-    // ---- IDLE ---------------------------------------------------------------
-    val idle: State = new State with EntryPoint {
-      whenIsActive {
-        when(io.dataBus.a.valid) {
-          regSource := io.dataBus.a.source
-          regSize := io.dataBus.a.size
-          regAddr := (io.dataBus.a.address >> dataBytesLog2) @@ U(0, dataBytesLog2 bits)
-          cmdCounter := 0
-          rspCounter := 0
-          when(io.dataBus.a.opcode === Opcode.A.GET()) {
-            // GET has exactly one A-beat; consume it here.
-            io.dataBus.a.ready := True
-            goto(readCmd)
-          } otherwise {
-            // PUT_FULL_DATA has N A-beats; writeCmd consumes them all.
-            goto(writeCmd)
-          }
-        }
-      }
-    }
-
-    // ---- READ: issue N controller commands ----------------------------------
-    val readCmd: State = new State {
-      whenIsActive {
-        ctrl.io.controller.valid := True
-        ctrl.io.controller.payload.read := True
-        ctrl.io.controller.payload.strobe := B(busConfig.dataBytes bits, default -> true)
-        ctrl.io.controller.payload.data := 0
-        when(ctrl.io.controller.fire) {
-          cmdCounter := cmdCounter + 1
-          when(cmdCounter === (regWords - 1).resized) {
-            cmdCounter := 0
-            goto(readRsp)
-          }
-        }
-      }
-    }
-
-    // ---- READ: forward N frontend responses as D-channel beats --------------
-    val readRsp: State = new State {
-      whenIsActive {
-        io.dataBus.d.valid := ctrl.io.frontend.valid
-        io.dataBus.d.opcode := Opcode.D.ACCESS_ACK_DATA()
-        when(ctrl.io.frontend.valid && io.dataBus.d.ready) {
-          ctrl.io.frontend.ready := True
-          rspCounter := rspCounter + 1
-          when(rspCounter === (regWords - 1).resized) {
-            goto(idle)
-          }
-        }
-      }
-    }
-
-    // ---- WRITE: pair N A-beats with N controller commands ------------------
-    // a.ready follows controller.ready so the two streams move in lock-step.
-    val writeCmd: State = new State {
-      whenIsActive {
-        io.dataBus.a.ready := ctrl.io.controller.ready
-        ctrl.io.controller.valid := io.dataBus.a.valid
-        ctrl.io.controller.payload.read := False
-        // PUT_FULL_DATA covers all byte lanes of its size at its address; a sub-word write
-        // must not touch the rest of the word. PUT_PARTIAL_DATA carries its own byte enables.
-        when(io.dataBus.a.opcode === Opcode.A.PUT_FULL_DATA()) {
-          ctrl.io.controller.payload.strobe := fullMask
-        }
-        when(io.dataBus.a.valid && ctrl.io.controller.ready) {
-          cmdCounter := cmdCounter + 1
-          when(cmdCounter === (regWords - 1).resized) {
-            cmdCounter := 0
-            goto(writeRsp)
-          }
-        }
-      }
-    }
-
-    // ---- WRITE: drain N frontend ACKs (one per written word) ---------------
-    val writeRsp: State = new State {
-      whenIsActive {
-        ctrl.io.frontend.ready := True
-        when(ctrl.io.frontend.valid) {
-          rspCounter := rspCounter + 1
-          when(rspCounter === (regWords - 1).resized) {
-            goto(writeAck)
-          }
-        }
-      }
-    }
-
-    // ---- WRITE: return a single ACCESS_ACK to the initiator ----------------
-    val writeAck: State = new State {
-      whenIsActive {
-        io.dataBus.d.valid := True
-        io.dataBus.d.opcode := Opcode.D.ACCESS_ACK()
-        when(io.dataBus.d.ready) {
-          goto(idle)
-        }
-      }
-    }
-  }
+  val busAdapter = TileLinkHyperBus.BusAdapter(p, busConfig)
+  busAdapter.io.bus <> io.dataBus
+  ctrl.io.controller << busAdapter.io.controller
+  busAdapter.io.frontend << ctrl.io.frontend
 }
 
 /** TileLinkHyperBus bundled with HyperBusGenericPhy for FPGA targets.

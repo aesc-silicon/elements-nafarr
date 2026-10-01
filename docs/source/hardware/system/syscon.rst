@@ -16,10 +16,10 @@ Features
 
 * IP Identification block (header + version at 0x000-0x007)
 * 32-bit identity register: vendor, platform, product, and platform class
-* Independent silicon major/minor revision registers
-* 32-bit feature flag register: bit N set when ``Feature`` element with ordinal N is present
-* Reference clock frequency register (Hz)
+* Silicon revision register: major and minor revision
 * UNIX build timestamp register (seconds since epoch)
+* Reference clock frequency register (Hz)
+* Feature flag words: bit N set when the ``Feature`` element with ordinal N is present
 * Supported buses: APB3, TileLink, Wishbone
 
 Parameters
@@ -80,20 +80,20 @@ Register Map
      - ``identity``
      - SoC identity (see below)
    * - 0x00C
-     - ``silicon_major``
-     - Silicon major revision
+     - ``silicon_rev``
+     - Silicon revision: major in [31:16], minor in [15:0]
    * - 0x010
-     - ``silicon_minor``
-     - Silicon minor revision
-   * - 0x014
-     - ``features``
-     - Feature flag bitmask
-   * - 0x018
-     - ``ref_clock``
-     - Reference oscillator frequency (Hz)
-   * - 0x01C
      - ``build_date``
      - Build UNIX timestamp (seconds)
+   * - 0x014
+     - ``ref_clock``
+     - Reference oscillator frequency (Hz)
+   * - 0x018
+     - ``feature_info``
+     - Number of feature words in [7:0]
+   * - 0x01C
+     - ``features[n]``
+     - Feature words, one per 32 ``Feature`` ordinals (see below)
 
 Identity Register (0x008)
 =========================
@@ -118,12 +118,13 @@ Identity Register (0x008)
      - ``vendor``
      - Vendor ordinal (0=AescSilicon)
 
-Features Register (0x014)
-=========================
+Feature Words (0x01C)
+=====================
 
-Bit N is set when the ``Feature`` element with ordinal N appears in the
-``features`` parameter list. The SoC builder populates this list automatically
-by collecting ``sysconFeatures`` from each IP on the bus.
+``features[N / 32]`` bit ``N % 32`` is set when the ``Feature`` element with
+ordinal N appears in the ``features`` parameter list. The SoC builder populates
+this list automatically by collecting ``sysconFeatures`` from each IP on the
+bus.
 
 .. list-table::
    :widths: 10 20 70
@@ -201,3 +202,16 @@ by collecting ``sysconFeatures`` from each IP on the bus.
    * - 22
      - ``Dma``
      - DMA controller present
+
+Software
+********
+
+The bare-metal driver is ``software/driver/syscon.c`` with ``software/include/syscon.h``. The
+register block and all ordinals are in ``software/include/syscon_defs.h``, which is generated
+from the Scala sources: after changing the register map or an enum in ``SocIds.scala``, run
+
+.. code-block:: console
+
+   sbt "runMain nafarr.GenerateHeaders"
+
+and commit the updated header. CI fails if the committed header differs from the generated one.

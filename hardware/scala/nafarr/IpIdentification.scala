@@ -9,6 +9,10 @@ import spinal.lib._
 import spinal.lib.bus.misc.BusSlaveFactory
 
 object IpIdentification {
+
+  /** Size in bytes of the identification block (header and version) at the start of every IP. */
+  val length = 8
+
   def apply(id: SpinalEnumElement[Ids.type], major: Int, minor: Int, patch: Int) =
     IpIdentificationCtrl(id, major, minor, patch)
 
@@ -52,7 +56,7 @@ object IpIdentification {
       val header = out Bits (32 bits)
       val version = out Bits (32 bits)
     }
-    val length = 8
+    val length = IpIdentification.length
     val api = 0
     val header = RegInit(B(api, 8 bits) ## B(length, 8 bits) ## B(id, 16 bits))
     val version = RegInit(B(major, 8 bits) ## B(minor, 8 bits) ## B(patch, 16 bits))

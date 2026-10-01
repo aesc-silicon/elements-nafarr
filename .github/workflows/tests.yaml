@@ -69,6 +69,13 @@ jobs:
         run: |
           sbt compile
 
+      - name: Check generated headers
+        run: |
+          sbt "runMain nafarr.GenerateHeaders"
+          git status --porcelain software/include
+          git diff --exit-code software/include
+          test -z "$(git status --porcelain software/include)"
+
       - name: Run tests
         run: |
           NAFARR_BASE=$PWD sbt test

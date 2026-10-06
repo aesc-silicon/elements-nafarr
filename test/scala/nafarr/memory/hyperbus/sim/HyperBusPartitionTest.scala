@@ -22,7 +22,8 @@ class HyperBusPartitionTest extends AnyFunSuite {
 
   // Two 4 MB partitions -> memorySpace 8 MB; partition 1 non-readable so we can
   // exercise the permission fault too. Writes are allowed to both.
-  val p = HyperBusCtrl.Parameter.default(List((BigInt(0x400000L), true), (BigInt(0x400000L), false)))
+  val p =
+    HyperBusCtrl.Parameter.default(List((BigInt(0x400000L), true), (BigInt(0x400000L), false)))
   val base1 = BigInt(0x400000L) // first byte of partition 1
 
   case class PartitionDut(p: HyperBusCtrl.Parameter) extends Component {

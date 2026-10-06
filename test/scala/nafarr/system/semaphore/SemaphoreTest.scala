@@ -53,7 +53,6 @@ class SemaphoreTest extends AnyFunSuite {
     generationShouldFail(WishboneSemaphore(SemaphoreCtrl.Parameter(33)))
   }
 
-
   def init(dut: Apb3Semaphore): (Apb3Driver, SemaphoreCtrl.Regs) = {
     dut.clockDomain.forkStimulus(10)
     fork {
@@ -89,7 +88,7 @@ class SemaphoreTest extends AnyFunSuite {
       IpIdentificationTest.V0.checkVersion(apb, 1, 0, 0)
 
       /* Read bank and pin count */
-      SimTest.readField(apb, regs.info, 7, 0, 8,  "Semaphore count")
+      SimTest.readField(apb, regs.info, 7, 0, 8, "Semaphore count")
     }
 
     compiled.doSim("testIO") { dut =>
@@ -104,7 +103,12 @@ class SemaphoreTest extends AnyFunSuite {
       }
       for (i <- 0 until dut.p.count) {
         apb.write(regs.semaphore(i), 0)
-        SimTest.read(apb, regs.status, (1 << dut.p.count) - (1 << (i + 1)), "Wrong number of taken semaphores")
+        SimTest.read(
+          apb,
+          regs.status,
+          (1 << dut.p.count) - (1 << (i + 1)),
+          "Wrong number of taken semaphores"
+        )
       }
     }
 

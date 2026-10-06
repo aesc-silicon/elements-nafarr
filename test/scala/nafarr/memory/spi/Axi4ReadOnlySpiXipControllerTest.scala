@@ -78,7 +78,7 @@ class Axi4ReadOnlySpiXipControllerTest extends AnyFunSuite {
       dut.io.dataBus.r.ready #= false
       dut.clockDomain.waitSampling(20)
     }
-/*
+    /*
 
     No burst support right now.
 
@@ -141,6 +141,6 @@ class Axi4ReadOnlySpiXipControllerTest extends AnyFunSuite {
 
       dut.clockDomain.waitSampling(20)
     }
-*/
+     */
   }
 }

@@ -94,7 +94,9 @@ class TileLinkHyperBusTest extends AnyFunSuite {
           val strobe = c.strobe.toInt
           commands += Command(address, read, strobe, c.last.toBoolean)
           if (read) {
-            responses += (0 until 4).map(i => BigInt(memory((address + i).toInt) & 0xff) << (8 * i)).sum
+            responses += (0 until 4)
+              .map(i => BigInt(memory((address + i).toInt) & 0xff) << (8 * i))
+              .sum
           } else {
             val data = c.data.toBigInt
             for (i <- 0 until 4 if ((strobe >> i) & 1) == 1) {
@@ -127,7 +129,10 @@ class TileLinkHyperBusTest extends AnyFunSuite {
           val issued = commands.takeRight(count)
           assert(commands.size >= count, s"$what: missing commands")
           for ((c, i) <- issued.zipWithIndex) {
-            assert(c.address == (address & ~3) + 4 * i, s"$what: word $i at 0x${c.address.toHexString}")
+            assert(
+              c.address == (address & ~3) + 4 * i,
+              s"$what: word $i at 0x${c.address.toHexString}"
+            )
             assert(c.read == read, s"$what: word $i has the wrong direction")
             assert(c.last == (i == count - 1), s"$what: last on word $i")
           }

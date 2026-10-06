@@ -51,7 +51,11 @@ class HyperBusGenericPhyTest extends AnyFunSuite {
   }
 
   // Push one command word into the PHY, waiting for the ready handshake.
-  def pushCmd(dut: HyperBusGenericPhy.Phy, mode: SpinalEnumElement[HyperBus.Phy.CmdMode.type], args: BigInt) {
+  def pushCmd(
+      dut: HyperBusGenericPhy.Phy,
+      mode: SpinalEnumElement[HyperBus.Phy.CmdMode.type],
+      args: BigInt
+  ) {
     dut.io.phy.cmd.valid #= true
     dut.io.phy.cmd.payload.mode #= mode
     dut.io.phy.cmd.payload.args #= args

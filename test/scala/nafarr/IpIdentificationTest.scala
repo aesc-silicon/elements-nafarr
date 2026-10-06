@@ -12,9 +12,9 @@ object IpIdentificationTest {
   object V0 {
     def checkApi(bus: Apb3Driver, id: SpinalEnumElement[IpIdentification.Ids.type]) {
       val result = bus.read(0)
-      val resultApi = (result >> 24) & 0xFF
-      val resultLength = (result >> 16) & 0xFF
-      val resultId = IpIdentification.Ids.elements((result & 0xFFFF).toInt)
+      val resultApi = (result >> 24) & 0xff
+      val resultLength = (result >> 16) & 0xff
+      val resultId = IpIdentification.Ids.elements((result & 0xffff).toInt)
       val expectedApi = 0
       val expectedLength = 8
       val expectedId = id
@@ -22,22 +22,22 @@ object IpIdentificationTest {
       assert(
         result == expected,
         s"IP Identification Header check failed at 0x0:\n" +
-        s"    Expected: API=$expectedApi  Length=$expectedLength  ID=$expectedId\n" +
-        s"    Received: API=$resultApi  Length=$resultLength  ID=$resultId"
+          s"    Expected: API=$expectedApi  Length=$expectedLength  ID=$expectedId\n" +
+          s"    Received: API=$resultApi  Length=$resultLength  ID=$resultId"
       )
     }
 
     def checkVersion(bus: Apb3Driver, major: Int, minor: Int, patchlevel: Int) {
       val result = bus.read(4)
-      val resultMajor = (result >> 24) & 0xFF
-      val resultMinor = (result >> 16) & 0xFF
-      val resultPatchlevel = result & 0xFFFF
-      val expected = (major & 0xFF) << 24 | (minor & 0xFF) << 16 | (patchlevel & 0xFFFF)
+      val resultMajor = (result >> 24) & 0xff
+      val resultMinor = (result >> 16) & 0xff
+      val resultPatchlevel = result & 0xffff
+      val expected = (major & 0xff) << 24 | (minor & 0xff) << 16 | (patchlevel & 0xffff)
       assert(
         result == expected,
         s"IP identification Version check failed at 0x4:\n" +
-        s"    Expected: Major=$major  Minor=$minor  Patchlevel=$patchlevel\n" +
-        s"    Received: Major=$resultMajor  Minor=$resultMinor  Patchlevel=$resultPatchlevel"
+          s"    Expected: Major=$major  Minor=$minor  Patchlevel=$patchlevel\n" +
+          s"    Received: Major=$resultMajor  Minor=$resultMinor  Patchlevel=$resultPatchlevel"
       )
     }
   }

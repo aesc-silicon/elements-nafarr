@@ -55,7 +55,11 @@ class HyperBusCtrlTest extends AnyFunSuite {
     }
   }
 
-  def fakeFrontend(dut: HyperBusCtrl.HyperBusCtrl, read: Boolean = true, address: BigInt = BigInt(104)) {
+  def fakeFrontend(
+      dut: HyperBusCtrl.HyperBusCtrl,
+      read: Boolean = true,
+      address: BigInt = BigInt(104)
+  ) {
     fork {
       dut.io.controller.payload.id #= BigInt(13)
       dut.io.controller.payload.unaligned #= false
@@ -272,12 +276,12 @@ class HyperBusCtrlTest extends AnyFunSuite {
     }
 
     checkPartition("partition hits - CS0 low", BigInt(0), 0)
-    checkPartition("partition hits - CS0 high", BigInt(0x7FFFFFL), 0)
+    checkPartition("partition hits - CS0 high", BigInt(0x7fffffL), 0)
     checkPartition("partition hits - CS1 low", BigInt(0x800000L), 1)
-    checkPartition("partition hits - CS1 high", BigInt(0xFFFFFFL), 1)
+    checkPartition("partition hits - CS1 high", BigInt(0xffffffL), 1)
     checkPartition("partition hits - CS2 low", BigInt(0x1000000L), 2)
-    checkPartition("partition hits - CS2 high", BigInt(0x17FFFFFL), 2)
+    checkPartition("partition hits - CS2 high", BigInt(0x17fffffL), 2)
     checkPartition("partition hits - CS3 low", BigInt(0x1800000L), 3)
-    checkPartition("partition hits - CS3 high", BigInt(0x1FFFFFFL), 3)
+    checkPartition("partition hits - CS3 high", BigInt(0x1ffffffL), 3)
   }
 }

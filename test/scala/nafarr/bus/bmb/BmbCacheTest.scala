@@ -20,7 +20,7 @@ class BmbCacheTest extends AnyFunSuite {
     dut.io.input.cmd.valid #= true
     dut.io.input.cmd.address #= address
     dut.io.input.cmd.opcode #= Bmb.Cmd.Opcode.READ
-    dut.io.input.cmd.mask #= 0xF
+    dut.io.input.cmd.mask #= 0xf
     sleep(2)
     assert(dut.io.input.cmd.ready.toBoolean == true)
     assert(dut.hit.toBoolean == true)
@@ -37,7 +37,7 @@ class BmbCacheTest extends AnyFunSuite {
     dut.io.input.cmd.valid #= true
     dut.io.input.cmd.address #= address
     dut.io.input.cmd.opcode #= Bmb.Cmd.Opcode.READ
-    dut.io.input.cmd.mask #= 0xF
+    dut.io.input.cmd.mask #= 0xf
     sleep(2)
     assert(dut.io.input.cmd.ready.toBoolean == false)
     assert(dut.miss.toBoolean == true)
@@ -122,14 +122,14 @@ class BmbCacheTest extends AnyFunSuite {
       readWordHit(dut, 0x0, 0x11111111)
       readWordHit(dut, 0x4, 0x22222222)
       readWordHit(dut, 0x8, 0x33333333)
-      readWordHit(dut, 0xC, 0x44444444)
+      readWordHit(dut, 0xc, 0x44444444)
 
       readWordMiss(dut, 0x10)
 
       readWordHit(dut, 0x10, 0x11111111)
       readWordHit(dut, 0x14, 0x22222222)
       readWordHit(dut, 0x18, 0x33333333)
-      readWordHit(dut, 0x1C, 0x44444444)
+      readWordHit(dut, 0x1c, 0x44444444)
 
       dut.clockDomain.waitSampling(100)
     }

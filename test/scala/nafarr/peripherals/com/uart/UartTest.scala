@@ -132,7 +132,6 @@ class UartTest extends AnyFunSuite {
     return (apb, regs)
   }
 
-
   test("basic") {
     val compiled = SimConfig.withWave.compile(genCore(UartCtrl.Parameter.default, Apb3Uart(_)))
 
@@ -297,19 +296,34 @@ class UartTest extends AnyFunSuite {
       apb.write(regs.interruptEnable, BigInt("00000004", 16))
 
       SimTest.checkPins(dut.io.interrupt.toBigInt, 0, f"Interrupt is pending")
-      SimTest.read(apb, regs.interruptPending, BigInt("00000000", 16), "TX idle interrupt is pending")
+      SimTest.read(
+        apb,
+        regs.interruptPending,
+        BigInt("00000000", 16),
+        "TX idle interrupt is pending"
+      )
 
       apb.write(regs.readWrite, BigInt("00000047", 16))
       apb.write(regs.readWrite, BigInt("00000047", 16))
 
       SimTest.checkPins(dut.io.interrupt.toBigInt, 0, f"Interrupt is pending")
-      SimTest.read(apb, regs.interruptPending, BigInt("00000000", 16), "TX idle interrupt is pending")
+      SimTest.read(
+        apb,
+        regs.interruptPending,
+        BigInt("00000000", 16),
+        "TX idle interrupt is pending"
+      )
 
       val transmit = UartDecoder(dut.io.uart.txd, 8640, BigInt("47", 16))
       transmit.join()
 
       SimTest.checkPins(dut.io.interrupt.toBigInt, 0, f"Interrupt is pending")
-      SimTest.read(apb, regs.interruptPending, BigInt("00000000", 16), "TX idle interrupt is pending")
+      SimTest.read(
+        apb,
+        regs.interruptPending,
+        BigInt("00000000", 16),
+        "TX idle interrupt is pending"
+      )
 
       val transmit2 = UartDecoder(dut.io.uart.txd, 8640, BigInt("47", 16))
       transmit2.join()
@@ -317,7 +331,12 @@ class UartTest extends AnyFunSuite {
       dut.clockDomain.waitSampling(1000)
 
       SimTest.checkPins(dut.io.interrupt.toBigInt, 1, f"Interrupt isn't pending")
-      SimTest.read(apb, regs.interruptPending, BigInt("00000004", 16), "TX idle interrupt isn't pending")
+      SimTest.read(
+        apb,
+        regs.interruptPending,
+        BigInt("00000004", 16),
+        "TX idle interrupt isn't pending"
+      )
 
       apb.write(regs.interruptEnable, BigInt("00000000", 16))
       apb.write(regs.interruptPending, BigInt("00000004", 16))
@@ -328,13 +347,23 @@ class UartTest extends AnyFunSuite {
       apb.write(regs.readWrite, BigInt("00000047", 16))
 
       SimTest.checkPins(dut.io.interrupt.toBigInt, 0, f"Interrupt is pending")
-      SimTest.read(apb, regs.interruptPending, BigInt("00000000", 16), "TX idle interrupt is pending")
+      SimTest.read(
+        apb,
+        regs.interruptPending,
+        BigInt("00000000", 16),
+        "TX idle interrupt is pending"
+      )
 
       val transmit3 = UartDecoder(dut.io.uart.txd, 8640, BigInt("47", 16))
       transmit3.join()
 
       SimTest.checkPins(dut.io.interrupt.toBigInt, 0, f"Interrupt is pending")
-      SimTest.read(apb, regs.interruptPending, BigInt("00000000", 16), "TX idle interrupt is pending")
+      SimTest.read(
+        apb,
+        regs.interruptPending,
+        BigInt("00000000", 16),
+        "TX idle interrupt is pending"
+      )
 
       val transmit4 = UartDecoder(dut.io.uart.txd, 8640, BigInt("47", 16))
       transmit4.join()
@@ -342,7 +371,12 @@ class UartTest extends AnyFunSuite {
       dut.clockDomain.waitSampling(1000)
 
       SimTest.checkPins(dut.io.interrupt.toBigInt, 1, f"Interrupt isn't pending")
-      SimTest.read(apb, regs.interruptPending, BigInt("00000004", 16), "TX idle interrupt isn't pending")
+      SimTest.read(
+        apb,
+        regs.interruptPending,
+        BigInt("00000004", 16),
+        "TX idle interrupt isn't pending"
+      )
     }
 
     compiled.doSim("test error - frame") { dut =>

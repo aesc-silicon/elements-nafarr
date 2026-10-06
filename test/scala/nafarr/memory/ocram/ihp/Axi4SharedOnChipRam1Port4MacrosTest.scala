@@ -4,7 +4,6 @@
 
 package nafarr.memory.ocram.ihp
 
-
 import org.scalatest.funsuite.AnyFunSuite
 
 import spinal.sim._
@@ -27,7 +26,12 @@ class Axi4SharedOnChipRam1Port4MacrosTest extends AnyFunSuite {
     dut.clockDomain.waitSampling(5)
   }
 
-  def writeWord(dut: Axi4SharedIhpOnChipRam.OnePort4Macros, address: BigInt, data: BigInt, offset: Int = 0) = {
+  def writeWord(
+      dut: Axi4SharedIhpOnChipRam.OnePort4Macros,
+      address: BigInt,
+      data: BigInt,
+      offset: Int = 0
+  ) = {
     dut.io.axi.arw.valid #= true
     dut.io.axi.arw.addr #= address
     dut.io.axi.arw.size #= BigInt(2)
@@ -57,7 +61,12 @@ class Axi4SharedOnChipRam1Port4MacrosTest extends AnyFunSuite {
     dut.io.axi.arw.valid #= false
   }
 
-  def writeShort(dut: Axi4SharedIhpOnChipRam.OnePort4Macros, address: BigInt, data: BigInt, offset: Int = 0) = {
+  def writeShort(
+      dut: Axi4SharedIhpOnChipRam.OnePort4Macros,
+      address: BigInt,
+      data: BigInt,
+      offset: Int = 0
+  ) = {
     dut.io.axi.arw.valid #= true
     dut.io.axi.arw.addr #= address
     dut.io.axi.arw.size #= BigInt(1)
@@ -87,7 +96,12 @@ class Axi4SharedOnChipRam1Port4MacrosTest extends AnyFunSuite {
     dut.io.axi.arw.valid #= false
   }
 
-  def writeChar(dut: Axi4SharedIhpOnChipRam.OnePort4Macros, address: BigInt, data: BigInt, offset: Int = 0) = {
+  def writeChar(
+      dut: Axi4SharedIhpOnChipRam.OnePort4Macros,
+      address: BigInt,
+      data: BigInt,
+      offset: Int = 0
+  ) = {
     dut.io.axi.arw.valid #= true
     dut.io.axi.arw.addr #= address
     dut.io.axi.arw.size #= BigInt(0)
@@ -117,7 +131,11 @@ class Axi4SharedOnChipRam1Port4MacrosTest extends AnyFunSuite {
     dut.io.axi.arw.valid #= false
   }
 
-  def readAndCheckWord(dut: Axi4SharedIhpOnChipRam.OnePort4Macros, address: BigInt, data: BigInt) = {
+  def readAndCheckWord(
+      dut: Axi4SharedIhpOnChipRam.OnePort4Macros,
+      address: BigInt,
+      data: BigInt
+  ) = {
     dut.io.axi.arw.valid #= true
     dut.io.axi.arw.addr #= address
     dut.io.axi.arw.size #= BigInt(2)
@@ -140,7 +158,11 @@ class Axi4SharedOnChipRam1Port4MacrosTest extends AnyFunSuite {
     dut.io.axi.r.ready #= false
   }
 
-  def readAndCheckShort(dut: Axi4SharedIhpOnChipRam.OnePort4Macros, address: BigInt, data: BigInt) = {
+  def readAndCheckShort(
+      dut: Axi4SharedIhpOnChipRam.OnePort4Macros,
+      address: BigInt,
+      data: BigInt
+  ) = {
     dut.io.axi.arw.valid #= true
     dut.io.axi.arw.addr #= address
     dut.io.axi.arw.size #= BigInt(1)
@@ -163,7 +185,11 @@ class Axi4SharedOnChipRam1Port4MacrosTest extends AnyFunSuite {
     dut.io.axi.r.valid #= false
   }
 
-  def readAndCheckChar(dut: Axi4SharedIhpOnChipRam.OnePort4Macros, address: BigInt, data: BigInt) = {
+  def readAndCheckChar(
+      dut: Axi4SharedIhpOnChipRam.OnePort4Macros,
+      address: BigInt,
+      data: BigInt
+  ) = {
     dut.io.axi.arw.valid #= true
     dut.io.axi.arw.addr #= address
     dut.io.axi.arw.size #= BigInt(0)

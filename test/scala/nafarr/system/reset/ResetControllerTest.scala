@@ -72,63 +72,157 @@ case class GeneratorResetController(
 
 class ResetControllerTest extends AnyFunSuite {
   test("Apb3ResetControllerParameters") {
-    generationShouldPass(Apb3ResetController(ResetControllerCtrl.Parameter(List(
-      ResetParameter("a", 1)
-    ))))
-    generationShouldPass(Apb3ResetController(ResetControllerCtrl.Parameter(List(
-      ResetParameter("a", 1),
-      ResetParameter("b", 1)
-    ))))
-    generationShouldFail(Apb3ResetController(ResetControllerCtrl.Parameter(List(
-      ResetParameter("a", 0)
-    ))))
-    generationShouldFail(Apb3ResetController(ResetControllerCtrl.Parameter(List(
-      ResetParameter("a", 1),
-      ResetParameter("b", 0)
-    ))))
-    generationShouldFail(Apb3ResetController(ResetControllerCtrl.Parameter(List(
-    ))))
+    generationShouldPass(
+      Apb3ResetController(
+        ResetControllerCtrl.Parameter(
+          List(
+            ResetParameter("a", 1)
+          )
+        )
+      )
+    )
+    generationShouldPass(
+      Apb3ResetController(
+        ResetControllerCtrl.Parameter(
+          List(
+            ResetParameter("a", 1),
+            ResetParameter("b", 1)
+          )
+        )
+      )
+    )
+    generationShouldFail(
+      Apb3ResetController(
+        ResetControllerCtrl.Parameter(
+          List(
+            ResetParameter("a", 0)
+          )
+        )
+      )
+    )
+    generationShouldFail(
+      Apb3ResetController(
+        ResetControllerCtrl.Parameter(
+          List(
+            ResetParameter("a", 1),
+            ResetParameter("b", 0)
+          )
+        )
+      )
+    )
+    generationShouldFail(
+      Apb3ResetController(
+        ResetControllerCtrl.Parameter(
+          List(
+          )
+        )
+      )
+    )
   }
 
   test("TileLinkResetControllerParameters") {
-    generationShouldPass(TileLinkResetController(ResetControllerCtrl.Parameter(List(
-      ResetParameter("a", 1)
-    ))))
-    generationShouldPass(TileLinkResetController(ResetControllerCtrl.Parameter(List(
-      ResetParameter("a", 1),
-      ResetParameter("b", 1)
-    ))))
-    generationShouldFail(TileLinkResetController(ResetControllerCtrl.Parameter(List(
-      ResetParameter("a", 0)
-    ))))
-    generationShouldFail(TileLinkResetController(ResetControllerCtrl.Parameter(List(
-      ResetParameter("a", 1),
-      ResetParameter("b", 0)
-    ))))
-    generationShouldFail(TileLinkResetController(ResetControllerCtrl.Parameter(List(
-    ))))
+    generationShouldPass(
+      TileLinkResetController(
+        ResetControllerCtrl.Parameter(
+          List(
+            ResetParameter("a", 1)
+          )
+        )
+      )
+    )
+    generationShouldPass(
+      TileLinkResetController(
+        ResetControllerCtrl.Parameter(
+          List(
+            ResetParameter("a", 1),
+            ResetParameter("b", 1)
+          )
+        )
+      )
+    )
+    generationShouldFail(
+      TileLinkResetController(
+        ResetControllerCtrl.Parameter(
+          List(
+            ResetParameter("a", 0)
+          )
+        )
+      )
+    )
+    generationShouldFail(
+      TileLinkResetController(
+        ResetControllerCtrl.Parameter(
+          List(
+            ResetParameter("a", 1),
+            ResetParameter("b", 0)
+          )
+        )
+      )
+    )
+    generationShouldFail(
+      TileLinkResetController(
+        ResetControllerCtrl.Parameter(
+          List(
+          )
+        )
+      )
+    )
   }
 
   test("WishboneResetControllerParameters") {
-    generationShouldPass(WishboneResetController(ResetControllerCtrl.Parameter(List(
-      ResetParameter("a", 1)
-    ))))
-    generationShouldPass(WishboneResetController(ResetControllerCtrl.Parameter(List(
-      ResetParameter("a", 1),
-      ResetParameter("b", 1)
-    ))))
-    generationShouldFail(WishboneResetController(ResetControllerCtrl.Parameter(List(
-      ResetParameter("a", 0)
-    ))))
-    generationShouldFail(WishboneResetController(ResetControllerCtrl.Parameter(List(
-      ResetParameter("a", 1),
-      ResetParameter("b", 0)
-    ))))
-    generationShouldFail(WishboneResetController(ResetControllerCtrl.Parameter(List(
-    ))))
+    generationShouldPass(
+      WishboneResetController(
+        ResetControllerCtrl.Parameter(
+          List(
+            ResetParameter("a", 1)
+          )
+        )
+      )
+    )
+    generationShouldPass(
+      WishboneResetController(
+        ResetControllerCtrl.Parameter(
+          List(
+            ResetParameter("a", 1),
+            ResetParameter("b", 1)
+          )
+        )
+      )
+    )
+    generationShouldFail(
+      WishboneResetController(
+        ResetControllerCtrl.Parameter(
+          List(
+            ResetParameter("a", 0)
+          )
+        )
+      )
+    )
+    generationShouldFail(
+      WishboneResetController(
+        ResetControllerCtrl.Parameter(
+          List(
+            ResetParameter("a", 1),
+            ResetParameter("b", 0)
+          )
+        )
+      )
+    )
+    generationShouldFail(
+      WishboneResetController(
+        ResetControllerCtrl.Parameter(
+          List(
+          )
+        )
+      )
+    )
   }
 
-  private def initBase(bus: Apb3, cd: ClockDomain, idCtrlLength: BigInt): (Apb3Driver, ResetControllerCtrl.Regs) = {
+  private def initBase(
+      bus: Apb3,
+      cd: ClockDomain,
+      idCtrlLength: BigInt
+  ): (Apb3Driver, ResetControllerCtrl.Regs) = {
     val apb = new Apb3Driver(bus, cd)
     val regs = ResetControllerCtrl.Regs(idCtrlLength)
     cd.waitFallingEdge()
@@ -176,11 +270,15 @@ class ResetControllerTest extends AnyFunSuite {
     val compiled = SimConfig.withWave.addSimulatorFlag("--x-initial 0").compile {
       val cd = ClockDomain.current.copy(frequency = FixedFrequency(100 MHz))
       val area = new ClockingArea(cd) {
-        val dut = DummyResetController(ResetControllerCtrl.Parameter(List(
-          ResetParameter("a", 8),
-          ResetParameter("b", 16),
-          ResetParameter("c", 32)
-        )))
+        val dut = DummyResetController(
+          ResetControllerCtrl.Parameter(
+            List(
+              ResetParameter("a", 8),
+              ResetParameter("b", 16),
+              ResetParameter("c", 32)
+            )
+          )
+        )
       }
       area.dut
     }
@@ -193,7 +291,7 @@ class ResetControllerTest extends AnyFunSuite {
       IpIdentificationTest.V0.checkVersion(apb, 1, 0, 0)
 
       /* Read domains */
-      SimTest.readField(apb, regs.domains, 7, 0, 3,  "Reset domains")
+      SimTest.readField(apb, regs.domains, 7, 0, 3, "Reset domains")
     }
 
     compiled.doSim("delay") { dut =>
@@ -220,15 +318,27 @@ class ResetControllerTest extends AnyFunSuite {
       }
 
       dut.clockDomain.waitFallingEdge()
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("3", 16), "Only domain a, b should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("3", 16),
+        "Only domain a, b should be active"
+      )
 
       for (_ <- 0 until 16 - 1) {
         dut.clockDomain.waitFallingEdge()
-        SimTest.checkPins(dut.io.resets.toBigInt, BigInt("3", 16), "Only domain a, b should be active")
+        SimTest.checkPins(
+          dut.io.resets.toBigInt,
+          BigInt("3", 16),
+          "Only domain a, b should be active"
+        )
       }
 
       dut.clockDomain.waitFallingEdge()
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
 
       dut.clockDomain.waitFallingEdge(20)
     }
@@ -246,57 +356,105 @@ class ResetControllerTest extends AnyFunSuite {
       dut.clockDomain.waitFallingEdge(36)
 
       dut.clockDomain.waitFallingEdge()
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
 
       apb.write(regs.trigger, BigInt("00000001", 16))
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
       apb.write(regs.acknowledge, BigInt("00000000", 16))
       dut.clockDomain.waitFallingEdge(3)
 
       for (_ <- 0 until 8 - 1) {
         dut.clockDomain.waitFallingEdge()
-        SimTest.checkPins(dut.io.resets.toBigInt, BigInt("6", 16), "Only domain b, c should be active")
+        SimTest.checkPins(
+          dut.io.resets.toBigInt,
+          BigInt("6", 16),
+          "Only domain b, c should be active"
+        )
       }
 
       dut.clockDomain.waitFallingEdge(10)
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
 
       // External triggers
       dut.clockDomain.waitFallingEdge(10)
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
 
       dut.io.trigger #= BigInt("1", 16)
       dut.clockDomain.waitFallingEdge()
       dut.io.trigger #= BigInt("0", 16)
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
       dut.clockDomain.waitFallingEdge(2)
 
       for (_ <- 0 until 8 - 1) {
         dut.clockDomain.waitFallingEdge()
-        SimTest.checkPins(dut.io.resets.toBigInt, BigInt("6", 16), "Only domain b, c should be active")
+        SimTest.checkPins(
+          dut.io.resets.toBigInt,
+          BigInt("6", 16),
+          "Only domain b, c should be active"
+        )
       }
 
       dut.clockDomain.waitFallingEdge()
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
 
       // Disable triggers
       apb.write(regs.enable, BigInt("00000000", 16))
       dut.clockDomain.waitFallingEdge(10)
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
 
       dut.io.trigger #= BigInt("1", 16)
       dut.clockDomain.waitFallingEdge()
       dut.io.trigger #= BigInt("0", 16)
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
       dut.clockDomain.waitFallingEdge(3)
 
       for (_ <- 0 until 8 - 1) {
         dut.clockDomain.waitFallingEdge()
-        SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+        SimTest.checkPins(
+          dut.io.resets.toBigInt,
+          BigInt("7", 16),
+          "Only domain a, b, c should be active"
+        )
       }
 
       dut.clockDomain.waitFallingEdge()
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
 
       dut.clockDomain.waitFallingEdge(10)
     }
@@ -314,57 +472,105 @@ class ResetControllerTest extends AnyFunSuite {
       dut.clockDomain.waitFallingEdge(36)
 
       dut.clockDomain.waitFallingEdge()
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
 
       apb.write(regs.trigger, BigInt("00000002", 16))
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
       apb.write(regs.acknowledge, BigInt("00000000", 16))
       dut.clockDomain.waitFallingEdge(3)
 
       for (_ <- 0 until 16 - 1) {
         dut.clockDomain.waitFallingEdge()
-        SimTest.checkPins(dut.io.resets.toBigInt, BigInt("5", 16), "Only domain a, c should be active")
+        SimTest.checkPins(
+          dut.io.resets.toBigInt,
+          BigInt("5", 16),
+          "Only domain a, c should be active"
+        )
       }
 
       dut.clockDomain.waitFallingEdge(10)
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
 
       // External triggers
       dut.clockDomain.waitFallingEdge(10)
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
 
       dut.io.trigger #= BigInt("2", 16)
       dut.clockDomain.waitFallingEdge()
       dut.io.trigger #= BigInt("0", 16)
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
       dut.clockDomain.waitFallingEdge(2)
 
       for (_ <- 0 until 16 - 1) {
         dut.clockDomain.waitFallingEdge()
-        SimTest.checkPins(dut.io.resets.toBigInt, BigInt("5", 16), "Only domain a, c should be active")
+        SimTest.checkPins(
+          dut.io.resets.toBigInt,
+          BigInt("5", 16),
+          "Only domain a, c should be active"
+        )
       }
 
       dut.clockDomain.waitFallingEdge()
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
 
       // Disable triggers
       apb.write(regs.enable, BigInt("00000000", 16))
       dut.clockDomain.waitFallingEdge(10)
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
 
       dut.io.trigger #= BigInt("2", 16)
       dut.clockDomain.waitFallingEdge()
       dut.io.trigger #= BigInt("0", 16)
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
       dut.clockDomain.waitFallingEdge(3)
 
       for (_ <- 0 until 16 - 1) {
         dut.clockDomain.waitFallingEdge()
-        SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+        SimTest.checkPins(
+          dut.io.resets.toBigInt,
+          BigInt("7", 16),
+          "Only domain a, b, c should be active"
+        )
       }
 
       dut.clockDomain.waitFallingEdge()
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
 
       dut.clockDomain.waitFallingEdge(10)
     }
@@ -382,57 +588,105 @@ class ResetControllerTest extends AnyFunSuite {
       dut.clockDomain.waitFallingEdge(36)
 
       dut.clockDomain.waitFallingEdge()
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
 
       apb.write(regs.trigger, BigInt("00000004", 16))
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
       apb.write(regs.acknowledge, BigInt("00000000", 16))
       dut.clockDomain.waitFallingEdge(3)
 
       for (_ <- 0 until 32 - 1) {
         dut.clockDomain.waitFallingEdge()
-        SimTest.checkPins(dut.io.resets.toBigInt, BigInt("3", 16), "Only domain a, b should be active")
+        SimTest.checkPins(
+          dut.io.resets.toBigInt,
+          BigInt("3", 16),
+          "Only domain a, b should be active"
+        )
       }
 
       dut.clockDomain.waitFallingEdge(10)
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
 
       // External triggers
       dut.clockDomain.waitFallingEdge(10)
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
 
       dut.io.trigger #= BigInt("4", 16)
       dut.clockDomain.waitFallingEdge()
       dut.io.trigger #= BigInt("0", 16)
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
       dut.clockDomain.waitFallingEdge(2)
 
       for (_ <- 0 until 32 - 1) {
         dut.clockDomain.waitFallingEdge()
-        SimTest.checkPins(dut.io.resets.toBigInt, BigInt("3", 16), "Only domain a, b should be active")
+        SimTest.checkPins(
+          dut.io.resets.toBigInt,
+          BigInt("3", 16),
+          "Only domain a, b should be active"
+        )
       }
 
       dut.clockDomain.waitFallingEdge()
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
 
       // Disable triggers
       apb.write(regs.enable, BigInt("00000000", 16))
       dut.clockDomain.waitFallingEdge(10)
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
 
       dut.io.trigger #= BigInt("4", 16)
       dut.clockDomain.waitFallingEdge()
       dut.io.trigger #= BigInt("0", 16)
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
       dut.clockDomain.waitFallingEdge(3)
 
       for (_ <- 0 until 32 - 1) {
         dut.clockDomain.waitFallingEdge()
-        SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+        SimTest.checkPins(
+          dut.io.resets.toBigInt,
+          BigInt("7", 16),
+          "Only domain a, b, c should be active"
+        )
       }
 
       dut.clockDomain.waitFallingEdge()
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
 
       dut.clockDomain.waitFallingEdge(10)
     }
@@ -442,11 +696,15 @@ class ResetControllerTest extends AnyFunSuite {
     val compiled = SimConfig.withWave.addSimulatorFlag("--x-initial 0").compile {
       val cd = ClockDomain.current.copy(frequency = FixedFrequency(100 MHz))
       val area = new ClockingArea(cd) {
-        val dut = GeneratorResetController(ResetControllerCtrl.Parameter(List(
-          ResetParameter("a", 8),
-          ResetParameter("b", 16),
-          ResetParameter("c", 32)
-        )))
+        val dut = GeneratorResetController(
+          ResetControllerCtrl.Parameter(
+            List(
+              ResetParameter("a", 8),
+              ResetParameter("b", 16),
+              ResetParameter("c", 32)
+            )
+          )
+        )
       }
       area.dut
     }
@@ -459,7 +717,7 @@ class ResetControllerTest extends AnyFunSuite {
       IpIdentificationTest.V0.checkVersion(apb, 1, 0, 0)
 
       /* Read domains */
-      SimTest.readField(apb, regs.domains, 7, 0, 3,  "Reset domains")
+      SimTest.readField(apb, regs.domains, 7, 0, 3, "Reset domains")
     }
 
     compiled.doSim("delay") { dut =>
@@ -479,15 +737,27 @@ class ResetControllerTest extends AnyFunSuite {
       }
 
       dut.clockDomain.waitFallingEdge()
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("3", 16), "Only domain a, b should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("3", 16),
+        "Only domain a, b should be active"
+      )
 
       for (_ <- 0 until 16 - 1) {
         dut.clockDomain.waitFallingEdge()
-        SimTest.checkPins(dut.io.resets.toBigInt, BigInt("3", 16), "Only domain a, b should be active")
+        SimTest.checkPins(
+          dut.io.resets.toBigInt,
+          BigInt("3", 16),
+          "Only domain a, b should be active"
+        )
       }
 
       dut.clockDomain.waitFallingEdge()
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
 
       dut.clockDomain.waitFallingEdge(20)
     }
@@ -498,57 +768,105 @@ class ResetControllerTest extends AnyFunSuite {
       dut.clockDomain.waitFallingEdge(36)
 
       dut.clockDomain.waitFallingEdge()
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
 
       apb.write(regs.trigger, BigInt("00000001", 16))
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
       apb.write(regs.acknowledge, BigInt("00000000", 16))
       dut.clockDomain.waitFallingEdge(3)
 
       for (_ <- 0 until 8 - 1) {
         dut.clockDomain.waitFallingEdge()
-        SimTest.checkPins(dut.io.resets.toBigInt, BigInt("6", 16), "Only domain b, c should be active")
+        SimTest.checkPins(
+          dut.io.resets.toBigInt,
+          BigInt("6", 16),
+          "Only domain b, c should be active"
+        )
       }
 
       dut.clockDomain.waitFallingEdge(10)
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
 
       // External triggers
       dut.clockDomain.waitFallingEdge(10)
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
 
       dut.io.trigger #= BigInt("1", 16)
       dut.clockDomain.waitFallingEdge()
       dut.io.trigger #= BigInt("0", 16)
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
       dut.clockDomain.waitFallingEdge(2)
 
       for (_ <- 0 until 8 - 1) {
         dut.clockDomain.waitFallingEdge()
-        SimTest.checkPins(dut.io.resets.toBigInt, BigInt("6", 16), "Only domain b, c should be active")
+        SimTest.checkPins(
+          dut.io.resets.toBigInt,
+          BigInt("6", 16),
+          "Only domain b, c should be active"
+        )
       }
 
       dut.clockDomain.waitFallingEdge()
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
 
       // Disable triggers
       apb.write(regs.enable, BigInt("00000000", 16))
       dut.clockDomain.waitFallingEdge(10)
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
 
       dut.io.trigger #= BigInt("1", 16)
       dut.clockDomain.waitFallingEdge()
       dut.io.trigger #= BigInt("0", 16)
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
       dut.clockDomain.waitFallingEdge(3)
 
       for (_ <- 0 until 8 - 1) {
         dut.clockDomain.waitFallingEdge()
-        SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+        SimTest.checkPins(
+          dut.io.resets.toBigInt,
+          BigInt("7", 16),
+          "Only domain a, b, c should be active"
+        )
       }
 
       dut.clockDomain.waitFallingEdge()
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
 
       dut.clockDomain.waitFallingEdge(10)
     }
@@ -559,57 +877,105 @@ class ResetControllerTest extends AnyFunSuite {
       dut.clockDomain.waitFallingEdge(36)
 
       dut.clockDomain.waitFallingEdge()
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
 
       apb.write(regs.trigger, BigInt("00000002", 16))
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
       apb.write(regs.acknowledge, BigInt("00000000", 16))
       dut.clockDomain.waitFallingEdge(3)
 
       for (_ <- 0 until 16 - 1) {
         dut.clockDomain.waitFallingEdge()
-        SimTest.checkPins(dut.io.resets.toBigInt, BigInt("5", 16), "Only domain a, c should be active")
+        SimTest.checkPins(
+          dut.io.resets.toBigInt,
+          BigInt("5", 16),
+          "Only domain a, c should be active"
+        )
       }
 
       dut.clockDomain.waitFallingEdge(10)
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
 
       // External triggers
       dut.clockDomain.waitFallingEdge(10)
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
 
       dut.io.trigger #= BigInt("2", 16)
       dut.clockDomain.waitFallingEdge()
       dut.io.trigger #= BigInt("0", 16)
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
       dut.clockDomain.waitFallingEdge(2)
 
       for (_ <- 0 until 16 - 1) {
         dut.clockDomain.waitFallingEdge()
-        SimTest.checkPins(dut.io.resets.toBigInt, BigInt("5", 16), "Only domain a, c should be active")
+        SimTest.checkPins(
+          dut.io.resets.toBigInt,
+          BigInt("5", 16),
+          "Only domain a, c should be active"
+        )
       }
 
       dut.clockDomain.waitFallingEdge()
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
 
       // Disable triggers
       apb.write(regs.enable, BigInt("00000000", 16))
       dut.clockDomain.waitFallingEdge(10)
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
 
       dut.io.trigger #= BigInt("2", 16)
       dut.clockDomain.waitFallingEdge()
       dut.io.trigger #= BigInt("0", 16)
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
       dut.clockDomain.waitFallingEdge(3)
 
       for (_ <- 0 until 16 - 1) {
         dut.clockDomain.waitFallingEdge()
-        SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+        SimTest.checkPins(
+          dut.io.resets.toBigInt,
+          BigInt("7", 16),
+          "Only domain a, b, c should be active"
+        )
       }
 
       dut.clockDomain.waitFallingEdge()
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
 
       dut.clockDomain.waitFallingEdge(10)
     }
@@ -620,57 +986,105 @@ class ResetControllerTest extends AnyFunSuite {
       dut.clockDomain.waitFallingEdge(36)
 
       dut.clockDomain.waitFallingEdge()
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
 
       apb.write(regs.trigger, BigInt("00000004", 16))
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
       apb.write(regs.acknowledge, BigInt("00000000", 16))
       dut.clockDomain.waitFallingEdge(3)
 
       for (_ <- 0 until 32 - 1) {
         dut.clockDomain.waitFallingEdge()
-        SimTest.checkPins(dut.io.resets.toBigInt, BigInt("3", 16), "Only domain a, b should be active")
+        SimTest.checkPins(
+          dut.io.resets.toBigInt,
+          BigInt("3", 16),
+          "Only domain a, b should be active"
+        )
       }
 
       dut.clockDomain.waitFallingEdge(10)
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
 
       // External triggers
       dut.clockDomain.waitFallingEdge(10)
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
 
       dut.io.trigger #= BigInt("4", 16)
       dut.clockDomain.waitFallingEdge()
       dut.io.trigger #= BigInt("0", 16)
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
       dut.clockDomain.waitFallingEdge(2)
 
       for (_ <- 0 until 32 - 1) {
         dut.clockDomain.waitFallingEdge()
-        SimTest.checkPins(dut.io.resets.toBigInt, BigInt("3", 16), "Only domain a, b should be active")
+        SimTest.checkPins(
+          dut.io.resets.toBigInt,
+          BigInt("3", 16),
+          "Only domain a, b should be active"
+        )
       }
 
       dut.clockDomain.waitFallingEdge()
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
 
       // Disable triggers
       apb.write(regs.enable, BigInt("00000000", 16))
       dut.clockDomain.waitFallingEdge(10)
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
 
       dut.io.trigger #= BigInt("4", 16)
       dut.clockDomain.waitFallingEdge()
       dut.io.trigger #= BigInt("0", 16)
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
       dut.clockDomain.waitFallingEdge(3)
 
       for (_ <- 0 until 32 - 1) {
         dut.clockDomain.waitFallingEdge()
-        SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+        SimTest.checkPins(
+          dut.io.resets.toBigInt,
+          BigInt("7", 16),
+          "Only domain a, b, c should be active"
+        )
       }
 
       dut.clockDomain.waitFallingEdge()
-      SimTest.checkPins(dut.io.resets.toBigInt, BigInt("7", 16), "Only domain a, b, c should be active")
+      SimTest.checkPins(
+        dut.io.resets.toBigInt,
+        BigInt("7", 16),
+        "Only domain a, b, c should be active"
+      )
 
       dut.clockDomain.waitFallingEdge(10)
     }

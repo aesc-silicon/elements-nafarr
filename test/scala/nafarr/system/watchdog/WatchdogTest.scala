@@ -56,7 +56,8 @@ class WatchdogTest extends AnyFunSuite {
 
   // Small counter widths to keep simulation fast.
   def simParam = WatchdogCtrl.Parameter(width = 4, prescalerWidth = 4, locked = false)
-  def windowedParam = WatchdogCtrl.Parameter(width = 4, prescalerWidth = 4, windowed = true, locked = false)
+  def windowedParam =
+    WatchdogCtrl.Parameter(width = 4, prescalerWidth = 4, windowed = true, locked = false)
 
   def init(dut: Apb3Watchdog): (Apb3Driver, WatchdogCtrl.Regs) = {
     val driver = Apb3Driver(dut.io.bus, dut.clockDomain)
@@ -74,7 +75,13 @@ class WatchdogTest extends AnyFunSuite {
   }
 
   test("Info register") {
-    val p = WatchdogCtrl.Parameter(count = 2, width = 8, prescalerWidth = 10, windowed = true, locked = true)
+    val p = WatchdogCtrl.Parameter(
+      count = 2,
+      width = 8,
+      prescalerWidth = 10,
+      windowed = true,
+      locked = true
+    )
     SimConfig.withWave.compile(Apb3Watchdog(p)).doSim { dut =>
       val (driver, regs) = init(dut)
       SimTest.readField(driver, regs.info, 7, 0, 2, "Count")
@@ -123,35 +130,39 @@ class WatchdogTest extends AnyFunSuite {
   }
 
   test("Lock prevents config change") {
-    SimConfig.withWave.compile(Apb3Watchdog(WatchdogCtrl.Parameter(width = 4, prescalerWidth = 4))).doSim { dut =>
-      val (driver, regs) = init(dut)
-      dut.clockDomain.waitSampling(2)
+    SimConfig.withWave
+      .compile(Apb3Watchdog(WatchdogCtrl.Parameter(width = 4, prescalerWidth = 4)))
+      .doSim { dut =>
+        val (driver, regs) = init(dut)
+        dut.clockDomain.waitSampling(2)
 
-      driver.write(regs.timeout(0), 0xa)
-      driver.write(regs.control(0), 0x3) // enable + lock
-      dut.clockDomain.waitSampling(1)
+        driver.write(regs.timeout(0), 0xa)
+        driver.write(regs.control(0), 0x3) // enable + lock
+        dut.clockDomain.waitSampling(1)
 
-      driver.write(regs.timeout(0), 0x5) // attempt change — must be ignored
-      dut.clockDomain.waitSampling(1)
+        driver.write(regs.timeout(0), 0x5) // attempt change — must be ignored
+        dut.clockDomain.waitSampling(1)
 
-      SimTest.readField(driver, regs.timeout(0), 3, 0, 0xa, "Timeout unchanged after lock")
-      SimTest.readField(driver, regs.status(0), 1, 1, 1, "Lock bit visible in status")
-    }
+        SimTest.readField(driver, regs.timeout(0), 3, 0, 0xa, "Timeout unchanged after lock")
+        SimTest.readField(driver, regs.status(0), 1, 1, 1, "Lock bit visible in status")
+      }
   }
 
   test("Lock prevents disable") {
-    SimConfig.withWave.compile(Apb3Watchdog(WatchdogCtrl.Parameter(width = 4, prescalerWidth = 4))).doSim { dut =>
-      val (driver, regs) = init(dut)
-      dut.clockDomain.waitSampling(2)
+    SimConfig.withWave
+      .compile(Apb3Watchdog(WatchdogCtrl.Parameter(width = 4, prescalerWidth = 4)))
+      .doSim { dut =>
+        val (driver, regs) = init(dut)
+        dut.clockDomain.waitSampling(2)
 
-      driver.write(regs.control(0), 0x3) // enable + lock
-      dut.clockDomain.waitSampling(1)
+        driver.write(regs.control(0), 0x3) // enable + lock
+        dut.clockDomain.waitSampling(1)
 
-      driver.write(regs.control(0), 0x0) // attempt disable — must be ignored
-      dut.clockDomain.waitSampling(1)
+        driver.write(regs.control(0), 0x0) // attempt disable — must be ignored
+        dut.clockDomain.waitSampling(1)
 
-      SimTest.readField(driver, regs.status(0), 0, 0, 1, "Watchdog still enabled after lock")
-    }
+        SimTest.readField(driver, regs.status(0), 0, 0, 1, "Watchdog still enabled after lock")
+      }
   }
 
   test("Windowed - valid kick resets counter") {
@@ -192,7 +203,8 @@ class WatchdogTest extends AnyFunSuite {
       driver.write(regs.kick(0), 1) // early kick — violation
       dut.clockDomain.waitSampling(2)
 
-      SimTest.readField(driver, regs.irqPending(0), 2, 2, 1, "Violation IRQ pending after early kick")
+      SimTest
+        .readField(driver, regs.irqPending(0), 2, 2, 1, "Violation IRQ pending after early kick")
       assert(dut.io.interrupt.toBoolean, "Combined interrupt asserted on violation")
     }
   }

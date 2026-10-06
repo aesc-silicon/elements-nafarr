@@ -4,7 +4,6 @@
 
 package nafarr.memory.ocram.ihp
 
-
 import org.scalatest.funsuite.AnyFunSuite
 
 import spinal.sim._
@@ -28,7 +27,7 @@ class BmbOnChipRam1Port4MacroTest extends AnyFunSuite {
     dut.io.bus.cmd.valid #= true
     dut.io.bus.cmd.address #= address
     dut.io.bus.cmd.data #= data
-    dut.io.bus.cmd.mask #= 0xF
+    dut.io.bus.cmd.mask #= 0xf
     dut.io.bus.cmd.opcode #= Bmb.Cmd.Opcode.WRITE
     dut.clockDomain.waitSamplingWhere(dut.io.bus.cmd.ready.toBoolean)
     dut.io.bus.cmd.valid #= false
@@ -61,7 +60,7 @@ class BmbOnChipRam1Port4MacroTest extends AnyFunSuite {
     dut.io.bus.cmd.valid #= true
     dut.io.bus.cmd.address #= address
     dut.io.bus.cmd.opcode #= Bmb.Cmd.Opcode.READ
-    dut.io.bus.cmd.mask #= 0xF
+    dut.io.bus.cmd.mask #= 0xf
     dut.clockDomain.waitSamplingWhere(dut.io.bus.cmd.ready.toBoolean)
     dut.io.bus.cmd.valid #= false
     dut.clockDomain.waitSamplingWhere(dut.io.bus.rsp.valid.toBoolean)

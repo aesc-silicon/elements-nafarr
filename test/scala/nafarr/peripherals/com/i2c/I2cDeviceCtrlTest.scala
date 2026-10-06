@@ -11,14 +11,13 @@ import spinal.core._
 import spinal.core.sim._
 import nafarr.CheckTester._
 
-
 class I2cDeviceCtrlTest extends AnyFunSuite {
   def genCore(parameter: I2cDeviceCtrl.Parameter) = {
-      val cd = ClockDomain.current.copy(frequency = FixedFrequency(100 MHz))
-      val area = new ClockingArea(cd) {
-        val dut = I2cDeviceCtrl(parameter)
-      }
-      area.dut
+    val cd = ClockDomain.current.copy(frequency = FixedFrequency(100 MHz))
+    val area = new ClockingArea(cd) {
+      val dut = I2cDeviceCtrl(parameter)
+    }
+    area.dut
   }
 
   test("parameters") {
@@ -76,8 +75,13 @@ class I2cDeviceCtrlTest extends AnyFunSuite {
       val start = I2cControllerSim.start(dut.io.i2c.sda, dut.io.i2c.scl, tickPeriod)
       start.join()
 
-      val addr = I2cControllerSim.address(dut.io.i2c.sda, dut.io.i2c.scl, tickPeriod,
-                                          BigInt("0000110", 2), false)
+      val addr = I2cControllerSim.address(
+        dut.io.i2c.sda,
+        dut.io.i2c.scl,
+        tickPeriod,
+        BigInt("0000110", 2),
+        false
+      )
       addr.join()
 
       val addrNack = I2cControllerSim.checkNack(dut.io.i2c.sda, dut.io.i2c.scl, tickPeriod)
@@ -122,8 +126,13 @@ class I2cDeviceCtrlTest extends AnyFunSuite {
       val start = I2cControllerSim.start(dut.io.i2c.sda, dut.io.i2c.scl, tickPeriod)
       start.join()
 
-      val addr = I2cControllerSim.address(dut.io.i2c.sda, dut.io.i2c.scl, tickPeriod,
-                                          BigInt("0000110", 2), false)
+      val addr = I2cControllerSim.address(
+        dut.io.i2c.sda,
+        dut.io.i2c.scl,
+        tickPeriod,
+        BigInt("0000110", 2),
+        false
+      )
       addr.join()
 
       val addrNack = I2cControllerSim.checkNack(dut.io.i2c.sda, dut.io.i2c.scl, tickPeriod)
@@ -166,38 +175,52 @@ class I2cDeviceCtrlTest extends AnyFunSuite {
       val start = I2cControllerSim.start(dut.io.i2c.sda, dut.io.i2c.scl, tickPeriod)
       start.join()
 
-      val addr = I2cControllerSim.writeByte(dut.io.i2c.sda, dut.io.i2c.scl, tickPeriod,
-                                            BigInt("00000110", 2))
+      val addr = I2cControllerSim.writeByte(
+        dut.io.i2c.sda,
+        dut.io.i2c.scl,
+        tickPeriod,
+        BigInt("00000110", 2)
+      )
       addr.join()
 
       val addrAck = I2cControllerSim.checkAck(dut.io.i2c.sda, dut.io.i2c.scl, tickPeriod)
       addrAck.join()
       assert(dut.io.cmd.payload.read.toBoolean == false, "Payload should be WRITE, but is READ")
 
-      val reg = I2cControllerSim.writeByte(dut.io.i2c.sda, dut.io.i2c.scl, tickPeriod,
-                                           BigInt("10000000", 2))
+      val reg = I2cControllerSim.writeByte(
+        dut.io.i2c.sda,
+        dut.io.i2c.scl,
+        tickPeriod,
+        BigInt("10000000", 2)
+      )
       reg.join()
 
       val regAck = I2cControllerSim.checkAck(dut.io.i2c.sda, dut.io.i2c.scl, tickPeriod)
       sleep(100 * 1000)
-      assert(dut.io.cmd.payload.data.toBigInt == BigInt("00000001", 2),
-        s"Expected ${BigInt("00000001", 2)} but received ${dut.io.cmd.payload.data.toBigInt}")
-      assert(dut.io.cmd.payload.reg.toBoolean ==true, "Payload should be register, but is data")
+      assert(
+        dut.io.cmd.payload.data.toBigInt == BigInt("00000001", 2),
+        s"Expected ${BigInt("00000001", 2)} but received ${dut.io.cmd.payload.data.toBigInt}"
+      )
+      assert(dut.io.cmd.payload.reg.toBoolean == true, "Payload should be register, but is data")
       regAck.join()
 
       val start2 = I2cControllerSim.start(dut.io.i2c.sda, dut.io.i2c.scl, tickPeriod)
       start2.join()
 
-      val addr2 = I2cControllerSim.writeByte(dut.io.i2c.sda, dut.io.i2c.scl, tickPeriod,
-                                            BigInt("10000110", 2))
+      val addr2 = I2cControllerSim.writeByte(
+        dut.io.i2c.sda,
+        dut.io.i2c.scl,
+        tickPeriod,
+        BigInt("10000110", 2)
+      )
       addr2.join()
 
       val addr2Ack = I2cControllerSim.checkAck(dut.io.i2c.sda, dut.io.i2c.scl, tickPeriod)
       addr2Ack.join()
       assert(dut.io.cmd.payload.read.toBoolean == true, "Payload should be READ, but is WRITE")
 
-      val read = I2cControllerSim.readByte(dut.io.i2c.sda, dut.io.i2c.scl, tickPeriod,
-                                           BigInt("10101001", 2))
+      val read =
+        I2cControllerSim.readByte(dut.io.i2c.sda, dut.io.i2c.scl, tickPeriod, BigInt("10101001", 2))
       read.join()
 
       val readAck = I2cControllerSim.sendAck(dut.io.i2c.sda, dut.io.i2c.scl, tickPeriod)
@@ -243,33 +266,49 @@ class I2cDeviceCtrlTest extends AnyFunSuite {
       val start = I2cControllerSim.start(dut.io.i2c.sda, dut.io.i2c.scl, tickPeriod)
       start.join()
 
-      val addr = I2cControllerSim.writeByte(dut.io.i2c.sda, dut.io.i2c.scl, tickPeriod,
-                                            BigInt("00000110", 2))
+      val addr = I2cControllerSim.writeByte(
+        dut.io.i2c.sda,
+        dut.io.i2c.scl,
+        tickPeriod,
+        BigInt("00000110", 2)
+      )
       addr.join()
 
       val addrAck = I2cControllerSim.checkAck(dut.io.i2c.sda, dut.io.i2c.scl, tickPeriod)
       addrAck.join()
 
-      val reg = I2cControllerSim.writeByte(dut.io.i2c.sda, dut.io.i2c.scl, tickPeriod,
-                                           BigInt("10000000", 2))
+      val reg = I2cControllerSim.writeByte(
+        dut.io.i2c.sda,
+        dut.io.i2c.scl,
+        tickPeriod,
+        BigInt("10000000", 2)
+      )
       reg.join()
 
       val regAck = I2cControllerSim.checkAck(dut.io.i2c.sda, dut.io.i2c.scl, tickPeriod)
       sleep(100 * 1000)
-      assert(dut.io.cmd.payload.data.toBigInt == BigInt("00000001", 2),
-        s"Expected ${BigInt("00000001", 2)} but received ${dut.io.cmd.payload.data.toBigInt}")
+      assert(
+        dut.io.cmd.payload.data.toBigInt == BigInt("00000001", 2),
+        s"Expected ${BigInt("00000001", 2)} but received ${dut.io.cmd.payload.data.toBigInt}"
+      )
       assert(dut.io.cmd.payload.read.toBoolean == false, "Payload should be WRITE, but is READ")
       assert(dut.io.cmd.payload.reg.toBoolean == true, "Payload should be register, but is data")
       regAck.join()
 
-      val write = I2cControllerSim.writeByte(dut.io.i2c.sda, dut.io.i2c.scl, tickPeriod,
-                                           BigInt("01010110", 2))
+      val write = I2cControllerSim.writeByte(
+        dut.io.i2c.sda,
+        dut.io.i2c.scl,
+        tickPeriod,
+        BigInt("01010110", 2)
+      )
       write.join()
 
       val writeAck = I2cControllerSim.checkAck(dut.io.i2c.sda, dut.io.i2c.scl, tickPeriod)
       writeAck.join()
-      assert(dut.io.cmd.payload.data.toBigInt == BigInt("01101010", 2),
-        s"Expected ${BigInt("01101010", 2)} but received ${dut.io.cmd.payload.data.toBigInt}")
+      assert(
+        dut.io.cmd.payload.data.toBigInt == BigInt("01101010", 2),
+        s"Expected ${BigInt("01101010", 2)} but received ${dut.io.cmd.payload.data.toBigInt}"
+      )
       assert(dut.io.cmd.payload.read.toBoolean == false, "Payload should be WRITE, but is READ")
       assert(dut.io.cmd.payload.reg.toBoolean == false, "Payload should be data, but is register")
 

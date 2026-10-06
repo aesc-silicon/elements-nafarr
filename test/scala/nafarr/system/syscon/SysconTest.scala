@@ -22,11 +22,11 @@ import nafarr.{Vendor, Platform, PlatformClass, Product, Feature}
 class SysconTest extends AnyFunSuite {
 
   def baseParam = Syscon.Parameter(
-    vendor       = Vendor.AescSilicon,
-    platform     = Platform.Hydrogen,
+    vendor = Vendor.AescSilicon,
+    platform = Platform.Hydrogen,
     platformClass = PlatformClass.NonMetal,
-    product      = Product.ElemRV,
-    refClockHz   = 24000000L
+    product = Product.ElemRV,
+    refClockHz = 24000000L
   )
 
   test("Apb3Parameter") {
@@ -56,7 +56,8 @@ class SysconTest extends AnyFunSuite {
   }
 
   test("IpIdentification") {
-    SimConfig.withWave.compile(Apb3Syscon(baseParam))
+    SimConfig.withWave
+      .compile(Apb3Syscon(baseParam))
       .doSim("IpIdentification") { dut =>
         val (driver, _) = init(dut)
         IpIdentificationTest.V0.checkApi(driver, IpIdentification.Ids.Syscon)
@@ -66,16 +67,17 @@ class SysconTest extends AnyFunSuite {
 
   test("Identity register") {
     val p = baseParam.copy(
-      vendor = Vendor.AescSilicon,  // ordinal 0
-      platform = Platform.Carbon,  // ordinal 1
-      platformClass = PlatformClass.NonMetal,  // ordinal 0
-      product = Product.ElemRV  // ordinal 0
+      vendor = Vendor.AescSilicon, // ordinal 0
+      platform = Platform.Carbon, // ordinal 1
+      platformClass = PlatformClass.NonMetal, // ordinal 0
+      product = Product.ElemRV // ordinal 0
     )
-    SimConfig.withWave.compile(Apb3Syscon(p))
+    SimConfig.withWave
+      .compile(Apb3Syscon(p))
       .doSim("IdentityRegister") { dut =>
         val (driver, regs) = init(dut)
-        SimTest.readField(driver, regs.identity,  7,  0, 0, "vendor=AescSilicon")
-        SimTest.readField(driver, regs.identity, 15,  8, 1, "platform=Carbon")
+        SimTest.readField(driver, regs.identity, 7, 0, 0, "vendor=AescSilicon")
+        SimTest.readField(driver, regs.identity, 15, 8, 1, "platform=Carbon")
         SimTest.readField(driver, regs.identity, 23, 16, 0, "product=ElemRV")
         SimTest.readField(driver, regs.identity, 31, 24, 0, "platformClass=NonMetal")
       }
@@ -83,7 +85,8 @@ class SysconTest extends AnyFunSuite {
 
   test("Silicon revision registers") {
     val p = baseParam.copy(siliconMajor = 2, siliconMinor = 5)
-    SimConfig.withWave.compile(Apb3Syscon(p))
+    SimConfig.withWave
+      .compile(Apb3Syscon(p))
       .doSim("SiliconRevision") { dut =>
         val (driver, regs) = init(dut)
         SimTest.readField(driver, regs.siliconRev, 31, 16, 2, "siliconMajor=2")
@@ -95,9 +98,10 @@ class SysconTest extends AnyFunSuite {
     // Uart=ordinal 2, Gpio=ordinal 3, Watchdog=ordinal 14
     val p = baseParam.copy(features = List(Feature.Uart, Feature.Gpio, Feature.Watchdog))
     val expectedMask = (1 << Feature.Uart.position) |
-                       (1 << Feature.Gpio.position) |
-                       (1 << Feature.Watchdog.position)
-    SimConfig.withWave.compile(Apb3Syscon(p))
+      (1 << Feature.Gpio.position) |
+      (1 << Feature.Watchdog.position)
+    SimConfig.withWave
+      .compile(Apb3Syscon(p))
       .doSim("FeaturesRegister") { dut =>
         val (driver, regs) = init(dut)
         SimTest.readField(driver, regs.featureInfo, 7, 0, regs.featureRegCount, "featureRegCount")
@@ -106,7 +110,8 @@ class SysconTest extends AnyFunSuite {
   }
 
   test("Features register - empty") {
-    SimConfig.withWave.compile(Apb3Syscon(baseParam))
+    SimConfig.withWave
+      .compile(Apb3Syscon(baseParam))
       .doSim("FeaturesEmpty") { dut =>
         val (driver, regs) = init(dut)
         SimTest.readField(driver, regs.featureInfo, 7, 0, regs.featureRegCount, "featureRegCount")
@@ -116,7 +121,8 @@ class SysconTest extends AnyFunSuite {
 
   test("RefClock register") {
     val p = baseParam.copy(refClockHz = 48000000L)
-    SimConfig.withWave.compile(Apb3Syscon(p))
+    SimConfig.withWave
+      .compile(Apb3Syscon(p))
       .doSim("RefClockRegister") { dut =>
         val (driver, regs) = init(dut)
         SimTest.read(driver, regs.refClock, 48000000L, "refClockHz=48MHz")
@@ -126,7 +132,8 @@ class SysconTest extends AnyFunSuite {
   test("BuildDate register") {
     val ts = 1748000000L
     val p = baseParam.copy(buildDate = ts)
-    SimConfig.withWave.compile(Apb3Syscon(p))
+    SimConfig.withWave
+      .compile(Apb3Syscon(p))
       .doSim("BuildDateRegister") { dut =>
         val (driver, regs) = init(dut)
         SimTest.read(driver, regs.buildDate, ts, "buildDate timestamp")

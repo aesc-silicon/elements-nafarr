@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-DRIVERS  := clock crc32 esm gpio mailbox mtimer pinmux pio plic prng pwm reset semaphore syscon timer uart watchdog
+DRIVERS  := clock crc32 esm gpio mailbox mtimer pinmux pio plic prng pwm reset semaphore syscon timer tsetlin uart watchdog
 CC       := gcc
 CFLAGS   := -Wall -Werror -I../../software/include
 SRCDIR   := ../../software/driver

@@ -14,7 +14,6 @@ import spinal.lib._
 import spinal.lib.bus.amba3.apb.sim.Apb3Driver
 import nafarr.system.dma.DmaHandshakeSim
 
-
 class I2cControllerTest extends AnyFunSuite {
   def genCore[T <: spinal.core.Data with IMasterSlave](
       parameter: I2cControllerCtrl.Parameter,
@@ -51,11 +50,18 @@ class I2cControllerTest extends AnyFunSuite {
       )
       genCore(parameter, Apb3I2cController(_))
     }
-    generationShouldFail(genCore(I2cControllerCtrl.Parameter(io = I2c.Parameter(0), clockDividerWidth = 0), Apb3I2cController(_)))
+    generationShouldFail(
+      genCore(
+        I2cControllerCtrl.Parameter(io = I2c.Parameter(0), clockDividerWidth = 0),
+        Apb3I2cController(_)
+      )
+    )
   }
 
   test("TileLinkI2cControllerParameters") {
-    generationShouldPass(genCore(I2cControllerCtrl.Parameter.lightweight(), TileLinkI2cController(_)))
+    generationShouldPass(
+      genCore(I2cControllerCtrl.Parameter.lightweight(), TileLinkI2cController(_))
+    )
     generationShouldPass(genCore(I2cControllerCtrl.Parameter.default(), TileLinkI2cController(_)))
     generationShouldPass(genCore(I2cControllerCtrl.Parameter.full(), TileLinkI2cController(_)))
     generationShouldPass(genCore(I2cControllerCtrl.Parameter.full(1), TileLinkI2cController(_)))
@@ -78,11 +84,18 @@ class I2cControllerTest extends AnyFunSuite {
       )
       genCore(parameter, TileLinkI2cController(_))
     }
-    generationShouldFail(genCore(I2cControllerCtrl.Parameter(io = I2c.Parameter(0), clockDividerWidth = 0), TileLinkI2cController(_)))
+    generationShouldFail(
+      genCore(
+        I2cControllerCtrl.Parameter(io = I2c.Parameter(0), clockDividerWidth = 0),
+        TileLinkI2cController(_)
+      )
+    )
   }
 
   test("WishboneI2cControllerParameters") {
-    generationShouldPass(genCore(I2cControllerCtrl.Parameter.lightweight(), WishboneI2cController(_)))
+    generationShouldPass(
+      genCore(I2cControllerCtrl.Parameter.lightweight(), WishboneI2cController(_))
+    )
     generationShouldPass(genCore(I2cControllerCtrl.Parameter.default(), WishboneI2cController(_)))
     generationShouldPass(genCore(I2cControllerCtrl.Parameter.full(), WishboneI2cController(_)))
     generationShouldPass(genCore(I2cControllerCtrl.Parameter.full(1), WishboneI2cController(_)))
@@ -105,11 +118,18 @@ class I2cControllerTest extends AnyFunSuite {
       )
       genCore(parameter, WishboneI2cController(_))
     }
-    generationShouldFail(genCore(I2cControllerCtrl.Parameter(io = I2c.Parameter(0), clockDividerWidth = 0), WishboneI2cController(_)))
+    generationShouldFail(
+      genCore(
+        I2cControllerCtrl.Parameter(io = I2c.Parameter(0), clockDividerWidth = 0),
+        WishboneI2cController(_)
+      )
+    )
   }
 
   test("basic") {
-    val compiled = SimConfig.withWave.compile(genCore(I2cControllerCtrl.Parameter.default(), Apb3I2cController(_)))
+    val compiled = SimConfig.withWave.compile(
+      genCore(I2cControllerCtrl.Parameter.default(), Apb3I2cController(_))
+    )
 
     compiled.doSim("basicRegisters") { dut =>
       DmaHandshakeSim.release(dut.io.dmaRequest)

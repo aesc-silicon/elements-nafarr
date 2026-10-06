@@ -59,7 +59,8 @@ class EsmTest extends AnyFunSuite {
   }
 
   test("IpIdentification") {
-    SimConfig.withWave.compile(Apb3Esm(EsmCtrl.Parameter.default(1)))
+    SimConfig.withWave
+      .compile(Apb3Esm(EsmCtrl.Parameter.default(1)))
       .doSim("IpIdentification") { dut =>
         val (driver, _) = init(dut)
         IpIdentificationTest.V0.checkApi(driver, IpIdentification.Ids.Esm)
@@ -69,7 +70,8 @@ class EsmTest extends AnyFunSuite {
 
   test("Info register") {
     val p = EsmCtrl.Parameter(inputCount = 8, counterWidth = 10, locked = true)
-    SimConfig.withWave.compile(Apb3Esm(p))
+    SimConfig.withWave
+      .compile(Apb3Esm(p))
       .doSim("InfoRegister") { dut =>
         val (driver, regs) = init(dut)
         SimTest.readField(driver, regs.info, 8, 0, 8, "InputCount")
@@ -80,13 +82,14 @@ class EsmTest extends AnyFunSuite {
   }
 
   test("INFO level - pending and interrupt") {
-    SimConfig.withWave.compile(Apb3Esm(simParam))
+    SimConfig.withWave
+      .compile(Apb3Esm(simParam))
       .doSim("INFO_pending") { dut =>
         val (driver, regs) = init(dut)
         dut.clockDomain.waitSampling(2)
 
         driver.write(regs.control, 0x1)
-        driver.write(regs.enable(0), 0x01)        // input 0 → INFO (bit 0)
+        driver.write(regs.enable(0), 0x01) // input 0 → INFO (bit 0)
 
         dut.io.inputs #= 1
         dut.clockDomain.waitSampling(4)
@@ -100,7 +103,7 @@ class EsmTest extends AnyFunSuite {
         SimTest.readField(driver, regs.pending(0), 0, 0, 1, "INFO pending after input")
         assert(dut.io.infoInterrupt.toBoolean, "infoInterrupt asserted")
 
-        driver.write(regs.pending(0), 0x01)       // W1C INFO bit 0
+        driver.write(regs.pending(0), 0x01) // W1C INFO bit 0
         dut.clockDomain.waitSampling(2)
 
         SimTest.readField(driver, regs.pending(0), 0, 0, 0, "INFO pending cleared")
@@ -108,13 +111,14 @@ class EsmTest extends AnyFunSuite {
   }
 
   test("WARN level - pending and interrupt") {
-    SimConfig.withWave.compile(Apb3Esm(simParam))
+    SimConfig.withWave
+      .compile(Apb3Esm(simParam))
       .doSim("WARN_pending") { dut =>
         val (driver, regs) = init(dut)
         dut.clockDomain.waitSampling(2)
 
         driver.write(regs.control, 0x1)
-        driver.write(regs.enable(0), 0x0200)      // input 1 → WARN (bit 9)
+        driver.write(regs.enable(0), 0x0200) // input 1 → WARN (bit 9)
 
         dut.io.inputs #= 2
         dut.clockDomain.waitSampling(4)
@@ -128,20 +132,21 @@ class EsmTest extends AnyFunSuite {
         SimTest.readField(driver, regs.pending(0), 9, 9, 1, "WARN pending after input")
         assert(dut.io.warnInterrupt.toBoolean, "warnInterrupt asserted")
 
-        driver.write(regs.pending(0), 0x200)      // W1C WARN bit 9
+        driver.write(regs.pending(0), 0x200) // W1C WARN bit 9
         dut.clockDomain.waitSampling(2)
         SimTest.readField(driver, regs.pending(0), 9, 9, 0, "WARN pending cleared")
       }
   }
 
   test("FATAL level - errorSignal immediate") {
-    SimConfig.withWave.compile(Apb3Esm(simParam))
+    SimConfig.withWave
+      .compile(Apb3Esm(simParam))
       .doSim("FATAL_immediate") { dut =>
         val (driver, regs) = init(dut)
         dut.clockDomain.waitSampling(2)
 
         driver.write(regs.control, 0x1)
-        driver.write(regs.enable(0), 0x01000000)  // input 0 → FATAL (bit 24)
+        driver.write(regs.enable(0), 0x01000000) // input 0 → FATAL (bit 24)
 
         dut.io.inputs #= 1
         dut.clockDomain.waitSampling(4)
@@ -153,14 +158,15 @@ class EsmTest extends AnyFunSuite {
   }
 
   test("ERROR level - errorSignal after counter") {
-    SimConfig.withWave.compile(Apb3Esm(simParam))
+    SimConfig.withWave
+      .compile(Apb3Esm(simParam))
       .doSim("ERROR_counter") { dut =>
         val (driver, regs) = init(dut)
         dut.clockDomain.waitSampling(2)
 
         // counter=3: expires after 4 ticks
         driver.write(regs.errorCounter, 3)
-        driver.write(regs.enable(0), 0x00010000)  // input 0 → ERROR (bit 16)
+        driver.write(regs.enable(0), 0x00010000) // input 0 → ERROR (bit 16)
         driver.write(regs.control, 0x1)
 
         dut.io.inputs #= 1
@@ -177,13 +183,14 @@ class EsmTest extends AnyFunSuite {
   }
 
   test("ERROR level - clear before counter expires prevents errorSignal") {
-    SimConfig.withWave.compile(Apb3Esm(simParam))
+    SimConfig.withWave
+      .compile(Apb3Esm(simParam))
       .doSim("ERROR_early_clear") { dut =>
         val (driver, regs) = init(dut)
         dut.clockDomain.waitSampling(2)
 
         driver.write(regs.errorCounter, 15)
-        driver.write(regs.enable(0), 0x00010000)  // input 0 → ERROR
+        driver.write(regs.enable(0), 0x00010000) // input 0 → ERROR
         driver.write(regs.control, 0x1)
 
         dut.io.inputs #= 1
@@ -200,13 +207,14 @@ class EsmTest extends AnyFunSuite {
   }
 
   test("Multi-level routing - same input feeds INFO and WARN") {
-    SimConfig.withWave.compile(Apb3Esm(simParam))
+    SimConfig.withWave
+      .compile(Apb3Esm(simParam))
       .doSim("multi_level") { dut =>
         val (driver, regs) = init(dut)
         dut.clockDomain.waitSampling(2)
 
         driver.write(regs.control, 0x1)
-        driver.write(regs.enable(0), 0x0101)      // input 0 → INFO (bit 0) and WARN (bit 8)
+        driver.write(regs.enable(0), 0x0101) // input 0 → INFO (bit 0) and WARN (bit 8)
 
         dut.io.inputs #= 1
         dut.clockDomain.waitSampling(4)
@@ -219,56 +227,66 @@ class EsmTest extends AnyFunSuite {
   }
 
   test("Inject - event without hardware input") {
-    SimConfig.withWave.compile(Apb3Esm(simParam))
+    SimConfig.withWave
+      .compile(Apb3Esm(simParam))
       .doSim("inject") { dut =>
         val (driver, regs) = init(dut)
         dut.clockDomain.waitSampling(2)
 
-        driver.write(regs.control, 0x5)           // enable + injectEnable
-        driver.write(regs.enable(0), 0x02)        // input 1 → INFO (bit 1)
-        driver.write(regs.inject(0), 0x02)        // inject input 1; no hardware input
+        driver.write(regs.control, 0x5) // enable + injectEnable
+        driver.write(regs.enable(0), 0x02) // input 1 → INFO (bit 1)
+        driver.write(regs.inject(0), 0x02) // inject input 1; no hardware input
         dut.clockDomain.waitSampling(4)
 
         SimTest.readField(driver, regs.pending(0), 1, 1, 1, "INFO pending from inject")
         assert(dut.io.infoInterrupt.toBoolean, "infoInterrupt via inject")
 
-        driver.write(regs.control, 0x1)           // disable inject
+        driver.write(regs.control, 0x1) // disable inject
         dut.clockDomain.waitSampling(2)
-        SimTest.readField(driver, regs.pending(0), 1, 1, 1, "INFO pending latched after inject disable")
+        SimTest.readField(
+          driver,
+          regs.pending(0),
+          1,
+          1,
+          1,
+          "INFO pending latched after inject disable"
+        )
       }
   }
 
   test("Lock - freezes ERROR/FATAL enable and clears injectEnable") {
     val lockParam = EsmCtrl.Parameter(inputCount = 4, counterWidth = 4)
-    SimConfig.withWave.compile(Apb3Esm(lockParam))
+    SimConfig.withWave
+      .compile(Apb3Esm(lockParam))
       .doSim("lock") { dut =>
         val (driver, regs) = init(dut)
         dut.clockDomain.waitSampling(2)
 
-        driver.write(regs.enable(0), 0x000f0000)  // inputs 0-3 → ERROR (bits [19:16])
-        driver.write(regs.control, 0x5)           // enable + injectEnable
+        driver.write(regs.enable(0), 0x000f0000) // inputs 0-3 → ERROR (bits [19:16])
+        driver.write(regs.control, 0x5) // enable + injectEnable
         dut.clockDomain.waitSampling(1)
         SimTest.readField(driver, regs.control, 2, 2, 1, "injectEnable set before lock")
 
-        driver.write(regs.control, 0x3)           // enable + lock
+        driver.write(regs.control, 0x3) // enable + lock
         dut.clockDomain.waitSampling(1)
 
         SimTest.readField(driver, regs.control, 1, 1, 1, "lock bit set")
         SimTest.readField(driver, regs.control, 2, 2, 0, "injectEnable cleared by lock")
 
-        driver.write(regs.enable(0), 0x0)         // attempt to clear all — ERROR/FATAL must be ignored
+        driver.write(regs.enable(0), 0x0) // attempt to clear all — ERROR/FATAL must be ignored
         dut.clockDomain.waitSampling(1)
         SimTest.readField(driver, regs.enable(0), 19, 16, 0xf, "errorEnable unchanged after lock")
       }
   }
 
   test("Master enable gates pending capture") {
-    SimConfig.withWave.compile(Apb3Esm(simParam))
+    SimConfig.withWave
+      .compile(Apb3Esm(simParam))
       .doSim("master_enable") { dut =>
         val (driver, regs) = init(dut)
         dut.clockDomain.waitSampling(2)
 
-        driver.write(regs.enable(0), 0x01)        // input 0 → INFO
+        driver.write(regs.enable(0), 0x01) // input 0 → INFO
         dut.io.inputs #= 1
         dut.clockDomain.waitSampling(4)
 

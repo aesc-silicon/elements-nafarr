@@ -20,81 +20,111 @@ import scala.collection.mutable.ArrayBuffer
 
 class PinmuxTest extends AnyFunSuite {
   test("Apb3GpioParameters") {
-    generationShouldPass(Apb3Pinmux(
-      PinmuxCtrl.Parameter(Pinmux.Parameter(12), 24, 2),
-      (0 until 12).map(i => (i, List(i * 2, i * 2 + 1))).to[ArrayBuffer]
-    ))
+    generationShouldPass(
+      Apb3Pinmux(
+        PinmuxCtrl.Parameter(Pinmux.Parameter(12), 24, 2),
+        (0 until 12).map(i => (i, List(i * 2, i * 2 + 1))).to[ArrayBuffer]
+      )
+    )
 
-    generationShouldPass(Apb3Pinmux(
-      PinmuxCtrl.Parameter(Pinmux.Parameter(12), 36, 3),
-      (0 until 12).map(i => (i, List(i * 3, i * 3 + 1, i * 3 + 2))).to[ArrayBuffer]
-    ))
+    generationShouldPass(
+      Apb3Pinmux(
+        PinmuxCtrl.Parameter(Pinmux.Parameter(12), 36, 3),
+        (0 until 12).map(i => (i, List(i * 3, i * 3 + 1, i * 3 + 2))).to[ArrayBuffer]
+      )
+    )
 
-    generationShouldPass(Apb3Pinmux(
-      PinmuxCtrl.Parameter(Pinmux.Parameter(12), 48, 4),
-      (0 until 12).map(i => (i, List(i * 4, i * 4 + 1, i * 4 + 2, i * 4 + 3))).to[ArrayBuffer]
-    ))
+    generationShouldPass(
+      Apb3Pinmux(
+        PinmuxCtrl.Parameter(Pinmux.Parameter(12), 48, 4),
+        (0 until 12).map(i => (i, List(i * 4, i * 4 + 1, i * 4 + 2, i * 4 + 3))).to[ArrayBuffer]
+      )
+    )
 
-    generationShouldPass(Apb3Pinmux(
-      PinmuxCtrl.Parameter(Pinmux.Parameter(255), 510, 2),
-      (0 until 255).map(i => (i, List(i * 2, i * 2 + 1))).to[ArrayBuffer]
-    ))
-    generationShouldFail(Apb3Pinmux(
-      PinmuxCtrl.Parameter(Pinmux.Parameter(256), 512, 2),
-      (0 until 256).map(i => (i, List(i * 2, i * 2 + 1))).to[ArrayBuffer]
-    ))
+    generationShouldPass(
+      Apb3Pinmux(
+        PinmuxCtrl.Parameter(Pinmux.Parameter(255), 510, 2),
+        (0 until 255).map(i => (i, List(i * 2, i * 2 + 1))).to[ArrayBuffer]
+      )
+    )
+    generationShouldFail(
+      Apb3Pinmux(
+        PinmuxCtrl.Parameter(Pinmux.Parameter(256), 512, 2),
+        (0 until 256).map(i => (i, List(i * 2, i * 2 + 1))).to[ArrayBuffer]
+      )
+    )
   }
 
   test("TileLinkGpioParameters") {
-    generationShouldPass(TileLinkPinmux(
-      PinmuxCtrl.Parameter(Pinmux.Parameter(12), 24, 2),
-      (0 until 12).map(i => (i, List(i * 2, i * 2 + 1))).to[ArrayBuffer]
-    ))
+    generationShouldPass(
+      TileLinkPinmux(
+        PinmuxCtrl.Parameter(Pinmux.Parameter(12), 24, 2),
+        (0 until 12).map(i => (i, List(i * 2, i * 2 + 1))).to[ArrayBuffer]
+      )
+    )
 
-    generationShouldPass(TileLinkPinmux(
-      PinmuxCtrl.Parameter(Pinmux.Parameter(12), 36, 3),
-      (0 until 12).map(i => (i, List(i * 3, i * 3 + 1, i * 3 + 2))).to[ArrayBuffer]
-    ))
+    generationShouldPass(
+      TileLinkPinmux(
+        PinmuxCtrl.Parameter(Pinmux.Parameter(12), 36, 3),
+        (0 until 12).map(i => (i, List(i * 3, i * 3 + 1, i * 3 + 2))).to[ArrayBuffer]
+      )
+    )
 
-    generationShouldPass(TileLinkPinmux(
-      PinmuxCtrl.Parameter(Pinmux.Parameter(12), 48, 4),
-      (0 until 12).map(i => (i, List(i * 4, i * 4 + 1, i * 4 + 2, i * 4 + 3))).to[ArrayBuffer]
-    ))
+    generationShouldPass(
+      TileLinkPinmux(
+        PinmuxCtrl.Parameter(Pinmux.Parameter(12), 48, 4),
+        (0 until 12).map(i => (i, List(i * 4, i * 4 + 1, i * 4 + 2, i * 4 + 3))).to[ArrayBuffer]
+      )
+    )
 
-    generationShouldPass(TileLinkPinmux(
-      PinmuxCtrl.Parameter(Pinmux.Parameter(255), 510, 2),
-      (0 until 255).map(i => (i, List(i * 2, i * 2 + 1))).to[ArrayBuffer]
-    ))
-    generationShouldFail(TileLinkPinmux(
-      PinmuxCtrl.Parameter(Pinmux.Parameter(256), 512, 2),
-      (0 until 256).map(i => (i, List(i * 2, i * 2 + 1))).to[ArrayBuffer]
-    ))
+    generationShouldPass(
+      TileLinkPinmux(
+        PinmuxCtrl.Parameter(Pinmux.Parameter(255), 510, 2),
+        (0 until 255).map(i => (i, List(i * 2, i * 2 + 1))).to[ArrayBuffer]
+      )
+    )
+    generationShouldFail(
+      TileLinkPinmux(
+        PinmuxCtrl.Parameter(Pinmux.Parameter(256), 512, 2),
+        (0 until 256).map(i => (i, List(i * 2, i * 2 + 1))).to[ArrayBuffer]
+      )
+    )
   }
 
   test("WishboneGpioParameters") {
-    generationShouldPass(WishbonePinmux(
-      PinmuxCtrl.Parameter(Pinmux.Parameter(12), 24, 2),
-      (0 until 12).map(i => (i, List(i * 2, i * 2 + 1))).to[ArrayBuffer]
-    ))
+    generationShouldPass(
+      WishbonePinmux(
+        PinmuxCtrl.Parameter(Pinmux.Parameter(12), 24, 2),
+        (0 until 12).map(i => (i, List(i * 2, i * 2 + 1))).to[ArrayBuffer]
+      )
+    )
 
-    generationShouldPass(WishbonePinmux(
-      PinmuxCtrl.Parameter(Pinmux.Parameter(12), 36, 3),
-      (0 until 12).map(i => (i, List(i * 3, i * 3 + 1, i * 3 + 2))).to[ArrayBuffer]
-    ))
+    generationShouldPass(
+      WishbonePinmux(
+        PinmuxCtrl.Parameter(Pinmux.Parameter(12), 36, 3),
+        (0 until 12).map(i => (i, List(i * 3, i * 3 + 1, i * 3 + 2))).to[ArrayBuffer]
+      )
+    )
 
-    generationShouldPass(WishbonePinmux(
-      PinmuxCtrl.Parameter(Pinmux.Parameter(12), 48, 4),
-      (0 until 12).map(i => (i, List(i * 4, i * 4 + 1, i * 4 + 2, i * 4 + 3))).to[ArrayBuffer]
-    ))
+    generationShouldPass(
+      WishbonePinmux(
+        PinmuxCtrl.Parameter(Pinmux.Parameter(12), 48, 4),
+        (0 until 12).map(i => (i, List(i * 4, i * 4 + 1, i * 4 + 2, i * 4 + 3))).to[ArrayBuffer]
+      )
+    )
 
-    generationShouldPass(WishbonePinmux(
-      PinmuxCtrl.Parameter(Pinmux.Parameter(255), 510, 2),
-      (0 until 255).map(i => (i, List(i * 2, i * 2 + 1))).to[ArrayBuffer]
-    ))
-    generationShouldFail(WishbonePinmux(
-      PinmuxCtrl.Parameter(Pinmux.Parameter(256), 512, 2),
-      (0 until 256).map(i => (i, List(i * 2, i * 2 + 1))).to[ArrayBuffer]
-    ))
+    generationShouldPass(
+      WishbonePinmux(
+        PinmuxCtrl.Parameter(Pinmux.Parameter(255), 510, 2),
+        (0 until 255).map(i => (i, List(i * 2, i * 2 + 1))).to[ArrayBuffer]
+      )
+    )
+    generationShouldFail(
+      WishbonePinmux(
+        PinmuxCtrl.Parameter(Pinmux.Parameter(256), 512, 2),
+        (0 until 256).map(i => (i, List(i * 2, i * 2 + 1))).to[ArrayBuffer]
+      )
+    )
   }
 
   def init(dut: Apb3Pinmux): (Apb3Driver, PinmuxCtrl.Regs) = {
@@ -149,7 +179,11 @@ class PinmuxTest extends AnyFunSuite {
 
       SimTest.checkPins(dut.io.inputs.read.toBigInt, 0, "Internal read pins should be low")
       SimTest.checkPins(dut.io.pins.pins.write.toBigInt, 0, "Output pin value should be low")
-      SimTest.checkPins(dut.io.pins.pins.writeEnable.toBigInt, 0, "Output pin direction should be low")
+      SimTest.checkPins(
+        dut.io.pins.pins.writeEnable.toBigInt,
+        0,
+        "Output pin direction should be low"
+      )
 
       dut.clockDomain.waitFallingEdge()
 
@@ -157,17 +191,41 @@ class PinmuxTest extends AnyFunSuite {
 
       dut.clockDomain.waitFallingEdge()
 
-      SimTest.checkPins(dut.io.inputs.read.toBigInt, BigInt("00000001", 16), "Internal read pins have wrong value")
-      SimTest.checkPins(dut.io.pins.pins.write.toBigInt, BigInt("00000000", 16), "Output pin value should be low")
-      SimTest.checkPins(dut.io.pins.pins.writeEnable.toBigInt, BigInt("00000000", 16), "Default output pin direction should be low")
+      SimTest.checkPins(
+        dut.io.inputs.read.toBigInt,
+        BigInt("00000001", 16),
+        "Internal read pins have wrong value"
+      )
+      SimTest.checkPins(
+        dut.io.pins.pins.write.toBigInt,
+        BigInt("00000000", 16),
+        "Output pin value should be low"
+      )
+      SimTest.checkPins(
+        dut.io.pins.pins.writeEnable.toBigInt,
+        BigInt("00000000", 16),
+        "Default output pin direction should be low"
+      )
 
       dut.io.pins.pins.read #= BigInt("00000fff", 16)
 
       dut.clockDomain.waitFallingEdge()
 
-      SimTest.checkPins(dut.io.inputs.read.toBigInt, BigInt("00555555", 16), "Internal read pins have wrong value")
-      SimTest.checkPins(dut.io.pins.pins.write.toBigInt, BigInt("00000000", 16), "Output pin value should be low")
-      SimTest.checkPins(dut.io.pins.pins.writeEnable.toBigInt, BigInt("00000000", 16), "Default output pin direction should be low")
+      SimTest.checkPins(
+        dut.io.inputs.read.toBigInt,
+        BigInt("00555555", 16),
+        "Internal read pins have wrong value"
+      )
+      SimTest.checkPins(
+        dut.io.pins.pins.write.toBigInt,
+        BigInt("00000000", 16),
+        "Output pin value should be low"
+      )
+      SimTest.checkPins(
+        dut.io.pins.pins.writeEnable.toBigInt,
+        BigInt("00000000", 16),
+        "Default output pin direction should be low"
+      )
 
       dut.clockDomain.waitFallingEdge()
 
@@ -177,9 +235,21 @@ class PinmuxTest extends AnyFunSuite {
 
       dut.clockDomain.waitFallingEdge()
 
-      SimTest.checkPins(dut.io.inputs.read.toBigInt, BigInt("00aaaaaa", 16), "Internal read pins have wrong value")
-      SimTest.checkPins(dut.io.pins.pins.write.toBigInt, BigInt("00000000", 16), "Output pin value should be low")
-      SimTest.checkPins(dut.io.pins.pins.writeEnable.toBigInt, BigInt("00000000", 16), "Default output pin direction should be low")
+      SimTest.checkPins(
+        dut.io.inputs.read.toBigInt,
+        BigInt("00aaaaaa", 16),
+        "Internal read pins have wrong value"
+      )
+      SimTest.checkPins(
+        dut.io.pins.pins.write.toBigInt,
+        BigInt("00000000", 16),
+        "Output pin value should be low"
+      )
+      SimTest.checkPins(
+        dut.io.pins.pins.writeEnable.toBigInt,
+        BigInt("00000000", 16),
+        "Default output pin direction should be low"
+      )
     }
 
     compiled.doSim("mux options - output") { dut =>
@@ -187,7 +257,11 @@ class PinmuxTest extends AnyFunSuite {
 
       SimTest.checkPins(dut.io.inputs.read.toBigInt, 0, "Internal read pins should be low")
       SimTest.checkPins(dut.io.pins.pins.write.toBigInt, 0, "Output pin value should be low")
-      SimTest.checkPins(dut.io.pins.pins.writeEnable.toBigInt, 0, "Output pin direction should be low")
+      SimTest.checkPins(
+        dut.io.pins.pins.writeEnable.toBigInt,
+        0,
+        "Output pin direction should be low"
+      )
 
       dut.clockDomain.waitFallingEdge()
 
@@ -196,18 +270,42 @@ class PinmuxTest extends AnyFunSuite {
 
       dut.clockDomain.waitFallingEdge()
 
-      SimTest.checkPins(dut.io.inputs.read.toBigInt, BigInt("00000000", 16), "Internal read pins have wrong value")
-      SimTest.checkPins(dut.io.pins.pins.write.toBigInt, BigInt("00000000", 16), "Output pin value should be low")
-      SimTest.checkPins(dut.io.pins.pins.writeEnable.toBigInt, BigInt("00000000", 16), "Default output pin direction should be low")
+      SimTest.checkPins(
+        dut.io.inputs.read.toBigInt,
+        BigInt("00000000", 16),
+        "Internal read pins have wrong value"
+      )
+      SimTest.checkPins(
+        dut.io.pins.pins.write.toBigInt,
+        BigInt("00000000", 16),
+        "Output pin value should be low"
+      )
+      SimTest.checkPins(
+        dut.io.pins.pins.writeEnable.toBigInt,
+        BigInt("00000000", 16),
+        "Default output pin direction should be low"
+      )
 
       dut.io.inputs.write #= BigInt("00555555", 16)
       dut.io.inputs.writeEnable #= BigInt("00555555", 16)
 
       dut.clockDomain.waitFallingEdge()
 
-      SimTest.checkPins(dut.io.inputs.read.toBigInt, BigInt("00000000", 16), "Internal read pins have wrong value")
-      SimTest.checkPins(dut.io.pins.pins.write.toBigInt, BigInt("00000fff", 16), "Output pin value should be low")
-      SimTest.checkPins(dut.io.pins.pins.writeEnable.toBigInt, BigInt("00000fff", 16), "Default output pin direction should be low")
+      SimTest.checkPins(
+        dut.io.inputs.read.toBigInt,
+        BigInt("00000000", 16),
+        "Internal read pins have wrong value"
+      )
+      SimTest.checkPins(
+        dut.io.pins.pins.write.toBigInt,
+        BigInt("00000fff", 16),
+        "Output pin value should be low"
+      )
+      SimTest.checkPins(
+        dut.io.pins.pins.writeEnable.toBigInt,
+        BigInt("00000fff", 16),
+        "Default output pin direction should be low"
+      )
 
       dut.clockDomain.waitFallingEdge()
 
@@ -217,9 +315,21 @@ class PinmuxTest extends AnyFunSuite {
 
       dut.clockDomain.waitFallingEdge()
 
-      SimTest.checkPins(dut.io.inputs.read.toBigInt, BigInt("00000000", 16), "Internal read pins have wrong value")
-      SimTest.checkPins(dut.io.pins.pins.write.toBigInt, BigInt("00000000", 16), "Output pin value should be low")
-      SimTest.checkPins(dut.io.pins.pins.writeEnable.toBigInt, BigInt("00000000", 16), "Default output pin direction should be low")
+      SimTest.checkPins(
+        dut.io.inputs.read.toBigInt,
+        BigInt("00000000", 16),
+        "Internal read pins have wrong value"
+      )
+      SimTest.checkPins(
+        dut.io.pins.pins.write.toBigInt,
+        BigInt("00000000", 16),
+        "Output pin value should be low"
+      )
+      SimTest.checkPins(
+        dut.io.pins.pins.writeEnable.toBigInt,
+        BigInt("00000000", 16),
+        "Default output pin direction should be low"
+      )
 
       dut.clockDomain.waitFallingEdge()
 
@@ -228,9 +338,21 @@ class PinmuxTest extends AnyFunSuite {
 
       dut.clockDomain.waitFallingEdge()
 
-      SimTest.checkPins(dut.io.inputs.read.toBigInt, BigInt("00000000", 16), "Internal read pins have wrong value")
-      SimTest.checkPins(dut.io.pins.pins.write.toBigInt, BigInt("00000fff", 16), "Output pin value should be high")
-      SimTest.checkPins(dut.io.pins.pins.writeEnable.toBigInt, BigInt("00000fff", 16), "Default output pin direction should be high")
+      SimTest.checkPins(
+        dut.io.inputs.read.toBigInt,
+        BigInt("00000000", 16),
+        "Internal read pins have wrong value"
+      )
+      SimTest.checkPins(
+        dut.io.pins.pins.write.toBigInt,
+        BigInt("00000fff", 16),
+        "Output pin value should be high"
+      )
+      SimTest.checkPins(
+        dut.io.pins.pins.writeEnable.toBigInt,
+        BigInt("00000fff", 16),
+        "Default output pin direction should be high"
+      )
     }
 
   }

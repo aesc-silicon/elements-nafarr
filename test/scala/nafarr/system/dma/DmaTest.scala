@@ -344,31 +344,32 @@ class DmaTest extends AnyFunSuite {
     }
   }
 
-  for (width <- dataWidths) test(s"Request handshake moves one element per acknowledge ($width-bit)") {
-    compiled(width).doSim("ReqAck") { dut =>
-      val env = new Env(dut)
-      env.slave.fill(RAM + 0x400, env.randomBytes(8))
-      val hs = dut.io.request(2)
+  for (width <- dataWidths)
+    test(s"Request handshake moves one element per acknowledge ($width-bit)") {
+      compiled(width).doSim("ReqAck") { dut =>
+        val env = new Env(dut)
+        env.slave.fill(RAM + 0x400, env.randomBytes(8))
+        val hs = dut.io.request(2)
 
-      // A peripheral that ignores ack gets exactly one element.
-      hs.req #= true
-      env.program(0, cfg(dstInc = false, width = 0, req = 2), RAM + 0x400, PERIPH, 8)
-      env.start(0)
-      dut.clockDomain.waitSampling(200)
-      assert(env.slave.writes == 1, s"req held high moved ${env.slave.writes} elements")
-      assert(hs.ack.toBoolean, "ack not raised after the element")
+        // A peripheral that ignores ack gets exactly one element.
+        hs.req #= true
+        env.program(0, cfg(dstInc = false, width = 0, req = 2), RAM + 0x400, PERIPH, 8)
+        env.start(0)
+        dut.clockDomain.waitSampling(200)
+        assert(env.slave.writes == 1, s"req held high moved ${env.slave.writes} elements")
+        assert(hs.ack.toBoolean, "ack not raised after the element")
 
-      // Dropping req releases ack; a handshaking peripheral then drains the rest.
-      hs.req #= false
-      dut.clockDomain.waitSampling(3)
-      assert(!hs.ack.toBoolean, "ack held after req dropped")
-      assert(env.slave.writes == 1, "element moved without req")
-      DmaHandshakeSim.drive(hs, dut.clockDomain)(true)
-      env.waitIdle(0)
-      assert(env.slave.writes == 8)
-      assert(!env.error(0))
+        // Dropping req releases ack; a handshaking peripheral then drains the rest.
+        hs.req #= false
+        dut.clockDomain.waitSampling(3)
+        assert(!hs.ack.toBoolean, "ack held after req dropped")
+        assert(env.slave.writes == 1, "element moved without req")
+        DmaHandshakeSim.drive(hs, dut.clockDomain)(true)
+        env.waitIdle(0)
+        assert(env.slave.writes == 8)
+        assert(!env.error(0))
+      }
     }
-  }
 
   test("Request handshake across clock domains") {
     val compiledCc = SimConfig.withWave.compile(DmaCcHarness(simParam))

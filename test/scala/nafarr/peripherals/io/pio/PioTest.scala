@@ -29,10 +29,14 @@ class PioTest extends AnyFunSuite {
     apb.write(regs.control, BigInt("00001", 2))
   }
 
-  def generateCmd(pin: Int, cmd: SpinalEnumElement[PioCtrl.CommandType.type], data: Option[BigInt] = None) = {
+  def generateCmd(
+      pin: Int,
+      cmd: SpinalEnumElement[PioCtrl.CommandType.type],
+      data: Option[BigInt] = None
+  ) = {
     data match {
       case Some(d) => (d << 8) | BigInt(pin << 4 | cmd.position)
-      case None    => BigInt(pin << 4 | cmd.position)
+      case None => BigInt(pin << 4 | cmd.position)
     }
   }
 
@@ -66,14 +70,17 @@ class PioTest extends AnyFunSuite {
     generationShouldPass(Apb3Pio(PioCtrl.Parameter.light()))
 
     generationShouldPass {
-      val parameter = PioCtrl.Parameter(io = Pio.Parameter(1), readBufferDepth = 0,
-                                        permission = null, init = PioCtrl.InitParameter(100))
+      val parameter = PioCtrl.Parameter(
+        io = Pio.Parameter(1),
+        readBufferDepth = 0,
+        permission = null,
+        init = PioCtrl.InitParameter(100)
+      )
       Apb3Pio(parameter)
     }
 
     generationShouldPass {
-      val parameter = PioCtrl.Parameter(io = Pio.Parameter(1), readBufferDepth = 0,
-                                       init = null)
+      val parameter = PioCtrl.Parameter(io = Pio.Parameter(1), readBufferDepth = 0, init = null)
       Apb3Pio(parameter)
     }
 
@@ -102,14 +109,17 @@ class PioTest extends AnyFunSuite {
     generationShouldPass(TileLinkPio(PioCtrl.Parameter.light()))
 
     generationShouldPass {
-      val parameter = PioCtrl.Parameter(io = Pio.Parameter(1), readBufferDepth = 0,
-                                        permission = null, init = PioCtrl.InitParameter(100))
+      val parameter = PioCtrl.Parameter(
+        io = Pio.Parameter(1),
+        readBufferDepth = 0,
+        permission = null,
+        init = PioCtrl.InitParameter(100)
+      )
       TileLinkPio(parameter)
     }
 
     generationShouldPass {
-      val parameter = PioCtrl.Parameter(io = Pio.Parameter(1), readBufferDepth = 0,
-                                       init = null)
+      val parameter = PioCtrl.Parameter(io = Pio.Parameter(1), readBufferDepth = 0, init = null)
       TileLinkPio(parameter)
     }
 
@@ -138,14 +148,17 @@ class PioTest extends AnyFunSuite {
     generationShouldPass(WishbonePio(PioCtrl.Parameter.light()))
 
     generationShouldPass {
-      val parameter = PioCtrl.Parameter(io = Pio.Parameter(1), readBufferDepth = 0,
-                                        permission = null, init = PioCtrl.InitParameter(100))
+      val parameter = PioCtrl.Parameter(
+        io = Pio.Parameter(1),
+        readBufferDepth = 0,
+        permission = null,
+        init = PioCtrl.InitParameter(100)
+      )
       WishbonePio(parameter)
     }
 
     generationShouldPass {
-      val parameter = PioCtrl.Parameter(io = Pio.Parameter(1), readBufferDepth = 0,
-                                       init = null)
+      val parameter = PioCtrl.Parameter(io = Pio.Parameter(1), readBufferDepth = 0, init = null)
       WishbonePio(parameter)
     }
 
@@ -165,10 +178,9 @@ class PioTest extends AnyFunSuite {
     }
   }
 
-
   test("basic") {
     val compiled = SimConfig.withWave.compile {
-      Apb3Pio(PioCtrl.Parameter(io=Pio.Parameter(2), init=PioCtrl.InitParameter(2, 2)))
+      Apb3Pio(PioCtrl.Parameter(io = Pio.Parameter(2), init = PioCtrl.InitParameter(2, 2)))
     }
 
     compiled.doSim("basicRegisters") { dut =>
@@ -206,167 +218,387 @@ class PioTest extends AnyFunSuite {
       val (apb, regs) = init(dut)
 
       dut.io.pio.pins.read #= BigInt("00", 2)
-      fillCommands(apb, regs, List(
-        generateCmd(0, PioCtrl.CommandType.READ),
-        generateCmd(1, PioCtrl.CommandType.READ)
-      ))
+      fillCommands(
+        apb,
+        regs,
+        List(
+          generateCmd(0, PioCtrl.CommandType.READ),
+          generateCmd(1, PioCtrl.CommandType.READ)
+        )
+      )
       dut.clockDomain.waitSampling(15)
       assert(dut.io.dmaRequest.rx.req.toBoolean, "DMA rx request low with data in read FIFO")
       DmaHandshakeSim.checkAck(dut.io.dmaRequest.rx, dut.clockDomain, "PIO rx")
-      SimTest.read(apb, regs.readWrite, BigInt("00010000", 16), "Unable to read value 0 from Pio pin 0")
-      SimTest.read(apb, regs.readWrite, BigInt("00010000", 16), "Unable to read value 0 from Pio pin 1")
+      SimTest.read(
+        apb,
+        regs.readWrite,
+        BigInt("00010000", 16),
+        "Unable to read value 0 from Pio pin 0"
+      )
+      SimTest.read(
+        apb,
+        regs.readWrite,
+        BigInt("00010000", 16),
+        "Unable to read value 0 from Pio pin 1"
+      )
       dut.clockDomain.waitSampling(2)
       assert(!dut.io.dmaRequest.rx.req.toBoolean, "DMA rx request high after read FIFO drained")
 
       dut.io.pio.pins.read #= BigInt("01", 2)
-      fillCommands(apb, regs, List(
-        generateCmd(0, PioCtrl.CommandType.READ),
-        generateCmd(1, PioCtrl.CommandType.READ)
-      ))
+      fillCommands(
+        apb,
+        regs,
+        List(
+          generateCmd(0, PioCtrl.CommandType.READ),
+          generateCmd(1, PioCtrl.CommandType.READ)
+        )
+      )
       dut.clockDomain.waitSampling(15)
-      SimTest.read(apb, regs.readWrite, BigInt("00010001", 16), "Unable to read value 1 from Pio pin 0")
-      SimTest.read(apb, regs.readWrite, BigInt("00010000", 16), "Unable to read value 0 from Pio pin 1")
+      SimTest.read(
+        apb,
+        regs.readWrite,
+        BigInt("00010001", 16),
+        "Unable to read value 1 from Pio pin 0"
+      )
+      SimTest.read(
+        apb,
+        regs.readWrite,
+        BigInt("00010000", 16),
+        "Unable to read value 0 from Pio pin 1"
+      )
 
       dut.io.pio.pins.read #= BigInt("10", 2)
-      fillCommands(apb, regs, List(
-        generateCmd(0, PioCtrl.CommandType.READ),
-        generateCmd(1, PioCtrl.CommandType.READ)
-      ))
+      fillCommands(
+        apb,
+        regs,
+        List(
+          generateCmd(0, PioCtrl.CommandType.READ),
+          generateCmd(1, PioCtrl.CommandType.READ)
+        )
+      )
       dut.clockDomain.waitSampling(15)
-      SimTest.read(apb, regs.readWrite, BigInt("00010000", 16), "Unable to read value 0 from Pio pin 0")
-      SimTest.read(apb, regs.readWrite, BigInt("00010001", 16), "Unable to read value 1 from Pio pin 1")
+      SimTest.read(
+        apb,
+        regs.readWrite,
+        BigInt("00010000", 16),
+        "Unable to read value 0 from Pio pin 0"
+      )
+      SimTest.read(
+        apb,
+        regs.readWrite,
+        BigInt("00010001", 16),
+        "Unable to read value 1 from Pio pin 1"
+      )
 
       dut.io.pio.pins.read #= BigInt("11", 2)
-      fillCommands(apb, regs, List(
-        generateCmd(0, PioCtrl.CommandType.READ),
-        generateCmd(1, PioCtrl.CommandType.READ)
-      ))
+      fillCommands(
+        apb,
+        regs,
+        List(
+          generateCmd(0, PioCtrl.CommandType.READ),
+          generateCmd(1, PioCtrl.CommandType.READ)
+        )
+      )
       dut.clockDomain.waitSampling(15)
-      SimTest.read(apb, regs.readWrite, BigInt("00010001", 16), "Unable to read value 1 from Pio pin 0")
-      SimTest.read(apb, regs.readWrite, BigInt("00010001", 16), "Unable to read value 1 from Pio pin 1")
+      SimTest.read(
+        apb,
+        regs.readWrite,
+        BigInt("00010001", 16),
+        "Unable to read value 1 from Pio pin 0"
+      )
+      SimTest.read(
+        apb,
+        regs.readWrite,
+        BigInt("00010001", 16),
+        "Unable to read value 1 from Pio pin 1"
+      )
     }
 
     compiled.doSim("toggle IO") { dut =>
       val (apb, regs) = init(dut)
 
-      SimTest.checkPins(dut.io.pio.pins.write.toBigInt, BigInt("00", 2), "Default PIO output value should be 00")
-      SimTest.checkPins(dut.io.pio.pins.writeEnable.toBigInt, BigInt("00", 2), "Default PIO direction value should be 00")
+      SimTest.checkPins(
+        dut.io.pio.pins.write.toBigInt,
+        BigInt("00", 2),
+        "Default PIO output value should be 00"
+      )
+      SimTest.checkPins(
+        dut.io.pio.pins.writeEnable.toBigInt,
+        BigInt("00", 2),
+        "Default PIO direction value should be 00"
+      )
 
-      fillCommands(apb, regs, List(
-        generateCmd(0, PioCtrl.CommandType.HIGH)
-      ))
+      fillCommands(
+        apb,
+        regs,
+        List(
+          generateCmd(0, PioCtrl.CommandType.HIGH)
+        )
+      )
       dut.clockDomain.waitSampling(4)
 
-      SimTest.checkPins(dut.io.pio.pins.write.toBigInt, BigInt("01", 2), "PIO output value should be 01")
-      SimTest.checkPins(dut.io.pio.pins.writeEnable.toBigInt, BigInt("01", 2), "PIO direction value should be 01")
+      SimTest.checkPins(
+        dut.io.pio.pins.write.toBigInt,
+        BigInt("01", 2),
+        "PIO output value should be 01"
+      )
+      SimTest.checkPins(
+        dut.io.pio.pins.writeEnable.toBigInt,
+        BigInt("01", 2),
+        "PIO direction value should be 01"
+      )
 
-      fillCommands(apb, regs, List(
-        generateCmd(1, PioCtrl.CommandType.HIGH)
-      ))
+      fillCommands(
+        apb,
+        regs,
+        List(
+          generateCmd(1, PioCtrl.CommandType.HIGH)
+        )
+      )
       dut.clockDomain.waitSampling(4)
 
-      SimTest.checkPins(dut.io.pio.pins.write.toBigInt, BigInt("11", 2), "PIO output value should be 11")
-      SimTest.checkPins(dut.io.pio.pins.writeEnable.toBigInt, BigInt("11", 2), "PIO direction value should be 11")
+      SimTest.checkPins(
+        dut.io.pio.pins.write.toBigInt,
+        BigInt("11", 2),
+        "PIO output value should be 11"
+      )
+      SimTest.checkPins(
+        dut.io.pio.pins.writeEnable.toBigInt,
+        BigInt("11", 2),
+        "PIO direction value should be 11"
+      )
 
-      fillCommands(apb, regs, List(
-        generateCmd(1, PioCtrl.CommandType.LOW)
-      ))
+      fillCommands(
+        apb,
+        regs,
+        List(
+          generateCmd(1, PioCtrl.CommandType.LOW)
+        )
+      )
       dut.clockDomain.waitSampling(4)
 
-      SimTest.checkPins(dut.io.pio.pins.write.toBigInt, BigInt("01", 2), "PIO output value should be 01")
-      SimTest.checkPins(dut.io.pio.pins.writeEnable.toBigInt, BigInt("11", 2), "PIO direction value should be 11")
+      SimTest.checkPins(
+        dut.io.pio.pins.write.toBigInt,
+        BigInt("01", 2),
+        "PIO output value should be 01"
+      )
+      SimTest.checkPins(
+        dut.io.pio.pins.writeEnable.toBigInt,
+        BigInt("11", 2),
+        "PIO direction value should be 11"
+      )
 
-      fillCommands(apb, regs, List(
-        generateCmd(0, PioCtrl.CommandType.LOW)
-      ))
+      fillCommands(
+        apb,
+        regs,
+        List(
+          generateCmd(0, PioCtrl.CommandType.LOW)
+        )
+      )
       dut.clockDomain.waitSampling(4)
 
-      SimTest.checkPins(dut.io.pio.pins.write.toBigInt, BigInt("00", 2), "PIO output value should be 00")
-      SimTest.checkPins(dut.io.pio.pins.writeEnable.toBigInt, BigInt("11", 2), "PIO direction value should be 11")
+      SimTest.checkPins(
+        dut.io.pio.pins.write.toBigInt,
+        BigInt("00", 2),
+        "PIO output value should be 00"
+      )
+      SimTest.checkPins(
+        dut.io.pio.pins.writeEnable.toBigInt,
+        BigInt("11", 2),
+        "PIO direction value should be 11"
+      )
 
-      fillCommands(apb, regs, List(
-        generateCmd(0, PioCtrl.CommandType.TOGGLE)
-      ))
+      fillCommands(
+        apb,
+        regs,
+        List(
+          generateCmd(0, PioCtrl.CommandType.TOGGLE)
+        )
+      )
       dut.clockDomain.waitSampling(4)
 
-      SimTest.checkPins(dut.io.pio.pins.write.toBigInt, BigInt("01", 2), "PIO output value should be 01")
-      SimTest.checkPins(dut.io.pio.pins.writeEnable.toBigInt, BigInt("11", 2), "PIO direction value should be 11")
+      SimTest.checkPins(
+        dut.io.pio.pins.write.toBigInt,
+        BigInt("01", 2),
+        "PIO output value should be 01"
+      )
+      SimTest.checkPins(
+        dut.io.pio.pins.writeEnable.toBigInt,
+        BigInt("11", 2),
+        "PIO direction value should be 11"
+      )
 
-      fillCommands(apb, regs, List(
-        generateCmd(1, PioCtrl.CommandType.TOGGLE)
-      ))
+      fillCommands(
+        apb,
+        regs,
+        List(
+          generateCmd(1, PioCtrl.CommandType.TOGGLE)
+        )
+      )
       dut.clockDomain.waitSampling(4)
 
-      SimTest.checkPins(dut.io.pio.pins.write.toBigInt, BigInt("11", 2), "PIO output value should be 11")
-      SimTest.checkPins(dut.io.pio.pins.writeEnable.toBigInt, BigInt("11", 2), "PIO direction value should be 11")
+      SimTest.checkPins(
+        dut.io.pio.pins.write.toBigInt,
+        BigInt("11", 2),
+        "PIO output value should be 11"
+      )
+      SimTest.checkPins(
+        dut.io.pio.pins.writeEnable.toBigInt,
+        BigInt("11", 2),
+        "PIO direction value should be 11"
+      )
 
-      fillCommands(apb, regs, List(
-        generateCmd(0, PioCtrl.CommandType.FLOAT)
-      ))
+      fillCommands(
+        apb,
+        regs,
+        List(
+          generateCmd(0, PioCtrl.CommandType.FLOAT)
+        )
+      )
       dut.clockDomain.waitSampling(4)
 
-      SimTest.checkPins(dut.io.pio.pins.write.toBigInt, BigInt("10", 2), "PIO output value should be 10")
-      SimTest.checkPins(dut.io.pio.pins.writeEnable.toBigInt, BigInt("10", 2), "PIO direction value should be 10")
+      SimTest.checkPins(
+        dut.io.pio.pins.write.toBigInt,
+        BigInt("10", 2),
+        "PIO output value should be 10"
+      )
+      SimTest.checkPins(
+        dut.io.pio.pins.writeEnable.toBigInt,
+        BigInt("10", 2),
+        "PIO direction value should be 10"
+      )
 
-      fillCommands(apb, regs, List(
-        generateCmd(1, PioCtrl.CommandType.FLOAT)
-      ))
+      fillCommands(
+        apb,
+        regs,
+        List(
+          generateCmd(1, PioCtrl.CommandType.FLOAT)
+        )
+      )
       dut.clockDomain.waitSampling(4)
 
-      SimTest.checkPins(dut.io.pio.pins.write.toBigInt, BigInt("00", 2), "PIO output value should be 00")
-      SimTest.checkPins(dut.io.pio.pins.writeEnable.toBigInt, BigInt("00", 2), "PIO direction value should be 00")
+      SimTest.checkPins(
+        dut.io.pio.pins.write.toBigInt,
+        BigInt("00", 2),
+        "PIO output value should be 00"
+      )
+      SimTest.checkPins(
+        dut.io.pio.pins.writeEnable.toBigInt,
+        BigInt("00", 2),
+        "PIO direction value should be 00"
+      )
     }
 
     compiled.doSim("toggle IO - SET") { dut =>
       val (apb, regs) = init(dut)
 
-      SimTest.checkPins(dut.io.pio.pins.write.toBigInt, BigInt("00", 2), "PIO output value should be 00")
-      SimTest.checkPins(dut.io.pio.pins.writeEnable.toBigInt, BigInt("00", 2), "PIO direction value should be 00")
+      SimTest.checkPins(
+        dut.io.pio.pins.write.toBigInt,
+        BigInt("00", 2),
+        "PIO output value should be 00"
+      )
+      SimTest.checkPins(
+        dut.io.pio.pins.writeEnable.toBigInt,
+        BigInt("00", 2),
+        "PIO direction value should be 00"
+      )
 
-      fillCommands(apb, regs, List(
-        generateCmd(0, PioCtrl.CommandType.HIGH_SET, Some(BigInt("11", 2)))
-      ))
+      fillCommands(
+        apb,
+        regs,
+        List(
+          generateCmd(0, PioCtrl.CommandType.HIGH_SET, Some(BigInt("11", 2)))
+        )
+      )
       dut.clockDomain.waitSampling(4)
 
-      SimTest.checkPins(dut.io.pio.pins.write.toBigInt, BigInt("11", 2), "PIO output value should be 11")
-      SimTest.checkPins(dut.io.pio.pins.writeEnable.toBigInt, BigInt("11", 2), "PIO direction value should be 11")
+      SimTest.checkPins(
+        dut.io.pio.pins.write.toBigInt,
+        BigInt("11", 2),
+        "PIO output value should be 11"
+      )
+      SimTest.checkPins(
+        dut.io.pio.pins.writeEnable.toBigInt,
+        BigInt("11", 2),
+        "PIO direction value should be 11"
+      )
 
-      fillCommands(apb, regs, List(
-        generateCmd(0, PioCtrl.CommandType.LOW_SET, Some(BigInt("11", 2)))
-      ))
+      fillCommands(
+        apb,
+        regs,
+        List(
+          generateCmd(0, PioCtrl.CommandType.LOW_SET, Some(BigInt("11", 2)))
+        )
+      )
       dut.clockDomain.waitSampling(4)
 
-      SimTest.checkPins(dut.io.pio.pins.write.toBigInt, BigInt("00", 2), "PIO output value should be 00")
-      SimTest.checkPins(dut.io.pio.pins.writeEnable.toBigInt, BigInt("11", 2), "PIO direction value should be 11")
+      SimTest.checkPins(
+        dut.io.pio.pins.write.toBigInt,
+        BigInt("00", 2),
+        "PIO output value should be 00"
+      )
+      SimTest.checkPins(
+        dut.io.pio.pins.writeEnable.toBigInt,
+        BigInt("11", 2),
+        "PIO direction value should be 11"
+      )
 
-      fillCommands(apb, regs, List(
-        generateCmd(0, PioCtrl.CommandType.TOGGLE_SET, Some(BigInt("11", 2)))
-      ))
+      fillCommands(
+        apb,
+        regs,
+        List(
+          generateCmd(0, PioCtrl.CommandType.TOGGLE_SET, Some(BigInt("11", 2)))
+        )
+      )
       dut.clockDomain.waitSampling(4)
 
-      SimTest.checkPins(dut.io.pio.pins.write.toBigInt, BigInt("11", 2), "PIO output value should be 11")
-      SimTest.checkPins(dut.io.pio.pins.writeEnable.toBigInt, BigInt("11", 2), "PIO direction value should be 11")
+      SimTest.checkPins(
+        dut.io.pio.pins.write.toBigInt,
+        BigInt("11", 2),
+        "PIO output value should be 11"
+      )
+      SimTest.checkPins(
+        dut.io.pio.pins.writeEnable.toBigInt,
+        BigInt("11", 2),
+        "PIO direction value should be 11"
+      )
 
-      fillCommands(apb, regs, List(
-        generateCmd(0, PioCtrl.CommandType.FLOAT_SET, Some(BigInt("11", 2)))
-      ))
+      fillCommands(
+        apb,
+        regs,
+        List(
+          generateCmd(0, PioCtrl.CommandType.FLOAT_SET, Some(BigInt("11", 2)))
+        )
+      )
       dut.clockDomain.waitSampling(4)
 
-      SimTest.checkPins(dut.io.pio.pins.write.toBigInt, BigInt("00", 2), "PIO output value should be 00")
-      SimTest.checkPins(dut.io.pio.pins.writeEnable.toBigInt, BigInt("00", 2), "PIO direction value should be 00")
+      SimTest.checkPins(
+        dut.io.pio.pins.write.toBigInt,
+        BigInt("00", 2),
+        "PIO output value should be 00"
+      )
+      SimTest.checkPins(
+        dut.io.pio.pins.writeEnable.toBigInt,
+        BigInt("00", 2),
+        "PIO direction value should be 00"
+      )
     }
 
     compiled.doSim("wait commands") { dut =>
       val (apb, regs) = init(dut)
 
       dut.io.pio.pins.read #= BigInt("00", 2)
-      fillCommands(apb, regs, List(
-        generateCmd(0, PioCtrl.CommandType.LOW),
-        generateCmd(0, PioCtrl.CommandType.WAIT, Some(BigInt(5))),
-        generateCmd(0, PioCtrl.CommandType.HIGH),
-        generateCmd(0, PioCtrl.CommandType.WAIT, Some(BigInt(5))),
-        generateCmd(0, PioCtrl.CommandType.LOW)
-      ))
+      fillCommands(
+        apb,
+        regs,
+        List(
+          generateCmd(0, PioCtrl.CommandType.LOW),
+          generateCmd(0, PioCtrl.CommandType.WAIT, Some(BigInt(5))),
+          generateCmd(0, PioCtrl.CommandType.HIGH),
+          generateCmd(0, PioCtrl.CommandType.WAIT, Some(BigInt(5))),
+          generateCmd(0, PioCtrl.CommandType.LOW)
+        )
+      )
       // IDLE -> 1 Cycle
       // LOW -> 1 Cycle
       // IDLE -> 1 Cycle
@@ -374,7 +606,11 @@ class PioTest extends AnyFunSuite {
       // IDLE -> 1 Cycle
       // HIGH -> 1 Cycle
       for (index <- 0 to 21) {
-        SimTest.checkPins(dut.io.pio.pins.write.toBigInt, BigInt("00", 2), "PIO output value should be 00")
+        SimTest.checkPins(
+          dut.io.pio.pins.write.toBigInt,
+          BigInt("00", 2),
+          "PIO output value should be 00"
+        )
         dut.clockDomain.waitSampling(1)
       }
       // WAIT -> 5 runs * 3 CLOCK TICKS + 1 Cycle
@@ -382,26 +618,42 @@ class PioTest extends AnyFunSuite {
       // LOW -> 1 Cycle
       // Next clock
       for (index <- 0 until 19) {
-        SimTest.checkPins(dut.io.pio.pins.write.toBigInt, BigInt("01", 2), "PIO output value should be 01")
+        SimTest.checkPins(
+          dut.io.pio.pins.write.toBigInt,
+          BigInt("01", 2),
+          "PIO output value should be 01"
+        )
         dut.clockDomain.waitSampling(1)
       }
-      SimTest.checkPins(dut.io.pio.pins.write.toBigInt, BigInt("00", 2), "PIO output value should be 00")
+      SimTest.checkPins(
+        dut.io.pio.pins.write.toBigInt,
+        BigInt("00", 2),
+        "PIO output value should be 00"
+      )
     }
 
     compiled.doSim("wait for commands") { dut =>
       val (apb, regs) = init(dut)
 
       dut.io.pio.pins.read #= BigInt("00", 2)
-      fillCommands(apb, regs, List(
-        generateCmd(0, PioCtrl.CommandType.HIGH),
-        generateCmd(1, PioCtrl.CommandType.WAIT_FOR_HIGH),
-        generateCmd(0, PioCtrl.CommandType.LOW),
-        generateCmd(1, PioCtrl.CommandType.WAIT_FOR_LOW),
-        generateCmd(0, PioCtrl.CommandType.HIGH)
-      ))
+      fillCommands(
+        apb,
+        regs,
+        List(
+          generateCmd(0, PioCtrl.CommandType.HIGH),
+          generateCmd(1, PioCtrl.CommandType.WAIT_FOR_HIGH),
+          generateCmd(0, PioCtrl.CommandType.LOW),
+          generateCmd(1, PioCtrl.CommandType.WAIT_FOR_LOW),
+          generateCmd(0, PioCtrl.CommandType.HIGH)
+        )
+      )
       dut.clockDomain.waitSampling(3)
       for (index <- 0 to 50) {
-        SimTest.checkPins(dut.io.pio.pins.write.toBigInt, BigInt("01", 2), "PIO output value should be 01")
+        SimTest.checkPins(
+          dut.io.pio.pins.write.toBigInt,
+          BigInt("01", 2),
+          "PIO output value should be 01"
+        )
         dut.clockDomain.waitSampling(1)
       }
       dut.io.pio.pins.read #= BigInt("10", 2)
@@ -410,11 +662,19 @@ class PioTest extends AnyFunSuite {
       // LOW -> 1 Cycle
       // Next clock
       for (index <- 0 to 5) {
-        SimTest.checkPins(dut.io.pio.pins.write.toBigInt, BigInt("01", 2), "PIO output value should be 01")
+        SimTest.checkPins(
+          dut.io.pio.pins.write.toBigInt,
+          BigInt("01", 2),
+          "PIO output value should be 01"
+        )
         dut.clockDomain.waitSampling(1)
       }
       for (index <- 0 to 50) {
-        SimTest.checkPins(dut.io.pio.pins.write.toBigInt, BigInt("00", 2), "PIO output value should be 00")
+        SimTest.checkPins(
+          dut.io.pio.pins.write.toBigInt,
+          BigInt("00", 2),
+          "PIO output value should be 00"
+        )
         dut.clockDomain.waitSampling(1)
       }
       dut.io.pio.pins.read #= BigInt("00", 2)
@@ -423,11 +683,19 @@ class PioTest extends AnyFunSuite {
       // HIGH -> 1 Cycle
       // Next clock
       for (index <- 0 to 5) {
-        SimTest.checkPins(dut.io.pio.pins.write.toBigInt, BigInt("00", 2), "PIO output value should be 00")
+        SimTest.checkPins(
+          dut.io.pio.pins.write.toBigInt,
+          BigInt("00", 2),
+          "PIO output value should be 00"
+        )
         dut.clockDomain.waitSampling(1)
       }
       for (index <- 0 to 50) {
-        SimTest.checkPins(dut.io.pio.pins.write.toBigInt, BigInt("01", 2), "PIO output value should be 01")
+        SimTest.checkPins(
+          dut.io.pio.pins.write.toBigInt,
+          BigInt("01", 2),
+          "PIO output value should be 01"
+        )
         dut.clockDomain.waitSampling(1)
       }
     }
@@ -436,20 +704,28 @@ class PioTest extends AnyFunSuite {
       val (apb, regs) = init(dut)
 
       dut.io.pio.pins.read #= BigInt("00", 2)
-      fillCommands(apb, regs, List(
-        generateCmd(0, PioCtrl.CommandType.HIGH),
-        generateCmd(0, PioCtrl.CommandType.WAIT, Some(BigInt(5))),
-        generateCmd(0, PioCtrl.CommandType.LOW),
-        generateCmd(0, PioCtrl.CommandType.WAIT, Some(BigInt(5))),
-        generateCmd(0, PioCtrl.CommandType.LOOP, Some(BigInt(3)))
-      ))
+      fillCommands(
+        apb,
+        regs,
+        List(
+          generateCmd(0, PioCtrl.CommandType.HIGH),
+          generateCmd(0, PioCtrl.CommandType.WAIT, Some(BigInt(5))),
+          generateCmd(0, PioCtrl.CommandType.LOW),
+          generateCmd(0, PioCtrl.CommandType.WAIT, Some(BigInt(5))),
+          generateCmd(0, PioCtrl.CommandType.LOOP, Some(BigInt(3)))
+        )
+      )
       dut.clockDomain.waitSampling(3)
       for (loop <- 0 to 2) {
         // WAIT -> 5 runs * 3 CLOCK TICKS + 1 Cycle
         // IDLE -> 1 Cycle
         // LOW -> 1 Cycle
         for (index <- 0 to 18) {
-          SimTest.checkPins(dut.io.pio.pins.write.toBigInt, BigInt("01", 2), "PIO output value should be 01")
+          SimTest.checkPins(
+            dut.io.pio.pins.write.toBigInt,
+            BigInt("01", 2),
+            "PIO output value should be 01"
+          )
           dut.clockDomain.waitSampling(1)
         }
         // WAIT -> 5 runs * 3 CLOCK TICKS + 1 Cycle
@@ -458,7 +734,11 @@ class PioTest extends AnyFunSuite {
         // IDLE -> 1 Cycle
         // Next clock
         for (index <- 0 until 21) {
-          SimTest.checkPins(dut.io.pio.pins.write.toBigInt, BigInt("00", 2), "PIO output value should be 00")
+          SimTest.checkPins(
+            dut.io.pio.pins.write.toBigInt,
+            BigInt("00", 2),
+            "PIO output value should be 00"
+          )
           dut.clockDomain.waitSampling(1)
         }
       }
@@ -483,10 +763,14 @@ class PioTest extends AnyFunSuite {
       DmaHandshakeSim.checkNeverRequests(tx, cd, "PIO tx")
 
       /* RX: READ commands fill the read FIFO, reading it drains the FIFO */
-      fillCommands(apb, regs, List(
-        generateCmd(0, PioCtrl.CommandType.READ),
-        generateCmd(1, PioCtrl.CommandType.READ)
-      ))
+      fillCommands(
+        apb,
+        regs,
+        List(
+          generateCmd(0, PioCtrl.CommandType.READ),
+          generateCmd(1, PioCtrl.CommandType.READ)
+        )
+      )
       DmaHandshakeSim.waitReq(rx, cd, true, 100, "PIO rx after READ commands")
       DmaHandshakeSim.checkAck(rx, cd, "PIO rx")
       SimTest.read(apb, regs.readWrite, BigInt("00010000", 16), "Pio pin 0 value")

@@ -4,7 +4,6 @@
 
 package nafarr.memory.ocram.ihp
 
-
 import org.scalatest.funsuite.AnyFunSuite
 
 import spinal.sim._
@@ -28,7 +27,7 @@ class BmbOnChipRam1Port1MacroTest extends AnyFunSuite {
     dut.io.bus.cmd.valid #= true
     dut.io.bus.cmd.address #= address
     dut.io.bus.cmd.data #= data
-    dut.io.bus.cmd.mask #= 0xF
+    dut.io.bus.cmd.mask #= 0xf
     dut.io.bus.cmd.length #= 4 - 1
     dut.io.bus.cmd.opcode #= Bmb.Cmd.Opcode.WRITE
     dut.clockDomain.waitSampling(1)
@@ -70,7 +69,7 @@ class BmbOnChipRam1Port1MacroTest extends AnyFunSuite {
     dut.io.bus.cmd.valid #= true
     dut.io.bus.cmd.address #= address
     dut.io.bus.cmd.opcode #= Bmb.Cmd.Opcode.READ
-    dut.io.bus.cmd.mask #= 0xF
+    dut.io.bus.cmd.mask #= 0xf
     dut.io.bus.cmd.length #= 4 - 1
     dut.clockDomain.waitSampling(1)
     assert(dut.io.bus.cmd.ready.toBoolean == true)
@@ -80,11 +79,15 @@ class BmbOnChipRam1Port1MacroTest extends AnyFunSuite {
     assert(dut.io.bus.rsp.data.toBigInt == data)
   }
 
-  def readAndCheckWordBurst(dut: BmbIhpOnChipRam.OnePort1Macro, address: BigInt, data: Seq[BigInt]) = {
+  def readAndCheckWordBurst(
+      dut: BmbIhpOnChipRam.OnePort1Macro,
+      address: BigInt,
+      data: Seq[BigInt]
+  ) = {
     dut.io.bus.cmd.valid #= true
     dut.io.bus.cmd.address #= address
     dut.io.bus.cmd.opcode #= Bmb.Cmd.Opcode.READ
-    dut.io.bus.cmd.mask #= 0xF
+    dut.io.bus.cmd.mask #= 0xf
     dut.io.bus.cmd.length #= (4 * data.length) - 1
     dut.clockDomain.waitSampling(1)
     dut.io.bus.cmd.valid #= false
@@ -96,7 +99,6 @@ class BmbOnChipRam1Port1MacroTest extends AnyFunSuite {
     assert(dut.io.bus.rsp.last.toBoolean == true)
     assert(dut.io.bus.cmd.ready.toBoolean == true)
   }
-
 
   def readAndCheckShort(dut: BmbIhpOnChipRam.OnePort1Macro, address: BigInt, data: BigInt) = {
     dut.io.bus.cmd.valid #= true

@@ -157,12 +157,14 @@ class MailboxTest extends AnyFunSuite {
       driver.write(regs.interruptMask(0), 0x1)
       dut.clockDomain.waitSampling(1)
 
-      SimTest.readField(driver, regs.interruptPending(0), 0, 0, 0, "No pending interrupts initially")
+      SimTest
+        .readField(driver, regs.interruptPending(0), 0, 0, 0, "No pending interrupts initially")
 
       driver.write(regs.write(0), 0x1234)
       dut.clockDomain.waitSampling(2)
 
-      SimTest.readField(driver, regs.interruptPending(0), 0, 0, 1, "Not-empty IRQ pending after push")
+      SimTest
+        .readField(driver, regs.interruptPending(0), 0, 0, 1, "Not-empty IRQ pending after push")
 
       driver.write(regs.interruptPending(0), 0x1)
       dut.clockDomain.waitSampling(1)

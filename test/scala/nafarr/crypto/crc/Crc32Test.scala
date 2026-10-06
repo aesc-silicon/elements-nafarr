@@ -62,10 +62,10 @@ class Crc32Test extends AnyFunSuite {
        *   bit 10     = 0  (xorOut absent)
        *   => 0x320
        */
-      SimTest.readField(driver, regs.info, 7, 0, 32,  "Polynomial order")
-      SimTest.readField(driver, regs.info, 8, 8, 1,  "Input reflect disabled")
-      SimTest.readField(driver, regs.info, 9, 9, 1,  "Output reflect disabled")
-      SimTest.readField(driver, regs.info, 10, 10, 0,  "XOR out enabled")
+      SimTest.readField(driver, regs.info, 7, 0, 32, "Polynomial order")
+      SimTest.readField(driver, regs.info, 8, 8, 1, "Input reflect disabled")
+      SimTest.readField(driver, regs.info, 9, 9, 1, "Output reflect disabled")
+      SimTest.readField(driver, regs.info, 10, 10, 0, "XOR out enabled")
     }
 
     compiled.doSim("initLoadsInitValue") { dut =>
@@ -79,7 +79,7 @@ class Crc32Test extends AnyFunSuite {
       /* CRC32 Standard initValue = 0xFFFFFFFF; xorOut disabled
        * => result reads back raw crc_state = 0xFFFFFFFF           */
       val result = driver.read(regs.result)
-      assert(result == 0xFFFFFFFFL, f"xorOut register mismatch: 0x${result}%08x")
+      assert(result == 0xffffffffL, f"xorOut register mismatch: 0x${result}%08x")
     }
   }
 
@@ -103,10 +103,10 @@ class Crc32Test extends AnyFunSuite {
        *   bit 10     = 1  (xorOut enabled)
        *   => 0x320
        */
-      SimTest.readField(driver, regs.info, 7, 0, 32,  "Polynomial order")
-      SimTest.readField(driver, regs.info, 8, 8, 1,  "Input reflect disabled")
-      SimTest.readField(driver, regs.info, 9, 9, 1,  "Output reflect disabled")
-      SimTest.readField(driver, regs.info, 10, 10, 1,  "XOR out disabled")
+      SimTest.readField(driver, regs.info, 7, 0, 32, "Polynomial order")
+      SimTest.readField(driver, regs.info, 8, 8, 1, "Input reflect disabled")
+      SimTest.readField(driver, regs.info, 9, 9, 1, "Output reflect disabled")
+      SimTest.readField(driver, regs.info, 10, 10, 1, "XOR out disabled")
     }
 
     compiled.doSim("initWithXorOut") { dut =>
@@ -124,7 +124,7 @@ class Crc32Test extends AnyFunSuite {
 
       /* xorOut register should read back 0xFFFFFFFF */
       val result2 = driver.read(regs.xorOut)
-      assert(result2 == 0xFFFFFFFFL, f"xorOut register mismatch: 0x${result2}%08x")
+      assert(result2 == 0xffffffffL, f"xorOut register mismatch: 0x${result2}%08x")
     }
   }
 }

@@ -55,13 +55,14 @@ class TimerTest extends AnyFunSuite {
 
   def init(dut: Apb3Timer): (Apb3Driver, TimerCtrl.Regs) = {
     val driver = Apb3Driver(dut.io.bus, dut.clockDomain)
-    val regs   = TimerCtrl.Regs(dut.mapper.idCtrl.length, simParam)
+    val regs = TimerCtrl.Regs(dut.mapper.idCtrl.length, simParam)
     dut.clockDomain.forkStimulus(10)
     (driver, regs)
   }
 
   test("IpIdentification") {
-    SimConfig.withWave.compile(Apb3Timer(simParam))
+    SimConfig.withWave
+      .compile(Apb3Timer(simParam))
       .doSim("IpIdentification") { dut =>
         val (driver, _) = init(dut)
         IpIdentificationTest.V0.checkApi(driver, IpIdentification.Ids.Timer)
@@ -70,24 +71,26 @@ class TimerTest extends AnyFunSuite {
   }
 
   test("Info register") {
-    SimConfig.withWave.compile(Apb3Timer(simParam))
+    SimConfig.withWave
+      .compile(Apb3Timer(simParam))
       .doSim("InfoRegister") { dut =>
         val (driver, regs) = init(dut)
-        SimTest.readField(driver, regs.info,  7,  0, 1, "count=1")
-        SimTest.readField(driver, regs.info, 15,  8, 2, "channelCount=2")
+        SimTest.readField(driver, regs.info, 7, 0, 1, "count=1")
+        SimTest.readField(driver, regs.info, 15, 8, 2, "channelCount=2")
         SimTest.readField(driver, regs.info, 23, 16, 8, "width=8")
         SimTest.readField(driver, regs.info, 31, 24, 4, "prescalerWidth=4")
       }
   }
 
   test("Free-run: counter increments") {
-    SimConfig.withWave.compile(Apb3Timer(simParam))
+    SimConfig.withWave
+      .compile(Apb3Timer(simParam))
       .doSim("FreeRun") { dut =>
         val (driver, regs) = init(dut)
         dut.clockDomain.waitSampling(2)
 
-        driver.write(regs.prescaler(0), 0)     // tick every cycle
-        driver.write(regs.control(0), 0x1)     // enable=1, mode=00 (free-run)
+        driver.write(regs.prescaler(0), 0) // tick every cycle
+        driver.write(regs.control(0), 0x1) // enable=1, mode=00 (free-run)
         dut.clockDomain.waitSampling(6)
 
         val cnt = driver.read(regs.counter(0))
@@ -97,31 +100,33 @@ class TimerTest extends AnyFunSuite {
   }
 
   test("Free-run: counter preload") {
-    SimConfig.withWave.compile(Apb3Timer(simParam))
+    SimConfig.withWave
+      .compile(Apb3Timer(simParam))
       .doSim("FreeRunPreload") { dut =>
         val (driver, regs) = init(dut)
         dut.clockDomain.waitSampling(2)
 
-        driver.write(regs.counter(0), 0xE0)    // preload near overflow (width=8, max=0xFF)
+        driver.write(regs.counter(0), 0xe0) // preload near overflow (width=8, max=0xFF)
         driver.write(regs.prescaler(0), 0)
-        driver.write(regs.control(0), 0x1)     // free-run
-        dut.clockDomain.waitSampling(40)       // need >32 ticks to wrap from 0xE0 past 0xFF
+        driver.write(regs.control(0), 0x1) // free-run
+        dut.clockDomain.waitSampling(40) // need >32 ticks to wrap from 0xE0 past 0xFF
 
         val cnt = driver.read(regs.counter(0))
         // After 0xE0 + ~4 ticks it should have wrapped (0xFF → 0) and continued
-        assert(cnt < 0xE0, s"counter should have wrapped, got 0x${f"$cnt%02x"}")
+        assert(cnt < 0xe0, s"counter should have wrapped, got 0x${f"$cnt%02x"}")
       }
   }
 
   test("Periodic: overflow pending fires and counter reloads") {
-    SimConfig.withWave.compile(Apb3Timer(simParam))
+    SimConfig.withWave
+      .compile(Apb3Timer(simParam))
       .doSim("Periodic") { dut =>
         val (driver, regs) = init(dut)
         dut.clockDomain.waitSampling(2)
 
-        driver.write(regs.prescaler(0), 0)     // tick every cycle
-        driver.write(regs.reload(0), 3)        // period = 4 ticks (0→1→2→3→overflow→0)
-        driver.write(regs.control(0), 0x3)     // enable=1, mode=01 (periodic)
+        driver.write(regs.prescaler(0), 0) // tick every cycle
+        driver.write(regs.reload(0), 3) // period = 4 ticks (0→1→2→3→overflow→0)
+        driver.write(regs.control(0), 0x3) // enable=1, mode=01 (periodic)
         dut.clockDomain.waitSampling(10)
 
         SimTest.readField(driver, regs.irqPending, 0, 0, 1, "timer0 overflow pending")
@@ -131,14 +136,15 @@ class TimerTest extends AnyFunSuite {
   }
 
   test("One-shot: overflow pending fires and enable clears") {
-    SimConfig.withWave.compile(Apb3Timer(simParam))
+    SimConfig.withWave
+      .compile(Apb3Timer(simParam))
       .doSim("OneShot") { dut =>
         val (driver, regs) = init(dut)
         dut.clockDomain.waitSampling(2)
 
         driver.write(regs.prescaler(0), 0)
         driver.write(regs.reload(0), 3)
-        driver.write(regs.control(0), 0x5)     // enable=1, mode=10 (one-shot)
+        driver.write(regs.control(0), 0x5) // enable=1, mode=10 (one-shot)
         dut.clockDomain.waitSampling(10)
 
         SimTest.readField(driver, regs.irqPending, 0, 0, 1, "timer0 overflow pending")
@@ -147,14 +153,15 @@ class TimerTest extends AnyFunSuite {
   }
 
   test("One-shot: counter stops after completion") {
-    SimConfig.withWave.compile(Apb3Timer(simParam))
+    SimConfig.withWave
+      .compile(Apb3Timer(simParam))
       .doSim("OneShotStop") { dut =>
         val (driver, regs) = init(dut)
         dut.clockDomain.waitSampling(2)
 
         driver.write(regs.prescaler(0), 0)
         driver.write(regs.reload(0), 2)
-        driver.write(regs.control(0), 0x5)     // one-shot
+        driver.write(regs.control(0), 0x5) // one-shot
         dut.clockDomain.waitSampling(10)
 
         val cnt1 = driver.read(regs.counter(0))
@@ -165,15 +172,16 @@ class TimerTest extends AnyFunSuite {
   }
 
   test("Compare match: pending fires on match") {
-    SimConfig.withWave.compile(Apb3Timer(simParam))
+    SimConfig.withWave
+      .compile(Apb3Timer(simParam))
       .doSim("CompareMatch") { dut =>
         val (driver, regs) = init(dut)
         dut.clockDomain.waitSampling(2)
 
-        driver.write(regs.compare(0, 0), 3)    // compare0 fires at counter=3
+        driver.write(regs.compare(0, 0), 3) // compare0 fires at counter=3
         driver.write(regs.reload(0), 7)
         driver.write(regs.prescaler(0), 0)
-        driver.write(regs.control(0), 0x3)     // periodic
+        driver.write(regs.control(0), 0x3) // periodic
         dut.clockDomain.waitSampling(10)
 
         SimTest.readField(driver, regs.irqPending, 1, 1, 1, "timer0 compare0 pending")
@@ -181,12 +189,13 @@ class TimerTest extends AnyFunSuite {
   }
 
   test("Compare match channel 1") {
-    SimConfig.withWave.compile(Apb3Timer(simParam))
+    SimConfig.withWave
+      .compile(Apb3Timer(simParam))
       .doSim("CompareMatchCh1") { dut =>
         val (driver, regs) = init(dut)
         dut.clockDomain.waitSampling(2)
 
-        driver.write(regs.compare(0, 1), 2)    // compare1 fires at counter=2
+        driver.write(regs.compare(0, 1), 2) // compare1 fires at counter=2
         driver.write(regs.reload(0), 7)
         driver.write(regs.prescaler(0), 0)
         driver.write(regs.control(0), 0x3)
@@ -197,14 +206,15 @@ class TimerTest extends AnyFunSuite {
   }
 
   test("Prescaler: controls tick rate") {
-    SimConfig.withWave.compile(Apb3Timer(simParam))
+    SimConfig.withWave
+      .compile(Apb3Timer(simParam))
       .doSim("Prescaler") { dut =>
         val (driver, regs) = init(dut)
         dut.clockDomain.waitSampling(2)
 
         // prescaler=7 → tick every 8 cycles; after 24 cycles expect ~3 ticks
         driver.write(regs.prescaler(0), 7)
-        driver.write(regs.control(0), 0x1)     // free-run
+        driver.write(regs.control(0), 0x1) // free-run
         dut.clockDomain.waitSampling(30)
 
         val cnt = driver.read(regs.counter(0))
@@ -213,16 +223,17 @@ class TimerTest extends AnyFunSuite {
   }
 
   test("Interrupt output: fires when mask enabled") {
-    SimConfig.withWave.compile(Apb3Timer(simParam))
+    SimConfig.withWave
+      .compile(Apb3Timer(simParam))
       .doSim("InterruptOutput") { dut =>
         val (driver, regs) = init(dut)
         dut.clockDomain.waitSampling(2)
 
         val irqMask = regs.irqPending + 4
-        driver.write(irqMask, 0x1)             // enable bit 0 = timer0 overflow
+        driver.write(irqMask, 0x1) // enable bit 0 = timer0 overflow
         driver.write(regs.prescaler(0), 0)
         driver.write(regs.reload(0), 3)
-        driver.write(regs.control(0), 0x3)     // periodic
+        driver.write(regs.control(0), 0x3) // periodic
         dut.clockDomain.waitSampling(10)
 
         assert(dut.io.interrupt.toBoolean, "interrupt should be high after overflow")
@@ -230,7 +241,8 @@ class TimerTest extends AnyFunSuite {
   }
 
   test("Interrupt output: masked source does not fire") {
-    SimConfig.withWave.compile(Apb3Timer(simParam))
+    SimConfig.withWave
+      .compile(Apb3Timer(simParam))
       .doSim("InterruptMasked") { dut =>
         val (driver, regs) = init(dut)
         dut.clockDomain.waitSampling(2)
@@ -240,7 +252,7 @@ class TimerTest extends AnyFunSuite {
         driver.write(irqMask, 0x2)
         driver.write(regs.prescaler(0), 0)
         driver.write(regs.reload(0), 3)
-        driver.write(regs.control(0), 0x3)     // overflow will fire, but is not masked-in
+        driver.write(regs.control(0), 0x3) // overflow will fire, but is not masked-in
         dut.clockDomain.waitSampling(10)
 
         SimTest.readField(driver, regs.irqPending, 0, 0, 1, "overflow pending (raw)")
@@ -250,10 +262,11 @@ class TimerTest extends AnyFunSuite {
 
   test("Multi-timer: independent operation") {
     val p = TimerCtrl.Parameter(count = 2, channelCount = 1, width = 8, prescalerWidth = 4)
-    SimConfig.withWave.compile(Apb3Timer(p))
+    SimConfig.withWave
+      .compile(Apb3Timer(p))
       .doSim("MultiTimer") { dut =>
         val driver = Apb3Driver(dut.io.bus, dut.clockDomain)
-        val regs   = TimerCtrl.Regs(dut.mapper.idCtrl.length, p)
+        val regs = TimerCtrl.Regs(dut.mapper.idCtrl.length, p)
         dut.clockDomain.forkStimulus(10)
         dut.clockDomain.waitSampling(2)
 

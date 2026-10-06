@@ -16,13 +16,13 @@ class MachineTimerCtrlTest extends AnyFunSuite {
       MachineTimerCtrl(MachineTimerCtrl.Parameter.default)
     )
 
-    compiled.doSim{ dut =>
+    compiled.doSim { dut =>
       dut.clockDomain.forkStimulus(10)
 
-      fork{
+      fork {
         dut.clockDomain.fallingEdge()
         sleep(10)
-        while(true){
+        while (true) {
           dut.clockDomain.clockToggle()
           sleep(5)
         }

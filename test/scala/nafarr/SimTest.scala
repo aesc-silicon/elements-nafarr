@@ -10,9 +10,9 @@ import spinal.lib.bus.amba3.apb.sim.Apb3Driver
 object SimTest {
 
   def checkPins(
-    signal: => BigInt,
-    expected: BigInt,
-    description: String
+      signal: => BigInt,
+      expected: BigInt,
+      description: String
   ): Unit = {
     val result = signal
     assert(
@@ -24,10 +24,10 @@ object SimTest {
   }
 
   def read(
-    bus: Apb3Driver,
-    address: BigInt,
-    expected: BigInt,
-    description: String
+      bus: Apb3Driver,
+      address: BigInt,
+      expected: BigInt,
+      description: String
   ): Unit = {
     val result = bus.read(address)
     assert(
@@ -40,22 +40,24 @@ object SimTest {
   }
 
   def readField(
-    bus: Apb3Driver,
-    address: BigInt,
-    high: Int,
-    low: Int,
-    expected: BigInt,
-    description: String
+      bus: Apb3Driver,
+      address: BigInt,
+      high: Int,
+      low: Int,
+      expected: BigInt,
+      description: String
   ): Unit = {
-    val raw   = bus.read(address)
-    val mask  = (BigInt(1) << (high - low + 1)) - 1
+    val raw = bus.read(address)
+    val mask = (BigInt(1) << (high - low + 1)) - 1
     val field = (raw >> low) & mask
     assert(
       field == expected,
       s"""Field mismatch - $description
          |    Address:  0x${address.toString(16)}  bits[$high:$low]
          |    Expected: 0x${expected.toString(16).toUpperCase}
-         |    Received: 0x${field.toString(16).toUpperCase}  (raw: 0x${raw.toString(16).toUpperCase})""".stripMargin
+         |    Received: 0x${field.toString(16).toUpperCase}  (raw: 0x${raw
+        .toString(16)
+        .toUpperCase})""".stripMargin
     )
   }
 }

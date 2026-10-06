@@ -109,7 +109,10 @@ class TileLinkSpiXipControllerTest extends AnyFunSuite {
           val data = agent.get(0, address, bytes).data.toSeq
           assert(data == flash.slice(address, address + bytes).toSeq, s"$what: data mismatch")
           val (cmdAddress, cmdWords) = commands.last
-          assert(cmdAddress == (address & ~3), s"$what: command address 0x${cmdAddress.toHexString}")
+          assert(
+            cmdAddress == (address & ~3),
+            s"$what: command address 0x${cmdAddress.toHexString}"
+          )
           assert(cmdWords == ((bytes + 3) / 4), s"$what: $cmdWords words requested")
         }
 

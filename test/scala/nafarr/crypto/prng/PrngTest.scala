@@ -27,7 +27,6 @@ class PrngTest extends AnyFunSuite {
     return (driver, regs)
   }
 
-
   test("Apb3Parameter") {
     generationShouldPass(Apb3Prng(PrngCtrl.Parameter.default()))
   }
@@ -120,7 +119,10 @@ class PrngTest extends AnyFunSuite {
       driver.write(regs.seed, 0)
       dut.clockDomain.waitSampling(2)
 
-      assert((driver.read(regs.errorPending) & 0x1) == 1, "Error pending should be set after zero seed write")
+      assert(
+        (driver.read(regs.errorPending) & 0x1) == 1,
+        "Error pending should be set after zero seed write"
+      )
       assert(driver.read(regs.output) == beforeZeroWrite, "PRNG state should be unchanged")
       assert(dut.io.error.toBoolean, "Error output should be asserted")
 

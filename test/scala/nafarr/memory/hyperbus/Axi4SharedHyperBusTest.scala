@@ -93,7 +93,7 @@ class Axi4SharedHyperBusTest extends AnyFunSuite {
       dut.io.memory.r.ready #= true
       sleep(2)
       assert(dut.io.memory.r.id.toBigInt == BigInt(13))
-      //assert(dut.io.memory.r.data.toBigInt == BigInt(123456))
+      // assert(dut.io.memory.r.data.toBigInt == BigInt(123456))
       assert(dut.io.memory.r.resp.toBigInt == BigInt(0))
       assert(dut.io.memory.r.last.toBoolean == true)
       assert(dut.io.memory.r.valid.toBoolean == true)
@@ -233,7 +233,7 @@ class Axi4SharedHyperBusTest extends AnyFunSuite {
       dut.io.memory.r.ready #= true
       sleep(2)
       assert(dut.io.memory.r.id.toBigInt == BigInt(13))
-      //assert(dut.io.memory.r.data.toBigInt == BigInt(123456))
+      // assert(dut.io.memory.r.data.toBigInt == BigInt(123456))
       assert(dut.io.memory.r.resp.toBigInt == BigInt(0))
       assert(dut.io.memory.r.last.toBoolean == false)
       assert(dut.io.memory.r.valid.toBoolean == true)
@@ -249,7 +249,7 @@ class Axi4SharedHyperBusTest extends AnyFunSuite {
       dut.io.memory.r.ready #= true
       sleep(2)
       assert(dut.io.memory.r.id.toBigInt == BigInt(13))
-      //assert(dut.io.memory.r.data.toBigInt == BigInt(234567))
+      // assert(dut.io.memory.r.data.toBigInt == BigInt(234567))
       assert(dut.io.memory.r.resp.toBigInt == BigInt(0))
       assert(dut.io.memory.r.last.toBoolean == false)
       assert(dut.io.memory.r.valid.toBoolean == true)
@@ -265,7 +265,7 @@ class Axi4SharedHyperBusTest extends AnyFunSuite {
       dut.io.memory.r.ready #= true
       sleep(2)
       assert(dut.io.memory.r.id.toBigInt == BigInt(13))
-      //assert(dut.io.memory.r.data.toBigInt == BigInt(345678))
+      // assert(dut.io.memory.r.data.toBigInt == BigInt(345678))
       assert(dut.io.memory.r.resp.toBigInt == BigInt(0))
       assert(dut.io.memory.r.last.toBoolean == false)
       assert(dut.io.memory.r.valid.toBoolean == true)
@@ -281,7 +281,7 @@ class Axi4SharedHyperBusTest extends AnyFunSuite {
       dut.io.memory.r.ready #= true
       sleep(2)
       assert(dut.io.memory.r.id.toBigInt == BigInt(13))
-      //assert(dut.io.memory.r.data.toBigInt == BigInt(456789))
+      // assert(dut.io.memory.r.data.toBigInt == BigInt(456789))
       assert(dut.io.memory.r.resp.toBigInt == BigInt(0))
       assert(dut.io.memory.r.last.toBoolean == true)
       assert(dut.io.memory.r.valid.toBoolean == true)

@@ -48,51 +48,118 @@ class ClockControllerTest extends AnyFunSuite {
   val inputClock = ClockParameter("input", 100 MHz)
 
   test("Apb3GpioParameters") {
-    generationShouldPass(Apb3ClockController(ClockControllerCtrl.Parameter(List(
-      ClockParameter("a", 100 MHz),
-      ClockParameter("b", 50 MHz, synchronousWith="b"),
-      ClockParameter("c", 25 MHz)
-    ), inputClock)))
-    generationShouldFail(Apb3ClockController(ClockControllerCtrl.Parameter(List(
-    ), inputClock)))
-    generationShouldFail(Apb3ClockController(ClockControllerCtrl.Parameter(List(
-      ClockParameter("a", 100 MHz),
-      ClockParameter("b", 50 MHz, synchronousWith="d"),
-      ClockParameter("c", 25 MHz)
-    ), inputClock)))
+    generationShouldPass(
+      Apb3ClockController(
+        ClockControllerCtrl.Parameter(
+          List(
+            ClockParameter("a", 100 MHz),
+            ClockParameter("b", 50 MHz, synchronousWith = "b"),
+            ClockParameter("c", 25 MHz)
+          ),
+          inputClock
+        )
+      )
+    )
+    generationShouldFail(
+      Apb3ClockController(
+        ClockControllerCtrl.Parameter(
+          List(
+          ),
+          inputClock
+        )
+      )
+    )
+    generationShouldFail(
+      Apb3ClockController(
+        ClockControllerCtrl.Parameter(
+          List(
+            ClockParameter("a", 100 MHz),
+            ClockParameter("b", 50 MHz, synchronousWith = "d"),
+            ClockParameter("c", 25 MHz)
+          ),
+          inputClock
+        )
+      )
+    )
   }
 
   test("TileLinkGpioParameters") {
-    generationShouldPass(TileLinkClockController(ClockControllerCtrl.Parameter(List(
-      ClockParameter("a", 100 MHz),
-      ClockParameter("b", 50 MHz, synchronousWith="b"),
-      ClockParameter("c", 25 MHz)
-    ), inputClock)))
-    generationShouldFail(TileLinkClockController(ClockControllerCtrl.Parameter(List(
-    ), inputClock)))
-    generationShouldFail(TileLinkClockController(ClockControllerCtrl.Parameter(List(
-      ClockParameter("a", 100 MHz),
-      ClockParameter("b", 50 MHz, synchronousWith="d"),
-      ClockParameter("c", 25 MHz)
-    ), inputClock)))
+    generationShouldPass(
+      TileLinkClockController(
+        ClockControllerCtrl.Parameter(
+          List(
+            ClockParameter("a", 100 MHz),
+            ClockParameter("b", 50 MHz, synchronousWith = "b"),
+            ClockParameter("c", 25 MHz)
+          ),
+          inputClock
+        )
+      )
+    )
+    generationShouldFail(
+      TileLinkClockController(
+        ClockControllerCtrl.Parameter(
+          List(
+          ),
+          inputClock
+        )
+      )
+    )
+    generationShouldFail(
+      TileLinkClockController(
+        ClockControllerCtrl.Parameter(
+          List(
+            ClockParameter("a", 100 MHz),
+            ClockParameter("b", 50 MHz, synchronousWith = "d"),
+            ClockParameter("c", 25 MHz)
+          ),
+          inputClock
+        )
+      )
+    )
   }
 
   test("WishboneGpioParameters") {
-    generationShouldPass(WishboneClockController(ClockControllerCtrl.Parameter(List(
-      ClockParameter("a", 100 MHz),
-      ClockParameter("b", 50 MHz, synchronousWith="b"),
-      ClockParameter("c", 25 MHz)
-    ), inputClock)))
-    generationShouldFail(WishboneClockController(ClockControllerCtrl.Parameter(List(
-    ), inputClock)))
-    generationShouldFail(WishboneClockController(ClockControllerCtrl.Parameter(List(
-      ClockParameter("a", 100 MHz),
-      ClockParameter("b", 50 MHz, synchronousWith="d"),
-      ClockParameter("c", 25 MHz)
-    ), inputClock)))
+    generationShouldPass(
+      WishboneClockController(
+        ClockControllerCtrl.Parameter(
+          List(
+            ClockParameter("a", 100 MHz),
+            ClockParameter("b", 50 MHz, synchronousWith = "b"),
+            ClockParameter("c", 25 MHz)
+          ),
+          inputClock
+        )
+      )
+    )
+    generationShouldFail(
+      WishboneClockController(
+        ClockControllerCtrl.Parameter(
+          List(
+          ),
+          inputClock
+        )
+      )
+    )
+    generationShouldFail(
+      WishboneClockController(
+        ClockControllerCtrl.Parameter(
+          List(
+            ClockParameter("a", 100 MHz),
+            ClockParameter("b", 50 MHz, synchronousWith = "d"),
+            ClockParameter("c", 25 MHz)
+          ),
+          inputClock
+        )
+      )
+    )
   }
 
-  private def initBase(bus: Apb3, cd: ClockDomain, idCtrlLength: BigInt): (Apb3Driver, ClockControllerCtrl.Regs) = {
+  private def initBase(
+      bus: Apb3,
+      cd: ClockDomain,
+      idCtrlLength: BigInt
+  ): (Apb3Driver, ClockControllerCtrl.Regs) = {
     val apb = new Apb3Driver(bus, cd)
     val regs = ClockControllerCtrl.Regs(idCtrlLength)
     cd.waitFallingEdge()
@@ -122,12 +189,15 @@ class ClockControllerTest extends AnyFunSuite {
       val cd = ClockDomain.current.copy(frequency = FixedFrequency(100 MHz))
       val area = new ClockingArea(cd) {
         val dut = ClockDividerController(
-          ClockControllerCtrl.Parameter(List(
-            ClockParameter("a", 100 MHz, gateable = true),
-            ClockParameter("b", 50 MHz, gateable = true),
-            ClockParameter("c", 25 MHz, gateable = true),
-            ClockParameter("d", 12.5 MHz, gateable = true)
-          ), ClockParameter("input", 100 MHz)),
+          ClockControllerCtrl.Parameter(
+            List(
+              ClockParameter("a", 100 MHz, gateable = true),
+              ClockParameter("b", 50 MHz, gateable = true),
+              ClockParameter("c", 25 MHz, gateable = true),
+              ClockParameter("d", 12.5 MHz, gateable = true)
+            ),
+            ClockParameter("input", 100 MHz)
+          ),
           ClockParameter("input", 100 MHz),
           List("a", "b", "c", "d")
         )
@@ -143,7 +213,7 @@ class ClockControllerTest extends AnyFunSuite {
       IpIdentificationTest.V0.checkVersion(apb, 1, 1, 0)
 
       /* Read domains */
-      SimTest.readField(apb, regs.domains, 7, 0, 4,  "Reset domains")
+      SimTest.readField(apb, regs.domains, 7, 0, 4, "Reset domains")
 
       /* Per-domain CTRL: enabled (bit 31) and locked (bit 30) out of reset. */
       for (index <- 0 until 4) {
@@ -318,10 +388,13 @@ class ClockControllerTest extends AnyFunSuite {
       val cd = ClockDomain.current.copy(frequency = FixedFrequency(100 MHz))
       val area = new ClockingArea(cd) {
         val dut = ClockDividerController(
-          ClockControllerCtrl.Parameter(List(
-            ClockParameter("a", 100 MHz, gateable = false),
-            ClockParameter("b", 50 MHz, gateable = true)
-          ), ClockParameter("input", 100 MHz)),
+          ClockControllerCtrl.Parameter(
+            List(
+              ClockParameter("a", 100 MHz, gateable = false),
+              ClockParameter("b", 50 MHz, gateable = true)
+            ),
+            ClockParameter("input", 100 MHz)
+          ),
           ClockParameter("input", 100 MHz),
           List("a", "b")
         )

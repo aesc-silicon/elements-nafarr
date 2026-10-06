@@ -135,7 +135,10 @@ class HyperBusRoundTripTest extends AnyFunSuite {
     dut.clockDomain.waitSampling(20)
 
     val wr = access(dut, read = false, addr, nw, strobe, unaligned)
-    assert(wr.isDefined, f"partial write (strobe 0x$strobe%x, unaligned=$unaligned) never completed (hang)")
+    assert(
+      wr.isDefined,
+      f"partial write (strobe 0x$strobe%x, unaligned=$unaligned) never completed (hang)"
+    )
     dut.clockDomain.waitSampling(20)
 
     val rd = access(dut, read = true, addr, 0, 0xf, unaligned = false)
@@ -150,7 +153,9 @@ class HyperBusRoundTripTest extends AnyFunSuite {
     )
   }
 
-  test("word 1111 aligned (reference)") { compiled.doSim("s_1111") { d => roundTrip(d, 0xf, false) } }
+  test("word 1111 aligned (reference)") {
+    compiled.doSim("s_1111") { d => roundTrip(d, 0xf, false) }
+  }
   test("byte0 0001 aligned") { compiled.doSim("s_0001") { d => roundTrip(d, 0x1, false) } }
   test("byte1 0010 aligned") { compiled.doSim("s_0010") { d => roundTrip(d, 0x2, false) } }
   test("byte2 0100 aligned") { compiled.doSim("s_0100") { d => roundTrip(d, 0x4, false) } }

@@ -109,14 +109,14 @@ class PwmTest extends AnyFunSuite {
       IpIdentificationTest.V0.checkVersion(apb, 1, 1, 0)
 
       /* Read channelPulseWidth, channelPeriodWidth, clockDividerWidth, io.channels */
-      SimTest.readField(apb, regs.channelConfig, 31, 24, 20,  "Channel period width")
-      SimTest.readField(apb, regs.channelConfig, 23, 16, 20,  "Channel pulse width")
-      SimTest.readField(apb, regs.channelConfig, 15, 8, 20,  "Clock divider width")
-      SimTest.readField(apb, regs.channelConfig, 7, 0, 1,  "IO channels")
+      SimTest.readField(apb, regs.channelConfig, 31, 24, 20, "Channel period width")
+      SimTest.readField(apb, regs.channelConfig, 23, 16, 20, "Channel pulse width")
+      SimTest.readField(apb, regs.channelConfig, 15, 8, 20, "Clock divider width")
+      SimTest.readField(apb, regs.channelConfig, 7, 0, 1, "IO channels")
 
       /* Read dead-time and shot-count widthss */
-      SimTest.readField(apb, regs.timingConfig, 15, 8, 8,  "Shot count width")
-      SimTest.readField(apb, regs.timingConfig, 7, 0, 8,  "Dead time width")
+      SimTest.readField(apb, regs.timingConfig, 15, 8, 8, "Shot count width")
+      SimTest.readField(apb, regs.timingConfig, 7, 0, 8, "Dead time width")
 
       /* Read permissions */
       SimTest.readField(apb, regs.permissions, 1, 0, 1, "Permissions")
@@ -210,7 +210,7 @@ class PwmTest extends AnyFunSuite {
       assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000001", 16))
       assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000001", 16))
 
-      SimTest.readField(apb, regs.status(channel), 1, 1, 0,  "Channel shot done set")
+      SimTest.readField(apb, regs.status(channel), 1, 1, 0, "Channel shot done set")
 
       assert(dut.io.pwm.output.toBigInt == BigInt("00000001", 16))
       assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
@@ -228,7 +228,7 @@ class PwmTest extends AnyFunSuite {
       assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000001", 16))
       assert(dut.io.pwm.syncOut.toBigInt == BigInt("00000001", 16))
 
-      SimTest.readField(apb, regs.status(channel), 1, 1, 1,  "Channel shot done not set")
+      SimTest.readField(apb, regs.status(channel), 1, 1, 1, "Channel shot done not set")
 
       assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
       assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
@@ -588,19 +588,39 @@ class PwmTest extends AnyFunSuite {
       dut.clockDomain.waitSampling(2)
 
       SimTest.checkPins(dut.io.interrupt.toBigInt, 0, f"Interrupt pending")
-      SimTest.read(apb, regs.interruptPending, BigInt("00000000", 16), "Period completed interrupt is pending")
+      SimTest.read(
+        apb,
+        regs.interruptPending,
+        BigInt("00000000", 16),
+        "Period completed interrupt is pending"
+      )
 
       dut.clockDomain.waitSampling(899)
       SimTest.checkPins(dut.io.interrupt.toBigInt, 1, f"Interrupt isn't pending")
-      SimTest.read(apb, regs.interruptPending, BigInt("00000001", 16), "Period completed interrupt not pending")
+      SimTest.read(
+        apb,
+        regs.interruptPending,
+        BigInt("00000001", 16),
+        "Period completed interrupt not pending"
+      )
       apb.write(regs.interruptPending, BigInt("1", 16))
       dut.clockDomain.waitSampling(1)
       SimTest.checkPins(dut.io.interrupt.toBigInt, 0, f"Interrupt pending")
-      SimTest.read(apb, regs.interruptPending, BigInt("00000000", 16), "Period completed interrupt is pending")
+      SimTest.read(
+        apb,
+        regs.interruptPending,
+        BigInt("00000000", 16),
+        "Period completed interrupt is pending"
+      )
 
       dut.clockDomain.waitSampling(898)
       SimTest.checkPins(dut.io.interrupt.toBigInt, 1, f"Interrupt isn't pending")
-      SimTest.read(apb, regs.interruptPending, BigInt("00000001", 16), "Period completed interrupt not pending")
+      SimTest.read(
+        apb,
+        regs.interruptPending,
+        BigInt("00000001", 16),
+        "Period completed interrupt not pending"
+      )
     }
 
     compiled.doSim("channel0 - fault input") { dut =>
@@ -622,7 +642,12 @@ class PwmTest extends AnyFunSuite {
       assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
       SimTest.read(apb, regs.errorPending, BigInt("00000000", 16), "Fault input error is pending")
       dut.io.pwm.faultIn #= true
-      SimTest.read(apb, regs.errorPending, BigInt("00000001", 16), "Fault input error isn't pending")
+      SimTest.read(
+        apb,
+        regs.errorPending,
+        BigInt("00000001", 16),
+        "Fault input error isn't pending"
+      )
       assert(dut.io.pwm.output.toBigInt == BigInt("00000000", 16))
       assert(dut.io.pwm.compOutput.toBigInt == BigInt("00000000", 16))
     }

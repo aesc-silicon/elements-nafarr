@@ -78,11 +78,13 @@ class GpioTest extends AnyFunSuite {
     return (apb, regs)
   }
 
-  def seqToBigInt(seq: Seq[Int]): BigInt = seq.foldLeft(BigInt(0))((acc, bit) => acc | (BigInt(1) << bit))
+  def seqToBigInt(seq: Seq[Int]): BigInt =
+    seq.foldLeft(BigInt(0))((acc, bit) => acc | (BigInt(1) << bit))
 
   test("basic") {
     val compiled = SimConfig.withWave.compile {
-      val dut = Apb3Gpio(GpioCtrl.Parameter(
+      val dut = Apb3Gpio(
+        GpioCtrl.Parameter(
           io = Gpio.Parameter(32),
           readBufferDepth = 1,
           input = Some(Seq(0, 1, 2, 3, 5, 7, 31)),
@@ -102,8 +104,8 @@ class GpioTest extends AnyFunSuite {
       IpIdentificationTest.V0.checkVersion(apb, 1, 0, 0)
 
       /* Read bank and pin count */
-      SimTest.readField(apb, regs.info, 31, 16, 1,  "GPIO bank count")
-      SimTest.readField(apb, regs.info, 15,  0, 32, "GPIO pin count")
+      SimTest.readField(apb, regs.info, 31, 16, 1, "GPIO bank count")
+      SimTest.readField(apb, regs.info, 15, 0, 32, "GPIO pin count")
     }
 
     compiled.doSim("testIO") { dut =>
@@ -120,22 +122,45 @@ class GpioTest extends AnyFunSuite {
       SimTest.checkPins(dut.ctrl.io.value.toBigInt, BigInt("ffffffff", 16), "GPIO output all high")
 
       /* Check if input filter is working */
-      SimTest.read(apb, regs.input(0), inputMask, f"Unable to get 0x${inputMask}%08x from GPIO read")
+      SimTest.read(
+        apb,
+        regs.input(0),
+        inputMask,
+        f"Unable to get 0x${inputMask}%08x from GPIO read"
+      )
 
       /* Check if GPIO write works */
       dut.clockDomain.waitFallingEdge()
       apb.write(regs.output(0), BigInt("ffffffff", 16))
       dut.clockDomain.waitFallingEdge(1)
-      SimTest.checkPins(dut.io.gpio.pins.write.toBigInt, outputMask, f"GPIO output doesn't match 0x${outputMask}%08x")
-      SimTest.read(apb, regs.output(0), outputMask, f"Unable to get 0x${outputMask}%08x from GPIO write")
+      SimTest.checkPins(
+        dut.io.gpio.pins.write.toBigInt,
+        outputMask,
+        f"GPIO output doesn't match 0x${outputMask}%08x"
+      )
+      SimTest.read(
+        apb,
+        regs.output(0),
+        outputMask,
+        f"Unable to get 0x${outputMask}%08x from GPIO write"
+      )
 
       /* Check if GPIO direction works */
       dut.clockDomain.waitFallingEdge()
       apb.write(regs.direction(0), BigInt("ffffffff", 16))
       dut.clockDomain.waitFallingEdge(1)
 
-      SimTest.checkPins(dut.io.gpio.pins.writeEnable.toBigInt, outputMask, f"GPIO output enable doesn't match 0x${outputMask}%08x")
-      SimTest.read(apb, regs.direction(0), outputMask, f"Unable to get 0x${outputMask}%08x from GPIO write")
+      SimTest.checkPins(
+        dut.io.gpio.pins.writeEnable.toBigInt,
+        outputMask,
+        f"GPIO output enable doesn't match 0x${outputMask}%08x"
+      )
+      SimTest.read(
+        apb,
+        regs.direction(0),
+        outputMask,
+        f"Unable to get 0x${outputMask}%08x from GPIO write"
+      )
     }
 
     compiled.doSim("testIRQ - Level High") { dut =>

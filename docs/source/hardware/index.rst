@@ -10,3 +10,4 @@ The following list offers an overview of all available IP cores.
    system/index.rst
    memory/index.rst
    crypto/index.rst
+   ml/index.rst

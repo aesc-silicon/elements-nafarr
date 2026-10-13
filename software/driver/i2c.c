@@ -21,60 +21,72 @@
 
 #define ELEMENTS_RSP_ERROR		0x0100
 
-int i2c_init(struct i2c_driver *driver, unsigned int base_address,
+static inline unsigned int i2c_reg_read(struct i2c_driver *driver,
+					unsigned int offset)
+{
+	return *(volatile unsigned int *)(driver->base + offset);
+}
+
+static inline void i2c_reg_write(struct i2c_driver *driver,
+				 unsigned int offset, unsigned int value)
+{
+	*(volatile unsigned int *)(driver->base + offset) = value;
+}
+
+int i2c_init(struct i2c_driver *driver, unsigned long base_address,
 	     unsigned int clock_divider)
 {
-	driver->regs = (struct i2c_regs *)base_address;
-	volatile struct i2c_regs *i2c = driver->regs;
+	driver->base = (volatile unsigned char *)base_address;
 
-	i2c->clock_div = clock_divider;
-	driver->fifo_size = i2c->status >> 16;
+	i2c_reg_write(driver, I2C_REG_CLOCK_DIV, clock_divider);
+	driver->fifo_size = I2C_CMD_FIFO_DEPTH(
+		i2c_reg_read(driver, I2C_REG_FIFO_DEPTHS));
 
 	return 1;
 }
 
 static inline void i2c_busy(struct i2c_driver *driver)
 {
-	volatile struct i2c_regs *i2c = driver->regs;
-
-	while ((i2c->status >> 16) != driver->fifo_size) {}
+	while (I2C_CMD_FIFO_VACANCY(
+		i2c_reg_read(driver, I2C_REG_FIFO_STATUS)) !=
+	       driver->fifo_size) {}
 }
 
 static inline void i2c_wait(struct i2c_driver *driver)
 {
-	volatile struct i2c_regs *i2c = driver->regs;
-
-	while (!(i2c->status & 0xFF)) {}
+	while (I2C_RSP_FIFO_OCCUPANCY(
+		i2c_reg_read(driver, I2C_REG_FIFO_STATUS)) == 0) {}
 }
 
 int i2c_read(struct i2c_driver *driver, unsigned int addr, unsigned int reg,
 	     unsigned int size, unsigned char *buf)
 {
-	volatile struct i2c_regs *i2c = driver->regs;
 	unsigned int result;
 
 	// Send device address ...
 	i2c_busy(driver);
-	i2c->read_write = (ELEMENTS_CMD_START | ELEMENTS_CMD_WRITE |
-			   ELEMENTS_ADDR_READ(addr));
+	i2c_reg_write(driver, I2C_REG_CMD_RESPONSE,
+		      ELEMENTS_CMD_START | ELEMENTS_CMD_WRITE |
+		      ELEMENTS_ADDR_READ(addr));
 	i2c_wait(driver);
-	if (i2c->read_write & ELEMENTS_RSP_ERROR)
+	if (i2c_reg_read(driver, I2C_REG_CMD_RESPONSE) & ELEMENTS_RSP_ERROR)
 		return -1;
 
 	// and register.
 	i2c_busy(driver);
-	i2c->read_write = (ELEMENTS_CMD_WRITE | ELEMENTS_CMD_STOP |
-			   (reg & 0xFF));
+	i2c_reg_write(driver, I2C_REG_CMD_RESPONSE,
+		      ELEMENTS_CMD_WRITE | ELEMENTS_CMD_STOP | (reg & 0xFF));
 	i2c_wait(driver);
-	if (i2c->read_write & ELEMENTS_RSP_ERROR)
+	if (i2c_reg_read(driver, I2C_REG_CMD_RESPONSE) & ELEMENTS_RSP_ERROR)
 		return -2;
 
 	// Send device address ...
 	i2c_busy(driver);
-	i2c->read_write = (ELEMENTS_CMD_START | ELEMENTS_CMD_WRITE |
-			   ELEMENTS_ADDR_READ(addr));
+	i2c_reg_write(driver, I2C_REG_CMD_RESPONSE,
+		      ELEMENTS_CMD_START | ELEMENTS_CMD_WRITE |
+		      ELEMENTS_ADDR_READ(addr));
 	i2c_wait(driver);
-	if (i2c->read_write & ELEMENTS_RSP_ERROR)
+	if (i2c_reg_read(driver, I2C_REG_CMD_RESPONSE) & ELEMENTS_RSP_ERROR)
 		return -3;
 
 	// and read data.
@@ -82,19 +94,20 @@ int i2c_read(struct i2c_driver *driver, unsigned int addr, unsigned int reg,
 		i2c_busy(driver);
 
 		if (i == (size - 1)) {
-			i2c->read_write = (ELEMENTS_CMD_READ |
-					   ELEMENTS_CMD_NACK |
-					   ELEMENTS_CMD_STOP);
+			i2c_reg_write(driver, I2C_REG_CMD_RESPONSE,
+				      ELEMENTS_CMD_READ | ELEMENTS_CMD_NACK |
+				      ELEMENTS_CMD_STOP);
 		} else {
-			i2c->read_write = ELEMENTS_CMD_READ | ELEMENTS_CMD_ACK;
+			i2c_reg_write(driver, I2C_REG_CMD_RESPONSE,
+				      ELEMENTS_CMD_READ | ELEMENTS_CMD_ACK);
 		}
 
 		i2c_wait(driver);
 
-		result = i2c->read_write;
+		result = i2c_reg_read(driver, I2C_REG_CMD_RESPONSE);
 		if (result & ELEMENTS_RSP_ERROR)
 			return i;
-		buf[i] = result && 0xFF;
+		buf[i] = result & 0xFF;
 	}
 
 	return size;

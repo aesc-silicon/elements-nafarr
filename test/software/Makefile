@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-DRIVERS  := clock crc32 esm gpio mailbox mtimer pinmux pio plic prng pwm reset semaphore syscon timer uart watchdog
+DRIVERS  := clock crc32 esm gpio i2c mailbox mtimer pinmux pio plic prng pwm reset semaphore syscon timer uart watchdog
 CC       := gcc
 CFLAGS   := -Wall -Werror -I../../software/include
 SRCDIR   := ../../software/driver
@@ -10,6 +10,8 @@ TESTDIR  := testcases
 BUILDDIR := build
 
 TESTS    := $(addprefix $(BUILDDIR)/test_, $(DRIVERS))
+
+THREAD_FLAGS_i2c := -pthread
 
 .PHONY: all run clean
 
@@ -20,7 +22,7 @@ $(BUILDDIR):
 
 define DRIVER_RULE
 $(BUILDDIR)/test_$(1): $(TESTDIR)/test_$(1).c $(BUILDDIR)/$(1).o | $(BUILDDIR)
-	$(CC) $(CFLAGS) $$^ -o $$@
+	$(CC) $(CFLAGS) $(THREAD_FLAGS_$(1)) $$^ -o $$@
 
 $(BUILDDIR)/$(1).o: $(SRCDIR)/$(1).c | $(BUILDDIR)
 	$(CC) $(CFLAGS) -c $$< -o $$@

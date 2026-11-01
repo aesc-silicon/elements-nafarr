@@ -62,11 +62,6 @@ int tsetlin_result(struct tsetlin_driver *driver, int *sum)
 	return result & 0xffff;
 }
 
-int tsetlin_class_sum(struct tsetlin_driver *driver, unsigned int cls)
-{
-	return cls < driver->classes ? driver->regs->sums[cls] : 0;
-}
-
 void tsetlin_irq_enable(struct tsetlin_driver *driver)
 {
 	driver->regs->ctrl = TSETLIN_CTRL_IRQ_ENABLE;

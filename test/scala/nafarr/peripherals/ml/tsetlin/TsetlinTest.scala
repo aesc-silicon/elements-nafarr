@@ -113,19 +113,10 @@ class TsetlinTest extends AnyFunSuite {
         apb.write(regs.ctrl, 3) // start, keep irq enable
         dut.clockDomain.waitSamplingWhere(dut.io.interrupt.toBoolean)
 
-        val matches = (0 until p.rowWords).foldLeft(BigInt(0)) { (acc, w) =>
-          acc | (apb.read(regs.matches(w)) << (32 * w))
-        }
-        val expect = ref.clauses(lit).zipWithIndex.foldLeft(BigInt(0)) { case (acc, (m, i)) =>
-          if (m) acc.setBit(i) else acc
-        }
-        assert(matches == expect, f"search $s: matches $matches%x, expected $expect%x")
-        for ((e, c) <- ref.sums(lit).zipWithIndex) {
-          val got = apb.read(regs.sum(c)).toInt
-          assert(got == e, s"search $s: class $c sum $got, expected $e")
-        }
         val result = apb.read(regs.result)
         assert((result & 0xffff) == ref.winner(lit), s"search $s: winner ${result & 0xffff}")
+        val sum = (result >> 16).toShort
+        assert(sum == ref.sums(lit).max, s"search $s: winning sum $sum")
         apb.write(regs.status, 2) // clear done
         dut.clockDomain.waitSampling()
         assert(!dut.io.interrupt.toBoolean, "interrupt still pending")

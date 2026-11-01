@@ -15,7 +15,8 @@ import nafarr.blackboxes.muninn.Tcam
   * Each row of the clause array is one clause. Rows are grouped by class, class-major,
   * `clausesPerClass` rows each; rows behind the last class are unused. Inside a class
   * even rows vote for it and odd rows against it. A search sums the votes per class
-  * and picks the class with the highest sum (lowest index on ties).
+  * and picks the class with the highest sum (lowest index on ties). Sums and argmax
+  * are combinational on the macro outputs, so only the winner is stored.
   *
   * Several macros side by side (`tiles`) form wider clauses: their MATCH outputs are
   * ANDed. With `validColumn`, literal 0 is held at 0 during a search; a clause with
@@ -44,7 +45,6 @@ object TsetlinCtrl {
     require(literals <= 2048 && rows <= 2048 && classes <= 256, "exceeds the register windows")
     val sumBits = log2Up(clausesPerClass / 2 + 1) + 1
     val literalWords = (literals + 31) / 32
-    val rowWords = (rows + 31) / 32
   }
   object Parameter {
     def default(
@@ -70,10 +70,8 @@ object TsetlinCtrl {
     val row = base + 0x14 // row address for the next commit
     val commit = base + 0x18 // write: row buffer -> clause array row
     val result = base + 0x1c // [31:16] winning sum (signed), [15:0] winning class
-    def data(word: Int) = 0x100 + 4 * word // row buffer
-    def literal(word: Int) = 0x200 + 4 * word
-    def matches(word: Int) = 0x300 + 4 * word
-    def sum(cls: Int) = 0x400 + 4 * cls
+    def data(word: Int) = 0x100 + 4 * word // row buffer, write-only
+    def literal(word: Int) = 0x200 + 4 * word // same buffer as data, write-only
   }
 
   case class Config(p: Parameter) extends Bundle {
@@ -86,9 +84,8 @@ object TsetlinCtrl {
 
   case class Status(p: Parameter) extends Bundle {
     val busy = Bool()
+    val writing = Bool() // the clause array writes a row in this cycle
     val done = Bool() // one cycle when a search has finished
-    val matches = Bits(p.rows bits)
-    val sums = Vec(SInt(p.sumBits bits), p.classes)
     val winner = UInt(16 bits)
     val winnerSum = SInt(p.sumBits bits)
   }
@@ -105,7 +102,8 @@ object TsetlinCtrl {
 
     // all macro inputs come from registers (see the timing in Tcam); row data and literals
     // are the bus registers, which only change on bus writes and so never in the cycle of a
-    // commit or start
+    // commit or start. The mapper stalls bus writes while a row is written, so WDATA, A and
+    // WE are stable at the edge that ends the write; the hold check on these pins is false.
     val searchEnable = RegInit(False)
     val writeEnable = RegInit(False)
     val address = Reg(UInt(p.tcam.addressBits bits)) init (0)
@@ -120,67 +118,49 @@ object TsetlinCtrl {
     }
     val clauses = tiles.map(_.matches).reduce(_ & _)
 
-    val matches = Reg(Bits(p.rows bits)) init (0)
-    val sums = Reg(Vec(SInt(p.sumBits bits), p.classes))
-    sums.foreach(_.init(0))
-    val winner = Reg(UInt(16 bits)) init (0)
-    val winnerSum = Reg(SInt(p.sumBits bits)) init (0)
-    val cls = Reg(UInt(log2Up(p.classes + 1) bits)) init (0)
-
-    object State extends SpinalEnum {
-      val Idle, Search, Sum, Argmax, Done = newElement()
+    val sums = (0 until p.classes).map { c =>
+      val group = clauses(c * p.clausesPerClass, p.clausesPerClass bits)
+      val positive = CountOne((0 until p.clausesPerClass by 2).map(group(_)))
+      val negative = CountOne((1 until p.clausesPerClass by 2).map(group(_)))
+      positive.resize(p.sumBits).asSInt - negative.resize(p.sumBits).asSInt
     }
-    val state = RegInit(State.Idle)
+    // argmax tree; the left half holds the lower indices, so ties keep the lower index
+    val classBits = Math.max(1, log2Up(p.classes))
+    def argmax(c: Seq[(UInt, SInt)]): (UInt, SInt) = {
+      if (c.size == 1) {
+        c.head
+      } else {
+        val (lowIndex, lowSum) = argmax(c.take(c.size / 2))
+        val (highIndex, highSum) = argmax(c.drop(c.size / 2))
+        val high = highSum > lowSum
+        (high ? highIndex | lowIndex, high ? highSum | lowSum)
+      }
+    }
+    val (best, bestSum) = argmax(sums.zipWithIndex.map { case (s, c) => (U(c, classBits bits), s) })
+
+    val winner = Reg(UInt(classBits bits)) init (0)
+    val winnerSum = Reg(SInt(p.sumBits bits)) init (0)
+    val searching = RegInit(False)
     writeEnable := False
     searchEnable := False
+    searching := False
 
-    switch(state) {
-      is(State.Idle) {
-        when(io.config.commit) {
-          writeEnable := True
-          address := io.config.row
-        } elsewhen (io.config.start) {
-          searchEnable := True
-          state := State.Search
-        }
-      }
-      is(State.Search) {
-        // the search ran in the previous cycle; its result is valid on this edge
-        matches := clauses
-        state := State.Sum
-      }
-      is(State.Sum) {
-        for (c <- 0 until p.classes) {
-          val group = matches(c * p.clausesPerClass, p.clausesPerClass bits)
-          val positive = CountOne((0 until p.clausesPerClass by 2).map(group(_)))
-          val negative = CountOne((1 until p.clausesPerClass by 2).map(group(_)))
-          sums(c) := (positive.resize(p.sumBits).asSInt - negative.resize(p.sumBits).asSInt)
-        }
-        winner := 0
-        winnerSum := S(-(1 << (p.sumBits - 1)), p.sumBits bits)
-        cls := 0
-        state := State.Argmax
-      }
-      is(State.Argmax) {
-        when(sums(cls.resized) > winnerSum) {
-          winner := cls.resized
-          winnerSum := sums(cls.resized)
-        }
-        cls := cls + 1
-        when(cls === p.classes - 1) {
-          state := State.Done
-        }
-      }
-      is(State.Done) {
-        state := State.Idle
-      }
+    when(searching) {
+      // the search runs in this cycle; its result is valid on the next edge
+      winner := best
+      winnerSum := bestSum
+    } elsewhen (io.config.commit) {
+      writeEnable := True
+      address := io.config.row
+    } elsewhen (io.config.start) {
+      searchEnable := True
+      searching := True
     }
 
-    io.status.busy := state =/= State.Idle
-    io.status.done := state === State.Done
-    io.status.matches := matches
-    io.status.sums := sums
-    io.status.winner := winner
+    io.status.busy := searching
+    io.status.writing := writeEnable
+    io.status.done := searching // the winner is stored on the same edge
+    io.status.winner := winner.resized
     io.status.winnerSum := winnerSum
   }
 
@@ -192,6 +172,9 @@ object TsetlinCtrl {
     busCtrl.read(B(p.literals, 16 bits) ## B(p.rows, 16 bits), regs.array)
     busCtrl.read(B(p.clausesPerClass, 16 bits) ## B(p.classes, 16 bits), regs.classes)
     busCtrl.read(Bool(p.validColumn) ## B(p.tiles, 8 bits), regs.options)
+
+    // no bus write may change the macro inputs at the edge that ends a row write
+    when(ctrl.status.writing) { busCtrl.writeHalt() }
 
     val writeData = Bits(32 bits)
     busCtrl.nonStopWrite(writeData, 0)
@@ -217,21 +200,16 @@ object TsetlinCtrl {
       regs.result
     )
 
-    val rowData = Reg(Bits(p.literals bits)) init (0)
-    val literals = Reg(Bits(p.literals bits)) init (0)
+    // commits and searches never overlap, so row data and literals share one buffer;
+    // both windows map onto it; write-only, so no read-back wires run to the bus side
+    val buffer = Reg(Bits(p.literals bits)) init (0)
     for (w <- 0 until p.literalWords) {
       val bits = Math.min(32, p.literals - 32 * w)
-      busCtrl.driveAndRead(rowData(32 * w, bits bits), regs.data(w))
-      busCtrl.driveAndRead(literals(32 * w, bits bits), regs.literal(w))
+      for (address <- Seq(regs.data(w), regs.literal(w))) {
+        busCtrl.write(buffer(32 * w, bits bits), address)
+      }
     }
-    ctrl.config.rowData := rowData
-    ctrl.config.literals := literals
-    for (w <- 0 until p.rowWords) {
-      val bits = Math.min(32, p.rows - 32 * w)
-      busCtrl.read(ctrl.status.matches(32 * w, bits bits), regs.matches(w))
-    }
-    for (c <- 0 until p.classes) {
-      busCtrl.read(ctrl.status.sums(c).resize(32).asBits, regs.sum(c))
-    }
+    ctrl.config.rowData := buffer
+    ctrl.config.literals := buffer
   }
 }

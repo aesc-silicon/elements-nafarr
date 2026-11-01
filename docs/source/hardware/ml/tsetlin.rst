@@ -21,9 +21,10 @@ All logic is bus-driven. There are no external IO signals besides the interrupt.
 Features
 ********
 
-* One search per start: all clauses evaluated in one cycle, result after
-  ``4 + classes`` cycles
-* Clause outputs, per-class sums and the winning class readable after a search
+* One search per start: all clauses evaluated in one cycle; vote counting and
+  argmax are combinational on the clause outputs, so the result is ready one cycle
+  after the search
+* Winning class and its sum readable after a search
 * Several macros side by side (``tiles``) for wider clauses
 * Optional valid column: literal 0 is held at 0 during a search, so a row with
   include bit 0 set never matches (empty or unused clauses)
@@ -34,7 +35,7 @@ Clause Mapping
 **************
 
 Rows are grouped by class, class-major, ``clausesPerClass`` rows each; rows behind
-the last class are unused (their clause outputs are still readable). Inside a class,
+the last class are unused. Inside a class,
 even rows vote for the class and odd rows against it. A row matches when every included literal is 1.
 The sum of a class is the number of matching even rows minus the number of matching
 odd rows; the winner is the class with the highest sum, the lowest index on ties.
@@ -132,16 +133,10 @@ configuration.
      - ``[31:16]`` winning sum (signed), ``[15:0]`` winning class
    * - 0x100 + 4w
      - ``data[w]``
-     - Row buffer, include bits of literals ``32w .. 32w + 31``
+     - Row buffer, include bits of literals ``32w .. 32w + 31`` (write-only)
    * - 0x200 + 4w
      - ``literals[w]``
-     - Search literals ``32w .. 32w + 31``
-   * - 0x300 + 4w
-     - ``matches[w]``
-     - Clause outputs of the last search, rows ``32w .. 32w + 31``
-   * - 0x400 + 4c
-     - ``sums[c]``
-     - Sum of class ``c`` (signed)
+     - Search literals ``32w .. 32w + 31``; the same buffer as ``data`` (write-only)
 
 Programming
 ***********
@@ -152,6 +147,9 @@ Writing a clause: fill ``data``, write the row address to ``row``, then write
 Running a search: fill ``literals``, write ``start`` (keeping the interrupt enable
 bit), wait for ``done`` or the interrupt, read ``result``, and clear ``done``.
 
+Row data and literals share one buffer, since a commit and a search never run at
+the same time. Fill it completely before every commit and every search.
+
 The C driver (``software/include/tsetlin.h``) wraps both:
 ``tsetlin_write_clause()``, ``tsetlin_search_start()``, ``tsetlin_search_done()``,
-``tsetlin_result()`` and ``tsetlin_class_sum()``.
+and ``tsetlin_result()``.

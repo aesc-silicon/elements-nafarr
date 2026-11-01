@@ -24,10 +24,8 @@ struct tsetlin_regs {
 	unsigned int commit;
 	unsigned int result;		/* [31:16] winning sum, [15:0] winning class */
 	unsigned int reserved0[54];
-	unsigned int data[TSETLIN_MAX_WORDS];		/* 0x100: row buffer */
-	unsigned int literals[TSETLIN_MAX_WORDS];	/* 0x200 */
-	unsigned int matches[TSETLIN_MAX_WORDS];	/* 0x300: clause outputs */
-	int sums[TSETLIN_MAX_CLASSES];			/* 0x400: votes per class */
+	unsigned int data[TSETLIN_MAX_WORDS];		/* 0x100: row buffer, write-only */
+	unsigned int literals[TSETLIN_MAX_WORDS];	/* 0x200: same buffer as data, write-only */
 };
 
 struct tsetlin_driver {
@@ -52,7 +50,6 @@ int tsetlin_write_clause(struct tsetlin_driver *driver, unsigned int row,
 int tsetlin_search_start(struct tsetlin_driver *driver, const unsigned int *literals);
 int tsetlin_search_done(struct tsetlin_driver *driver);
 int tsetlin_result(struct tsetlin_driver *driver, int *sum);
-int tsetlin_class_sum(struct tsetlin_driver *driver, unsigned int cls);
 void tsetlin_irq_enable(struct tsetlin_driver *driver);
 void tsetlin_irq_disable(struct tsetlin_driver *driver);
 

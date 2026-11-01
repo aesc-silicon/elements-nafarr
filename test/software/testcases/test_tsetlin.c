@@ -15,8 +15,6 @@ _Static_assert(offsetof(struct tsetlin_regs, ctrl) == 0x14, "ctrl");
 _Static_assert(offsetof(struct tsetlin_regs, result) == 0x24, "result");
 _Static_assert(offsetof(struct tsetlin_regs, data) == 0x100, "data");
 _Static_assert(offsetof(struct tsetlin_regs, literals) == 0x200, "literals");
-_Static_assert(offsetof(struct tsetlin_regs, matches) == 0x300, "matches");
-_Static_assert(offsetof(struct tsetlin_regs, sums) == 0x400, "sums");
 
 int main(void)
 {
@@ -44,7 +42,6 @@ int main(void)
 	fake_regs.result = (0xfffe << 16) | 2;
 	if (tsetlin_result(&driver, &sum) != 2 || sum != -2)
 		return 1;
-	tsetlin_class_sum(&driver, 0);
 
 	return 0;
 }

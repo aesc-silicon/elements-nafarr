@@ -178,6 +178,7 @@ object ClockControllerCtrl {
 
     val (clkIDiv, clkFbDiv, clkOpDiv) = clockPair match {
       case (100, 400) => (2, 1, 8)
+      case (25, 400) => (1, 2, 8)
     }
 
     val clockCtrlClockDomain = ClockDomain(

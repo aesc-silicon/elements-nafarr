@@ -8,3 +8,6 @@
 [submodule "ext/VexiiRiscv"]
 	path = ext/VexiiRiscv
 	url = https://github.com/SpinalHDL/VexiiRiscv.git
+[submodule "ext/muninn-macros"]
+	path = ext/muninn-macros
+	url = https://github.com/aesc-silicon/muninn-macros.git
